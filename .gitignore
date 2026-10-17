@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+.ruff_cache/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Generated data (rebuild: python -m simulator.seed.generator && python -m app.db.build_local)
+data/seed/
+data/local/
+.coverage
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+*.pem
+*-key.json
+service-account*.json
+application_default_credentials.json
+
+# Internal team docs (not for the public repo)
+docs/internal/
+
+# Raw Vidad data pack (Excel + photos) until it is curated into data/
+data/vidad-raw/
+docs/*.xlsx
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

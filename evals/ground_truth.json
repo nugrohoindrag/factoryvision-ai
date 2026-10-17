@@ -1,0 +1,14 @@
+{
+  "_note": "Planted data stories (PRD §9). Tolerance: percentages +-5 points, day ranges +-1 day, entities exact. Checked at two levels: tools (backend/tests/integration/test_stories.py, no Gemini) and agents (adk eval against the deployment).",
+  "seed": 20270201,
+  "demo_today": "2027-02-01",
+  "stories": {
+    "demand_forecast": {"sku": "FB-ARKA", "metric": "change_by_final_week_pct", "target": 35, "min": 30, "max": 40, "horizon_weeks": 6},
+    "production_planning": {"machine": "IMM-04", "metric": "capacity_gap_pct (3500t group, FB-ARKA +40%)", "target": 18, "min": 13, "max": 23},
+    "mes": {"machine": "IMM-04", "metric": "days_to_alarm", "target": 6, "min": 4, "max": 8},
+    "material_supply": {"material": "PP-EPDM-T20", "metric": "days_to_stockout", "target": 9, "min": 8, "max": 10},
+    "purchasing": {"vendor": "PT Andalas Polimindo", "metric": "avg_delay_days", "target": 4, "min": 3, "max": 5},
+    "quality_control": {"lot": "LOT-PPT20-0918", "defects": ["BUBBLE", "GAS_MARK"], "humidity_defect": "DUST_SEED"},
+    "delivery": {"machine": "IMM-04", "order_ids": ["SO-270204-002", "SO-270205-002", "SO-270206-001"]}
+  }
+}

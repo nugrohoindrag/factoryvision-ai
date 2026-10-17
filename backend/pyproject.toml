@@ -1,0 +1,29 @@
+[project]
+name = "factory-vision-ai-backend"
+version = "0.1.0"
+description = "Factory Vision AI backend: FastAPI, Google ADK agents, plant simulator"
+requires-python = ">=3.12"
+# Dependencies are pinned in requirements.txt (single dependency file).
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+markers = [
+  "unit: pure logic, no I/O (base of the pyramid; runs on every change)",
+  "integration: real DuckDB warehouse built with Alembic from the seed; no network",
+  "e2e: running API (and later Vertex AI); opt-in with -m e2e",
+]
+filterwarnings = [
+  "ignore::FutureWarning",
+  "ignore::UserWarning",
+  "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["app", "simulator"]
+omit = ["app/db/load_bigquery.py"]
+
+[tool.ruff]
+line-length = 160
+target-version = "py312"
