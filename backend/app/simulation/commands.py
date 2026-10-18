@@ -90,6 +90,7 @@ _COMMANDS = {
     "place_po": place_po,
     "expedite_po": place_po,
     "add_shift": logged,
+    "apply_customer_po": logged,
     "revise_ship_date": logged,
     "notify_customer": logged,
 }

@@ -4,13 +4,17 @@ import json
 from functools import lru_cache
 from typing import Any
 
+from app import plant
 from app.effects import Overrides, normal_cycle_factor
 from app.errors import FVError
-from app.tools import delivery, forecast, material, mes, planning, purchasing, quality
+from app.tools import delivery, forecast, material, mes, orders, planning, purchasing, quality
 
 UNKNOWN_MODULE = "FV-REQ-002"
+UNKNOWN_ENTITY = "FV-DATA-001"
 
 MODULES = ("forecast", "planning", "mes", "material", "purchasing", "quality", "delivery")
+# Pages with a summary; Customer Orders (module 0) has no agent of its own.
+PAGES = ("orders", *MODULES)
 
 
 def _maintenance_cycle(o: Overrides) -> dict[str, Any]:
@@ -42,9 +46,31 @@ def delivery_rates(o: Overrides) -> dict[str, Any]:
     return out
 
 
+def _orders(o: Overrides) -> dict[str, Any]:
+    return {"book": orders.order_book(), "customer_pos": o.customer_pos, "customer_po_change_pct": o.demand_change_pct}
+
+
 def _forecast(o: Overrides) -> dict[str, Any]:
     main = forecast.bq_forecast("FB-ARKA")
-    return {"skus": forecast.forecast_all(), "focus": main, "customer_po_change_pct": o.demand_change_pct}
+    return {
+        "skus": forecast.forecast_all(),
+        "focus": main,
+        "vs_orders": forecast.forecast_vs_orders("FB-ARKA", o.demand_change_pct or None),
+        "customer_po_change_pct": o.demand_change_pct,
+    }
+
+
+@lru_cache(maxsize=64)
+def _forecast_detail(sku: str, demand_key: str) -> str:
+    demand = json.loads(demand_key) or None
+    return json.dumps({"focus": forecast.bq_forecast(sku), "vs_orders": forecast.forecast_vs_orders(sku, demand)}, default=str)
+
+
+def forecast_detail(sku: str, o: Overrides) -> dict[str, Any]:
+    if sku not in plant.PRODUCT_BY_SKU:
+        raise FVError(UNKNOWN_ENTITY, f"unknown sku {sku}", {"valid_skus": plant.SKUS})
+    result: dict[str, Any] = json.loads(_forecast_detail(sku, json.dumps(o.demand_change_pct, sort_keys=True)))
+    return result
 
 
 def _planning(o: Overrides) -> dict[str, Any]:
@@ -117,6 +143,7 @@ def what_if(o: Overrides) -> dict[str, Any]:
 
 
 _BUILDERS = {
+    "orders": _orders,
     "forecast": _forecast,
     "planning": _planning,
     "mes": _mes,
@@ -136,7 +163,7 @@ def _cached(module: str, key: str) -> str:
 
 def summary(module: str, o: Overrides | None = None) -> dict[str, Any]:
     if module not in _BUILDERS:
-        raise FVError(UNKNOWN_MODULE, detail={"module": module, "valid": list(MODULES)})
+        raise FVError(UNKNOWN_MODULE, detail={"module": module, "valid": list(PAGES)})
     o = o or Overrides()
     key = json.dumps({**o.as_dict(), "applied": []}, sort_keys=True, default=str)
     return {"module": module, "scenario": o.scenario, "applied_actions": o.applied, **json.loads(_cached(module, key))}

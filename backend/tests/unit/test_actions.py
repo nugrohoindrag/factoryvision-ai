@@ -103,3 +103,12 @@ def test_limiter_caps_and_debounces() -> None:
         lim.debounce("s", "cam", 30, "FV-VIS-002")
     lim.reset("s")
     assert lim.used("s", "vision") == 0
+
+
+def test_customer_po_sets_demand_only_for_changed_lines() -> None:
+    o = effects.Overrides()
+    cmd = {"name": "apply_customer_po", "args": {"po_number": "PO-1", "lines": [{"sku": "FB-ARKA", "change_pct": 40}, {"sku": "RB-ARKA", "change_pct": 0}]}}
+    effects.apply(o, cmd)
+    assert o.demand_change_pct == {"FB-ARKA": 40.0}
+    assert o.customer_pos[0]["po_number"] == "PO-1"
+    assert actions.KINDS["customer_po"] == ("orders", "apply_customer_po")

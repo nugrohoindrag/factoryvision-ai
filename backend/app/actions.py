@@ -17,6 +17,7 @@ STATUSES = ("pending", "approved", "rejected", "failed")
 IMPACT_KEYS = ("rupiah_idr", "scrap_kg", "kwh", "co2e_kg")
 
 KINDS = {
+    "customer_po": ("orders", "apply_customer_po"),
     "maintenance": ("mes", "start_maintenance"),
     "mold_move": ("planning", "move_mold"),
     "extra_shift": ("planning", "add_shift"),

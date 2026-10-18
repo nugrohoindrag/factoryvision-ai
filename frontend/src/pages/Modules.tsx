@@ -1,6 +1,7 @@
 /** Module pages with thin-to-medium depth: Forecast, Planning, Material, Purchasing, Delivery. */
 
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { AskAgent } from "../components/agents";
 import { Bars, Line } from "../components/charts";
 import { Badge, Card, Kpi, Source, Status, Table, num, pct } from "../components/ui";
@@ -10,41 +11,73 @@ import { useData } from "../lib/store";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Any = any;
 
+const signed = (v: number | null | undefined) => (v == null ? "–" : `${v > 0 ? "+" : ""}${pct(v)}`);
+
 export function ForecastPage() {
   const { data, error, loading } = useData<Any>("/api/modules/forecast/summary");
-  const f = data?.focus;
-  const po = data?.customer_po_change_pct?.["FB-ARKA"];
+  const [sku, setSku] = useState("FB-ARKA");
+  const detail = useData<Any>(data && sku !== "FB-ARKA" ? `/api/forecast/${sku}` : null);
+  const cur = sku === "FB-ARKA" ? data : detail.data;
+  const f = cur?.focus;
+  const vs = cur?.vs_orders;
+  const po = data?.customer_po_change_pct?.[sku];
   return (
     <>
-      <h1>Demand Forecast</h1>
-      <Status loading={loading} error={error} />
-      {data && (
+      <div className="page-head">
+        <h1>Demand Forecast</h1>
+        {data && (
+          <label className="row small">
+            SKU
+            <select value={sku} onChange={(e) => setSku(e.target.value)} aria-label="SKU">
+              {data.skus.map((s: Any) => <option key={s.sku}>{s.sku}</option>)}
+            </select>
+          </label>
+        )}
+      </div>
+      <Status loading={loading || detail.loading} error={error ?? detail.error} />
+      {f && vs && (
         <>
           <div className="kpis">
-            <Kpi label="FB-ARKA in 6 weeks" value={`+${pct(f.change_by_final_week_pct)}`} sub={`vs last 7 days (${num(f.last7_daily_mean)} / day)`} tone="warn" />
-            <Kpi label="Peak week" value={`Week ${f.peak_week}`} sub={`+${pct(f.peak_change_pct)}`} />
-            <Kpi label="Customer PO change" value={po ? `+${po}%` : "none"} sub={po ? "OEM-A revised schedule (FB-ARKA)" : "no revised PO in this session"} tone={po ? "bad" : undefined} />
-            <Kpi label="Engine" value={f.engine.startsWith("BigQuery") ? "BQML" : "Local"} sub={f.engine} />
+            <Kpi label={`${sku} in 6 weeks`} value={signed(f.change_by_final_week_pct)} sub={`vs last 7 days (${num(f.last7_daily_mean)} / day)`} tone={f.change_by_final_week_pct > 20 ? "warn" : undefined} />
+            <Kpi label="Peak week" value={`Week ${f.peak_week}`} sub={signed(f.peak_change_pct)} />
+            <Kpi label="Customer PO change" value={po ? signed(po) : "none"} sub={po ? "approved revised schedule" : <Link to="/orders">read a customer PO</Link>} tone={po ? "bad" : undefined} />
+            <Kpi label="Firm orders cover" value={pct(vs.forecast_total ? (100 * vs.firm_total) / vs.forecast_total : null)} sub={`${num(vs.firm_total)} of ${num(vs.forecast_total)} forecast`} />
           </div>
-          <Card title="FB-ARKA weekly demand: history and forecast">
+          <Card title={`${sku} weekly demand: history and forecast`} actions={<Badge tone="info">{f.engine.startsWith("BigQuery") ? "BigQuery ML ARIMA_PLUS" : "Local model (dev)"}</Badge>}>
             <Line
-              label="FB-ARKA weekly demand"
+              label={`${sku} weekly demand`}
               history={f.weekly_history.map((w: Any) => ({ x: w.week_start, y: w.total_qty }))}
               forecast={f.weekly_forecast.map((w: Any) => ({ x: w.week_start, y: w.total_qty }))}
             />
             <ul className="muted small">{f.calendar_notes.map((n: string) => <li key={n}>{n}</li>)}</ul>
             <Source>{f.source}; forecast: {f.engine}</Source>
           </Card>
+          <Card title="Forecast vs customer orders">
+            <Table
+              cols={[
+                { key: "wk", label: "Week" },
+                { key: "fc", label: "Forecast", align: "right" },
+                { key: "firm", label: "Firm orders", align: "right" },
+                { key: "sch", label: "Customer schedule", align: "right" },
+                { key: "rev", label: "Revised by PO", align: "right" },
+                { key: "gap", label: "Not yet ordered", align: "right" },
+              ]}
+              rows={vs.weeks.map((w: Any) => ({
+                wk: `W${w.week} · ${w.week_start}`,
+                fc: <strong>{num(w.forecast_qty)}</strong>,
+                firm: `${num(w.firm_qty)} (${pct(w.firm_coverage_pct, 0)})`,
+                sch: num(w.schedule_qty),
+                rev: w.revised_schedule_qty != null && w.revised_schedule_qty !== w.schedule_qty ? <Badge tone="warn">{num(w.revised_schedule_qty)}</Badge> : num(w.revised_schedule_qty),
+                gap: num(w.uncovered_qty),
+              }))}
+            />
+            <p className="muted small">{vs.note}</p>
+            <Source>{vs.source}</Source>
+          </Card>
           <Card title="All SKUs: change by week 6">
             <Bars items={data.skus.map((s: Any) => ({ label: s.sku, value: s.change_by_final_week_pct, tone: s.change_by_final_week_pct > 20 ? "warn" : undefined }))} unit="%" />
           </Card>
-          <Card title="Customer documents">
-            <p>
-              Demo inbox: <a href="/api/documents/customer-po-oem-a.pdf" target="_blank" rel="noreferrer">OEM-A revised delivery schedule (PDF)</a>. The Document &amp; Photo
-              Extractor reads it during the Disruption Response.
-            </p>
-          </Card>
-          <AskAgent module="forecast" placeholder="Why is FB-ARKA demand rising, and what does the OEM-A PO change?" />
+          <AskAgent module="forecast" placeholder={`Why is ${sku} demand changing, and what does the OEM-A PO change?`} />
         </>
       )}
     </>

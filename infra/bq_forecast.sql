@@ -1,6 +1,9 @@
 -- BigQuery ML demand forecast (DF-1): one ARIMA_PLUS model over daily demand per SKU.
 -- Same rules as the local fallback in backend/app/tools/forecast.py: cancelled orders excluded,
 -- days without orders are zero, history ends the day before the demo "today" (2027-02-01).
+-- DF-4: the model is registered in Vertex AI Model Registry as fv_demand_arima (registry only;
+-- ARIMA_PLUS cannot be deployed to a Vertex AI endpoint, so nothing is served from there).
+-- Whoever runs this needs Vertex AI model permissions (project Owner has them; setup.sh enables the API).
 -- Run: bq query --use_legacy_sql=false < infra/bq_forecast.sql
 
 CREATE OR REPLACE MODEL `fv.demand_arima`
@@ -11,7 +14,9 @@ OPTIONS (
   time_series_id_col = 'sku',
   data_frequency = 'DAILY',
   holiday_region = 'ID',
-  auto_arima = TRUE
+  auto_arima = TRUE,
+  model_registry = 'VERTEX_AI',
+  vertex_ai_model_id = 'fv_demand_arima'
 ) AS
 WITH days AS (
   SELECT d FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2026-11-03', DATE '2027-01-31')) AS d

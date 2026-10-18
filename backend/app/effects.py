@@ -28,6 +28,7 @@ class Overrides:
     holds: list[str] = field(default_factory=list)
     ship_dates: dict[str, str] = field(default_factory=dict)
     notices: list[dict[str, Any]] = field(default_factory=list)
+    customer_pos: list[dict[str, Any]] = field(default_factory=list)
     applied: list[dict[str, Any]] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
@@ -52,7 +53,12 @@ def overrides(session_id: str) -> Overrides:
 
 def apply(o: Overrides, cmd: Doc) -> None:
     name, a = cmd["name"], cmd.get("args", {})
-    if name == "start_maintenance":
+    if name == "apply_customer_po":
+        for line in a.get("lines", []):
+            if line.get("change_pct"):
+                o.demand_change_pct[line["sku"]] = float(line["change_pct"])
+        o.customer_pos.append(a)
+    elif name == "start_maintenance":
         o.maintenance.append(a["machine_id"])
     elif name == "move_mold":
         o.mold_moves[a["sku"]] = a["to_machine_id"]

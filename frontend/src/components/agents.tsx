@@ -16,7 +16,7 @@ const AGENT_LABEL: Record<string, string> = {
   delivery_agent: "Delivery",
 };
 export const agentLabel = (a?: string) => (a ? AGENT_LABEL[a] ?? a : "");
-const MODULE_LABEL: Record<string, string> = { forecast: "Demand Forecast", planning: "Production Planning", mes: "MES", material: "Material Supply", purchasing: "Purchasing", quality: "Quality Control", delivery: "Delivery", orchestrator: "Orchestrator" };
+const MODULE_LABEL: Record<string, string> = { orders: "Customer Orders", forecast: "Demand Forecast", planning: "Production Planning", mes: "MES", material: "Material Supply", purchasing: "Purchasing", quality: "Quality Control", delivery: "Delivery", orchestrator: "Orchestrator" };
 export const moduleLabel = (m: string) => MODULE_LABEL[m] ?? m;
 
 /** Agent reasoning timeline (OR-4): which agent ran, which tool, what came back. */

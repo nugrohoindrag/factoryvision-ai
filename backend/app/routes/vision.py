@@ -6,14 +6,18 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, Response
 
 from app import photos, twin
-from app.ai import extract, vision
+from app.ai import extract, genai, vision
 from app.config import settings
-from app.documents import DOCUMENTS
+from app.documents import DOCUMENTS, demo_po_facts
 from app.errors import FVError
 from app.session import SessionId, limiter
 from app.store import store
+from app.tools import orders
 
+MODEL_UNAVAILABLE = "FV-AI-001"
 UNKNOWN_ENTITY = "FV-DATA-001"
+DEMO_PO = "customer-po-oem-a.pdf"
+MAX_PO_BYTES = 5_000_000
 INVALID_PHOTO = "FV-QC-001"
 INVALID_REQUEST = "FV-REQ-001"
 AGENT_QUESTION_LIMIT_REACHED = "FV-RATE-002"
@@ -97,6 +101,24 @@ def document(name: str) -> Response:
         raise FVError(UNKNOWN_ENTITY, f"unknown document {name}")
     mime, make = DOCUMENTS[name]
     return Response(make(), media_type=mime, headers={"Content-Disposition": f'inline; filename="{name}"'})
+
+
+@router.post("/orders/po/read")
+async def read_po(sid: SessionId, file: OptionalUpload = None, name: OptionalFormText = None, replay: OptionalFormText = None) -> dict[str, Any]:
+    """Customer Order intake (DF-2): read a customer PO, then check it against master data and the schedule on file."""
+    if file is None and name not in DOCUMENTS:
+        raise FVError(INVALID_REQUEST, detail="send a PDF file or a demo document name")
+    if file is None and (replay == "true" or not genai.enabled()) and name == DEMO_PO:
+        po, engine = demo_po_facts(), "recorded extraction (Replay, no Gemini call)"
+    else:
+        if not genai.enabled():
+            raise FVError(MODEL_UNAVAILABLE, "AI is disabled in this environment; use the demo PO in Replay")
+        data = await file.read() if file is not None else DOCUMENTS[str(name)][1]()
+        if file is not None and (file.content_type != "application/pdf" or len(data) > MAX_PO_BYTES):
+            raise FVError(INVALID_REQUEST, detail={"content_type": file.content_type, "bytes": len(data), "expected": "application/pdf up to 5 MB"})
+        limiter.take(sid, "agent", settings.agent_asks_per_session, AGENT_QUESTION_LIMIT_REACHED)
+        po, engine = await run_in_threadpool(extract.read_customer_po, data), f"Document & Photo Extractor ({settings.model_module})"
+    return {"extracted": po, "engine": engine, "check": orders.check_po(po)}
 
 
 @router.post("/documents/extract")
