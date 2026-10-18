@@ -74,13 +74,13 @@ def _n(v: object) -> str:
     return f"{v:,.0f}" if isinstance(v, (int, float)) else str(v)
 
 
-def _po_impact(args: Doc, sid: str) -> Doc:
+def po_impact(args: Doc, sid: str) -> Doc:
     if args["material_id"] != RESIN:
         return ZERO_IMPACT
     return impact_calculator("purchase_order", {**args, "demand_change_pct": effects.overrides(sid).demand_change_pct or None})
 
 
-def _pending_po(sid: str, material_id: str) -> Doc | None:
+def pending_po(sid: str, material_id: str) -> Doc | None:
     return next(
         (a for a in actions.list_actions(sid, "pending") if a["kind"] == "purchase_order" and a["command"]["args"].get("material_id") == material_id), None
     )
@@ -96,7 +96,7 @@ def propose_po(sid: str, run: Doc, material_id: str, *, plan_id: str | None = No
     vendor_id = row.get("default_vendor_id")
     if vendor_id not in plant.VENDOR_BY_ID:
         raise FVError(NO_DEFAULT_VENDOR, detail={"material_id": material_id, "default_vendor_id": vendor_id})
-    pending = _pending_po(sid, material_id)
+    pending = pending_po(sid, material_id)
     if pending is not None:
         return pending, False
     mat = materials.get_material(material_id)
@@ -122,6 +122,6 @@ def propose_po(sid: str, run: Doc, material_id: str, *, plan_id: str | None = No
         {"source": "material master", "unit_cost_idr": unit_cost, "po_value_idr": value, "lead_time_days": lead},
         *(extra_evidence or []),
     ]
-    impact = _po_impact(args, sid)
+    impact = po_impact(args, sid)
     title = f"PO {material_id}{colour} {_n(net)} {unit} from {vendor['vendor_name']}"
     return actions.propose(sid, "purchase_order", title, "purchasing", rationale, args, evidence, impact, plan_id), True

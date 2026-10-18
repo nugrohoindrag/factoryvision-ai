@@ -57,7 +57,7 @@ def recommend(material_id: str, qty: float, need_by: str | None) -> Doc:
 
 def _pr_line(n: int, material_id: str, qty: float, need_by: str | None, source: str) -> Doc:
     mat = materials.get_material(material_id)
-    vid = (plant.MATERIAL_VENDORS.get(material_id) or [None])[0]
+    vid = next(iter(plant.MATERIAL_VENDORS.get(material_id, [])), None)
     return {
         "line_id": f"L{n}",
         "material_id": material_id,
@@ -88,7 +88,9 @@ def create_requisition(
     raw = [(ln["material_id"], ln["qty"], ln.get("need_by"), "manual") for ln in lines or []]
     if from_mrp_run:
         rows = [r for r in mrp.get_run(sid, from_mrp_run)["results"] if (r.get("net_qty") or 0) > 0]
-        raw += [(r["material_id"], r["net_qty"], r["required_date"], f"mrp:{from_mrp_run}") for r in rows if not material_ids or r["material_id"] in material_ids]
+        raw += [
+            (r["material_id"], r["net_qty"], r["required_date"], f"mrp:{from_mrp_run}") for r in rows if not material_ids or r["material_id"] in material_ids
+        ]
     if not raw:
         raise FVError(UNKNOWN_ENTITY, "a requisition needs at least one line")
     pr_id = _next(sid, PRS, "PR")
@@ -153,7 +155,7 @@ def _po_view(doc: Doc) -> Doc:
     exp = to_date(doc["expected_date"])
     open_ = doc["status"] in OPEN_PO
     return {k: v for k, v in doc.items() if k != "session_id"} | {
-        "overdue": open_ and TODAY > exp,
+        "overdue": open_ and exp < TODAY,
         "days_late": max(0, (TODAY - exp).days) if open_ else 0,
     }
 
@@ -245,9 +247,7 @@ def expedite_po(sid: str, po_id: str, new_promised_date: str, reason: str, *, us
     return _save_po(sid, po)
 
 
-def list_pos(
-    sid: str, status: str | None = None, vendor_id: str | None = None, material_id: str | None = None, overdue: bool | None = None
-) -> Doc:
+def list_pos(sid: str, status: str | None = None, vendor_id: str | None = None, material_id: str | None = None, overdue: bool | None = None) -> Doc:  # noqa: FBT001
     rows = [get_po(sid, d["po_id"]) for d in _docs(sid, POS)]
     rows = [
         r
@@ -264,8 +264,9 @@ def receive(
     sid: str, po_id: str, lines: list[Doc], *, received_date: str | None = None, lot_id: str | None = None, note: str | None = None, user: str = "user"
 ) -> Doc:
     po = get_po(sid, po_id)
+    gr_id = f"GR-{TODAY:%y%m}-S-{len(_docs(sid, GRS)) + 1:03d}"
     gr = {
-        "gr_id": f"GR-{TODAY:%y%m}-S-{len(_docs(sid, GRS)) + 1:03d}",
+        "gr_id": gr_id,
         "session_id": sid,
         "created_at": _now(),
         "po_id": po_id,
@@ -275,7 +276,7 @@ def receive(
         "by": user,
         "lines": lines,
     }
-    store().set(GRS, _key(sid, gr["gr_id"]), gr)
+    store().set(GRS, _key(sid, gr_id), gr)
     po["status"] = "Partially Received"
     _save_po(sid, po)
     return {k: v for k, v in gr.items() if k != "session_id"}

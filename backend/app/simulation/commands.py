@@ -12,6 +12,7 @@ UNKNOWN_ENTITY = "FV-DATA-001"
 UNKNOWN_COMMAND = "FV-TWIN-002"
 
 MAINTENANCE_MIN = 120
+RESIN = "PP-EPDM-T20"
 
 
 def execute(s: State, command: dict[str, Any]) -> dict[str, Any]:
@@ -69,17 +70,88 @@ def hold_lot(s: State, a: dict[str, Any]) -> dict[str, Any]:
     return {"resin_lot_id": lot, "units_on_hold": units}
 
 
+def _prior(a: dict[str, Any]) -> dict[str, Any] | None:
+    from app.store import store
+
+    aid = a.get("_action_id")
+    done = store().get("actions", str(aid)) if aid else None
+    if done and done.get("status") == "approved" and (done.get("execution") or {}).get("ok"):
+        prior: dict[str, Any] = done["execution"]["result"]
+        return prior
+    return None
+
+
+def _user(a: dict[str, Any]) -> str:
+    return str(a.get("_decided_by") or "agent")
+
+
+def _session_po(s: State, a: dict[str, Any]) -> dict[str, Any]:
+    from app import purchasing_docs
+
+    if not a.get("vendor_id"):
+        return {}
+    prior = _prior(a)
+    if prior is not None:
+        return {k: prior[k] for k in ("session_po_id", "session_po_status") if k in prior}
+    line = {"material_id": a.get("material_id", RESIN), "qty": float(a.get("qty", 0))}
+    note = " ".join(
+        x for x in (f"Action Center {a['_action_id']}" if a.get("_action_id") else "", f"from {a['mrp_run_id']}" if a.get("mrp_run_id") else "") if x
+    )
+    po = purchasing_docs.create_po(s.session_id, vendor_id=str(a["vendor_id"]), lines=[line], note=note or None, user=_user(a), issue=True)
+    return {"session_po_id": po["po_id"], "session_po_status": po["status"]}
+
+
 def place_po(s: State, a: dict[str, Any]) -> dict[str, Any]:
     from app.simulation.engine import RECEIPT_LEAD_MIN
 
-    if a.get("material_id", "PP-EPDM-T20") != "PP-EPDM-T20":
+    session = _session_po(s, a)
+    if a.get("material_id", RESIN) != RESIN:
         po_id = a.get("po_id") or a.get("_action_id")
-        return {"po_id": po_id, "material_id": a.get("material_id"), "qty": float(a.get("qty", 0)), "expected_date": a.get("expected_date"), "logged": True}
+        return {
+            "po_id": po_id,
+            "material_id": a.get("material_id"),
+            "qty": float(a.get("qty", 0)),
+            "expected_date": a.get("expected_date"),
+            "logged": True,
+            **session,
+        }
     lot = f"LOT-PPT20-{s.next_lot:04d}"
     s.next_lot += 1
     at = s.minute + int(a.get("lead_minutes", RECEIPT_LEAD_MIN))
     s.receipts.append({"at": at, "qty": float(a.get("qty", 0)), "lot": lot, "po_id": a.get("po_id")})
-    return {"arrives_at_minute": at, "lot": lot, "qty_kg": float(a.get("qty", 0))}
+    return {"arrives_at_minute": at, "lot": lot, "qty_kg": float(a.get("qty", 0)), **session}
+
+
+def expedite_po(s: State, a: dict[str, Any]) -> dict[str, Any]:
+    from app import purchasing_docs
+
+    prior = _prior(a)
+    if prior is not None:
+        return prior
+    po = purchasing_docs.expedite_po(s.session_id, str(a["po_id"]), str(a["new_promised_date"]), str(a.get("reason", "")), user=_user(a))
+    return {k: po.get(k) for k in ("po_id", "status", "vendor_id", "promised_date", "expected_date")}
+
+
+def create_requisition(s: State, a: dict[str, Any]) -> dict[str, Any]:
+    from app import purchasing_docs
+
+    prior = _prior(a)
+    if prior is not None:
+        return prior
+    sid, user = s.session_id, _user(a)
+    pr = purchasing_docs.create_requisition(
+        sid,
+        lines=a.get("lines") or None,
+        from_mrp_run=a.get("from_mrp_run"),
+        from_plan=a.get("from_plan"),
+        material_ids=a.get("material_ids") or None,
+        note=a.get("note"),
+        user=user,
+    )
+    purchasing_docs.transition_requisition(sid, pr["pr_id"], "submit", user=user)
+    pr = purchasing_docs.transition_requisition(sid, pr["pr_id"], "approve", user=user)
+    lines = [{k: ln.get(k) for k in ("material_id", "qty", "need_by", "suggested_vendor_id", "duplicate_of")} for ln in pr.get("lines", [])]
+    return {"pr_id": pr["pr_id"], "status": pr["status"], "lines": lines}
 
 
 def create_replan(s: State, a: dict[str, Any]) -> dict[str, Any]:
@@ -120,14 +192,15 @@ def logged(_s: State, _a: dict[str, Any]) -> dict[str, Any]:
     return {"logged": True}
 
 
-_NEEDS_APPROVAL_META = {"create_replan", "create_draft_plan", "place_po", "expedite_po"}
+_NEEDS_APPROVAL_META = {"create_replan", "create_draft_plan", "create_requisition", "place_po", "expedite_po"}
 
 _COMMANDS = {
     "start_maintenance": start_maintenance,
     "move_mold": move_mold,
     "hold_lot": hold_lot,
     "place_po": place_po,
-    "expedite_po": place_po,
+    "expedite_po": expedite_po,
+    "create_requisition": create_requisition,
     "create_replan": create_replan,
     "create_draft_plan": create_draft_plan,
     "add_shift": logged,
