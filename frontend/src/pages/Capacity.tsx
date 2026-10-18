@@ -177,7 +177,7 @@ export default function CapacityPage() {
               <span className="muted small">Planning capacity = Total × this value. Default {settings.data?.default_planning_utilization_pct ?? 80}%.</span>
             )}
           </label>
-          <div className="row filters-actions">
+          <div className="row filters-actions start">
             <button className="secondary" onClick={saveUtil} disabled={busy || utilInvalid || draftNum === savedUtil}>Save utilization</button>
           </div>
           <label className="row">

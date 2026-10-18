@@ -119,11 +119,9 @@ keys are used anywhere. The models are served from the `global` endpoint, so `FV
 ## Current state of the checks
 
 - `just lint` — ruff check and ruff format --check, clean.
-- `just typecheck` — mypy over 78 backend source files, and `tsc` for the frontend. Clean on Linux. On Windows mypy
-  reports `os.posix_spawn` in `tests/unit/test_justfile_recipes.py`, which does not exist on that platform.
-- `just test` — 82 unit and 56 integration selected. On Linux all pass; on Windows
-  `test_recipes_are_reachable_with_just` fails for the same `posix_spawn` reason. Two warnings remain in the summary,
-  both third-party and allowlisted in `backend/pyproject.toml` with their reasons.
+- `just typecheck` — mypy over the backend sources, and `tsc` for the frontend. Clean on Linux and Windows.
+- `just test` — unit and integration. All pass on Linux and Windows. Two warnings remain in the summary, both
+  third-party and allowlisted in `backend/pyproject.toml` with their reasons.
 
 CI enforces the first three. It does not enforce coverage thresholds, and `just ci-backend` measures coverage that
 nothing acts on — treat the number as information, not as a gate.

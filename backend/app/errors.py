@@ -545,6 +545,31 @@ _SPECS = [
         "Use Resin, Masterbatch, Primer, Basecoat, Clear, Hardener, Thinner, Component or Packaging.",
     ),
     ErrorSpec("FV-MAT-009", 400, "Unknown BOM status", "The BOM status filter is not Draft, Active or Inactive.", "Use Draft, Active or Inactive."),
+    ErrorSpec(
+        "FV-MD-001",
+        400,
+        "Invalid master data",
+        "A created or edited master data row has a missing key, a value of the wrong type, a negative number or an unknown reference.",
+        "Fix the fields listed in `detail.fields`.",
+    ),
+    ErrorSpec("FV-MD-002", 409, "Duplicate key", "A master data row with this key already exists.", "Use another key, or edit the existing row."),
+    ErrorSpec(
+        "FV-MD-003", 404, "Unknown master data row", "No row with this key exists in this master data.", "Reload the list; the row may have been deleted."
+    ),
+    ErrorSpec(
+        "FV-MD-004",
+        409,
+        "Row still referenced",
+        "The row is used by other master data (for example a material in a BOM), so deleting it would leave a broken reference.",
+        "Change or delete the rows listed in `detail.references` first.",
+    ),
+    ErrorSpec(
+        "FV-MD-005",
+        400,
+        "Read-only master data",
+        "The master data is derived from other master data (product routings) and cannot be edited directly.",
+        "Edit the source it is derived from instead.",
+    ),
 ]
 CATALOG: dict[str, ErrorSpec] = {s.code: s for s in _SPECS}
 

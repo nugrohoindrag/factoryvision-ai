@@ -51,9 +51,9 @@ function GenerateForm({ products, busy, onGenerate, errors }: { products: Any[];
   return (
     <Card title="Generate a forecast" actions={<Badge tone="info">Numbers from the forecast engine, not from Gemini</Badge>}>
       <div className="filters">
-        <div>
-          <span className="muted small">History window</span>
-          <div className="toggle" role="group" aria-label="History window">
+        <div className="field-col">
+          <span className="field-label">History window</span>
+          <div className="toggle toggle-field" role="group" aria-label="History window">
             {WINDOWS.map((d) => (
               <button key={d} className={win === d ? "on" : ""} aria-pressed={win === d} onClick={() => setWin(d)}>
                 {d} days
@@ -74,20 +74,22 @@ function GenerateForm({ products, busy, onGenerate, errors }: { products: Any[];
           Break down per customer
         </label>
       </div>
-      <fieldset className="row small" aria-label="SKU filter">
-        <span className="muted">SKUs:</span>
-        <label className="row">
-          <input type="checkbox" checked={skus.length === 0} onChange={() => setSkus([])} aria-label="All SKUs" /> All
-        </label>
-        {products.map((p: Any) => (
-          <label key={p.sku} className="row" title={p.name}>
-            <input type="checkbox" checked={skus.includes(p.sku)} onChange={() => toggleSku(p.sku)} aria-label={`Only ${p.sku}`} /> {p.sku}
+      <fieldset className="check-group" aria-label="SKU filter">
+        <legend className="field-label">SKUs</legend>
+        <div className="row">
+          <label className="row">
+            <input type="checkbox" checked={skus.length === 0} onChange={() => setSkus([])} aria-label="All SKUs" /> All
           </label>
-        ))}
+          {products.map((p: Any) => (
+            <label key={p.sku} className="row" title={p.name}>
+              <input type="checkbox" checked={skus.includes(p.sku)} onChange={() => toggleSku(p.sku)} aria-label={`Only ${p.sku}`} /> {p.sku}
+            </label>
+          ))}
+        </div>
       </fieldset>
       {err("skus") && <p className="field-error small">{err("skus")}</p>}
       {err("per_customer") && <p className="field-error small">{err("per_customer")}</p>}
-      <div className="row">
+      <div className="row form-foot">
         <button className="primary" disabled={busy} onClick={() => onGenerate({ window_days: win, horizon_weeks: horizon, skus, per_customer: perCustomer })}>
           {busy ? "Generating…" : "Generate forecast"}
         </button>

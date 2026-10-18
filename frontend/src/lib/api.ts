@@ -99,6 +99,10 @@ export async function postStream(path: string, onItem: (item: Record<string, unk
 }
 
 export function errorText(e: unknown): string {
-  if (e instanceof ApiError) return `${e.body.title} (${e.body.code}): ${e.body.message}`;
+  if (e instanceof ApiError) {
+    // an unexpected server error carries the id its traceback is logged under
+    const rid = (e.body.detail as { request_id?: string } | null | undefined)?.request_id;
+    return `${e.body.title} (${e.body.code}): ${e.body.message}${rid ? ` [request ${rid}]` : ""}`;
+  }
   return e instanceof Error ? e.message : String(e);
 }

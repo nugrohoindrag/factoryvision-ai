@@ -1,6 +1,6 @@
-import os
 import re
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -35,10 +35,9 @@ def test_every_required_recipe_exists() -> None:
 
 
 @pytest.mark.skipif(shutil.which("just") is None, reason="just is not installed; CI installs it")
-def test_recipes_are_reachable_with_just(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_recipes_are_reachable_with_just() -> None:
     just = shutil.which("just")
     assert just is not None, "just is not installed"
-    monkeypatch.chdir(ROOT)
-    pid = os.posix_spawn(just, [just, "--list", "--unsorted"], os.environ)
-    _, status = os.waitpid(pid, 0)
-    assert os.waitstatus_to_exitcode(status) == 0, f"just --list --unsorted failed in {ROOT}"
+    # subprocess, not os.posix_spawn: posix_spawn does not exist on Windows. The argv is fixed and runs without a shell.
+    result = subprocess.run([just, "--list", "--unsorted"], cwd=ROOT, capture_output=True, text=True, check=False)  # noqa: S603
+    assert result.returncode == 0, f"just --list --unsorted failed in {ROOT}: {result.stderr}"

@@ -30,3 +30,13 @@ it("disables Live mode when the server has no AI", async () => {
   render(<App />);
   expect(await screen.findByRole("button", { name: "Live with AI" })).toBeDisabled();
 });
+
+it("folds Master Data in the sidebar until it is opened", async () => {
+  mockApi();
+  render(<App />);
+  const group = await screen.findByRole("button", { name: /Master Data/ });
+  expect(group).toHaveAttribute("aria-expanded", "false");
+  expect(screen.queryByRole("link", { name: "Bill of Materials" })).not.toBeInTheDocument();
+  group.click();
+  expect(await screen.findByRole("link", { name: "Bill of Materials" })).toHaveAttribute("href", "/master/bom");
+});
