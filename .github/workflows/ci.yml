@@ -4,41 +4,105 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # Absolute on purpose: uv resolves a relative UV_PROJECT_ENVIRONMENT against
+  # the *project* directory, so `.venv` here would build a second, stale
+  # backend/.venv on whatever Python the runner defaults to.
+  UV_PROJECT_ENVIRONMENT: ${{ github.workspace }}/.venv
 
 jobs:
-  backend:
+  backend-lint:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
         with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: backend/requirements.txt
-      - run: pip install -r requirements.txt
-      - name: Unit tests (base of the pyramid)
-        run: pytest -m unit
-      - name: Integration tests (DuckDB built with Alembic from a fresh seed)
-        run: pytest -m integration --cov --cov-report=term
+          version: "0.11.7"
+      - run: uv sync --project backend --python 3.12 --frozen
+      - run: uv run --project backend --python 3.12 ruff check .
+      - run: uv run --project backend --python 3.12 ruff format --check .
+
+  backend-typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: "0.11.7"
+      - run: uv sync --project backend --python 3.12 --frozen
+      - run: uv run --project backend --python 3.12 mypy
+
+  backend-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: "0.11.7"
+      - run: uv sync --project backend --python 3.12 --frozen
+      # The justfile test asserts `just` is on PATH. It is not in the runner
+      # image, so without this the tier fails for a reason that has nothing to
+      # do with the code under test.
+      - uses: extractions/setup-just@v4
+      # working-directory is load-bearing: backend/pyproject.toml holds the only
+      # [tool.pytest.ini_options] (testpaths, markers, pythonpath). Running from
+      # the workspace root finds no configfile, so `app` is not importable and
+      # `-m unit` silently does not filter.
+      - run: uv run --project . --python 3.12 pytest -m unit
+        working-directory: backend
+      - run: uv run --project . --python 3.12 pytest -m integration
+        working-directory: backend
+
+  backend-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: "0.11.7"
+      - run: uv sync --project backend --python 3.12 --frozen
+      - name: The generated error catalog must match the catalog in code
+        run: |
+          cd backend && uv run --project . --python 3.12 python -m app.errors
+          cd .. && git diff --exit-code docs/error-catalog.md
 
   frontend:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      - run: npm run typecheck
-      - name: Unit tests
-        run: npm test
+      - run: npm --prefix frontend ci
+      - run: npm --prefix frontend run typecheck
+      - run: npm --prefix frontend test
+      - run: npm --prefix frontend run build
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ hashFiles('frontend/package-lock.json') }}
+      - name: Install the browser that smoke test needs
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
       - name: E2E smoke (Playwright, dev server)
-        run: npx playwright install --with-deps chromium && npx playwright test --project=desktop
+        run: npm --prefix frontend run test:e2e -- --project=desktop

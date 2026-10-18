@@ -1,26 +1,26 @@
-"""The seven planted stories (PRD §9), checked at tool level against evals/ground_truth.json."""
+from typing import Any
 
 from app.tools import delivery, forecast, material, mes, planning, purchasing, quality
 
 
-def within(value, story):
+def within(value: float, story: dict[str, Any]) -> None:
     assert story["min"] <= value <= story["max"], f"{value} outside {story['min']}..{story['max']}"
 
 
-def test_demand_forecast(ground_truth):
+def test_demand_forecast(ground_truth: dict[str, Any]) -> None:
     s = ground_truth["stories"]["demand_forecast"]
     r = forecast.bq_forecast(s["sku"], s["horizon_weeks"])
     within(r["change_by_final_week_pct"], s)
 
 
-def test_production_planning(ground_truth):
+def test_production_planning(ground_truth: dict[str, Any]) -> None:
     s = ground_truth["stories"]["production_planning"]
     r = planning.get_capacity(demand_change_pct={"FB-ARKA": 40})
     within(r["groups"][0]["capacity_gap_pct"], s)
     assert r["bottleneck_machine"] == s["machine"]
 
 
-def test_mes_breakdown_risk(ground_truth):
+def test_mes_breakdown_risk(ground_truth: dict[str, Any]) -> None:
     s = ground_truth["stories"]["mes"]
     r = mes.machine_health(s["machine"])
     within(r["days_to_alarm"], s)
@@ -30,14 +30,14 @@ def test_mes_breakdown_risk(ground_truth):
     assert all(h["breakdown_risk"] == "low" for h in others)
 
 
-def test_material_shortage(ground_truth):
+def test_material_shortage(ground_truth: dict[str, Any]) -> None:
     s = ground_truth["stories"]["material_supply"]
     r = material.stock_projection(s["material"])
     within(r["days_to_stockout"], s)
-    assert 0 < r["overconsumption_vs_bom_pct"] < 12  # short-shot scrap
+    assert 0 < r["overconsumption_vs_bom_pct"] < 12
 
 
-def test_purchasing_late_vendor(ground_truth):
+def test_purchasing_late_vendor(ground_truth: dict[str, Any]) -> None:
     s = ground_truth["stories"]["purchasing"]
     r = purchasing.vendor_performance("Resin")
     worst = r["vendors"][0]
@@ -47,7 +47,7 @@ def test_purchasing_late_vendor(ground_truth):
     assert rec["recommended_vendor"] != s["vendor"]
 
 
-def test_quality_lot_correlation(ground_truth):
+def test_quality_lot_correlation(ground_truth: dict[str, Any]) -> None:
     s = ground_truth["stories"]["quality_control"]
     r = quality.defect_correlation()
     assert r["suspect_lot"] == s["lot"]
@@ -56,7 +56,7 @@ def test_quality_lot_correlation(ground_truth):
     assert r["hold_candidates"]["units_in_stock"] > 0
 
 
-def test_delivery_orders_at_risk(ground_truth):
+def test_delivery_orders_at_risk(ground_truth: dict[str, Any]) -> None:
     s = ground_truth["stories"]["delivery"]
     r = delivery.orders_at_risk()
     assert sorted(o["order_id"] for o in r["orders_at_risk"]) == sorted(s["order_ids"])

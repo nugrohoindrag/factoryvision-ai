@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [],
+    "ask": [
+      "Bash(just:*)",
+      "Bash(uv run:*)",
+      "Bash(npm:*)",
+      "Edit(backend/tests/**)",
+      "Edit(backend/migrations/**)",
+      "Edit(frontend/e2e/**)",
+      "Edit(docs/**)"
+    ],
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean:*)",
+      "Bash(git branch -D:*)",
+      "Bash(git rebase:*)",
+      "Bash(rm:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(pip install:*)",
+      "Bash(npm install:*)",
+      "Bash(npm i:*)",
+      "Bash(gh:*)",
+      "Bash(gcloud:*)",
+      "Bash(docker:*)",
+      "Bash(printenv:*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/service-account*.json)",
+      "Edit(pyproject.toml)",
+      "Edit(justfile)"
+    ]
+  }
+}

@@ -10,6 +10,7 @@ venv/
 node_modules/
 dist/
 .vite/
+.vitest/
 playwright-report/
 test-results/
 *.tsbuildinfo
@@ -17,7 +18,11 @@ test-results/
 # Generated data (rebuild: python -m simulator.seed.generator && python -m app.db.build_local)
 data/seed/
 data/local/
+# A warehouse written anywhere else is generated, never committed.
+*.duckdb
+*.duckdb.wal
 .coverage
+coverage.xml
 
 # Secrets and local config
 .env
@@ -40,3 +45,9 @@ docs/*.xlsx
 .idea/
 .DS_Store
 Thumbs.db
+
+# Superpowers scratch (ledger, briefs, review packages)
+.superpowers/
+
+# Superpowers plans (tooling scratch, not repo content)
+docs/superpowers/

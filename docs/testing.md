@@ -27,5 +27,6 @@ integration tests tell you whether the stories still land.
 
 ## CI
 
-`.github/workflows/ci.yml` runs backend unit and integration tests (with coverage) and frontend typecheck,
-unit tests and a Playwright smoke test on every push and pull request.
+`.github/workflows/ci.yml` runs backend unit and integration tests, and frontend typecheck,
+unit tests and a Playwright smoke test on every push and pull request. It does not collect
+coverage; `just ci-backend` does, and no threshold is enforced on either surface.

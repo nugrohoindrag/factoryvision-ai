@@ -3,7 +3,47 @@ name = "factory-vision-ai-backend"
 version = "0.1.0"
 description = "Factory Vision AI backend: FastAPI, Google ADK agents, plant simulator"
 requires-python = ">=3.12"
-# Dependencies are pinned in requirements.txt (single dependency file).
+dependencies = [
+  "alembic==1.20.0",
+  "duckdb==1.5.6",
+  "duckdb-engine==0.17.0",
+  "fastapi==0.143.3",
+  "google-cloud-bigquery==3.46.2",
+  "httpx==0.28.1",
+  "numpy==2.5.4",
+  "ortools==9.15.6755",
+  "pydantic-settings>=2.16,<3",
+  "sqlalchemy==2.1.5",
+  "sqlalchemy-bigquery==1.17.3",
+  "uvicorn[standard]==0.54.0",
+]
+
+[dependency-groups]
+dev = [{ include-group = "test" }, { include-group = "lint" }, { include-group = "types" }]
+
+test = [
+  "pytest==9.1.1",
+  "pytest-cov==7.1.0",
+  "pytest-randomly>=5,<6",
+  "time-machine>=3.5,<4",
+  "diff-cover>=9,<10",
+]
+
+lint = [
+  "ruff==0.17.1",
+]
+
+types = [
+  "mypy==2.4.0",
+]
+
+planned = [
+  "google-adk==1.14.1",
+  "google-cloud-firestore==2.34.1",
+  "google-cloud-pubsub==2.43.0",
+  "google-cloud-storage==2.19.0",
+  "google-genai==1.75.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -14,16 +54,22 @@ markers = [
   "integration: real DuckDB warehouse built with Alembic from the seed; no network",
   "e2e: running API (and later Vertex AI); opt-in with -m e2e",
 ]
+# Warnings are errors. The global ignore of DeprecationWarning /
+# FutureWarning / UserWarning hid every deprecation the suite was emitting;
+# against sqlalchemy 2.1.5 that discarded exactly the messages naming the
+# patterns slated for removal.
+#
+# One allowlist entry, third-party and unavoidable at the pinned versions:
+# starlette 0.52.1's testclient.py:45 evaluates `anyio.abc.BlockingPortal` at
+# import time and anyio 4.15 deprecated that alias. Nothing in this repo
+# touches it; it fires only because starlette's own module does, on the
+# `from fastapi.testclient import TestClient` in the API tests. The pattern is
+# anchored on starlette.testclient, so a deprecation from *our* code still
+# fails the suite. `default` rather than `ignore`, so it stays in the warnings
+# summary instead of disappearing again. starlette fixed it upstream in 1.7.0;
+# the durable fix is bumping starlette, which regenerates uv.lock and is a
+# dependency decision, not a warning policy.
 filterwarnings = [
-  "ignore::FutureWarning",
-  "ignore::UserWarning",
-  "ignore::DeprecationWarning",
+  "error",
+  "default::DeprecationWarning:starlette\\.testclient",
 ]
-
-[tool.coverage.run]
-source = ["app", "simulator"]
-omit = ["app/db/load_bigquery.py"]
-
-[tool.ruff]
-line-length = 160
-target-version = "py312"

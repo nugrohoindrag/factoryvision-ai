@@ -1,49 +1,46 @@
-"""Runtime settings, read from the environment. Model IDs live only here."""
-
-from __future__ import annotations
-
-import os
-from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
-ROOT = Path(__file__).resolve().parents[2]  # repo root
+from pydantic import AliasChoices, Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+ROOT = Path(__file__).resolve().parents[2]
+
+SHUTDOWN_MODEL_PREFIX = "gemini-2.5"
 
 
-def _env(name: str, default: str) -> str:
-    return os.environ.get(name, default)
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="FV_", extra="ignore")
 
+    project: str = Field(default="", validation_alias="GOOGLE_CLOUD_PROJECT")
+    region: str = "us-central1"
+    model_location: str = Field(default="us-central1", validation_alias=AliasChoices("FV_MODEL_LOCATION", "GOOGLE_CLOUD_LOCATION"))
+    dataset: str = "fv"
+    warehouse: Literal["local", "bigquery"] = "local"
+    store: Literal["memory", "firestore"] = "memory"
+    pubsub: Literal["local", "gcp"] = "local"
+    seed_dir: Path = ROOT / "data" / "seed"
+    replay_dir: Path = ROOT / "data" / "replays"
+    docs_dir: Path = ROOT / "data" / "docs"
+    bucket_prefix: str = ""
+    model_orchestrator: str = "gemini-4-argon"
+    model_module: str = "gemini-3.8-flash"
+    model_vision: str = "gemini-3.5-flash-lite"
+    model_live: str = "gemini-3.8-flash-live"
+    vision_calls_per_session: int = Field(default=20, ge=1, le=1000, validation_alias="FV_VISION_CAP")
+    vision_debounce_s: int = Field(default=30, ge=0, validation_alias="FV_VISION_DEBOUNCE_S")
+    live_runs_per_session: int = Field(default=5, ge=1, validation_alias="FV_LIVE_RUN_CAP")
+    agent_asks_per_session: int = Field(default=30, ge=1, validation_alias="FV_AGENT_ASK_CAP")
+    qc_live_seconds: int = Field(default=60, ge=1)
+    require_auth: bool = False
 
-@dataclass(frozen=True)
-class Settings:
-    project: str = _env("GOOGLE_CLOUD_PROJECT", "")
-    region: str = _env("FV_REGION", "us-central1")
-    # Gemini endpoint location can differ from the infra region (some models are served from "global").
-    model_location: str = _env("FV_MODEL_LOCATION", _env("GOOGLE_CLOUD_LOCATION", "us-central1"))
-    dataset: str = _env("FV_DATASET", "fv")
-    warehouse: str = _env("FV_WAREHOUSE", "local")  # local (DuckDB over data/seed) | bigquery
-    store: str = _env("FV_STORE", "memory")  # memory | firestore
-    pubsub: str = _env("FV_PUBSUB", "local")  # local (in-process) | gcp
-    seed_dir: Path = Path(_env("FV_SEED_DIR", str(ROOT / "data" / "seed")))
-    web_dist: Path = Path(_env("FV_WEB_DIST", str(ROOT / "web" / "dist")))
-    replay_dir: Path = Path(_env("FV_REPLAY_DIR", str(ROOT / "data" / "replays")))
-    docs_dir: Path = Path(_env("FV_DOCS_DIR", str(ROOT / "data" / "docs")))
-    bucket_prefix: str = _env("FV_BUCKET_PREFIX", "")
-    # Models (PRD §8). Never gemini-2.5-*.
-    model_orchestrator: str = _env("FV_MODEL_ORCHESTRATOR", "gemini-4-argon")
-    model_module: str = _env("FV_MODEL_MODULE", "gemini-3.8-flash")
-    model_vision: str = _env("FV_MODEL_VISION", "gemini-3.5-flash-lite")
-    model_live: str = _env("FV_MODEL_LIVE", "gemini-3.8-flash-live")
-    # Cost guards for live sessions.
-    vision_calls_per_session: int = int(_env("FV_VISION_CAP", "20"))
-    vision_debounce_s: int = int(_env("FV_VISION_DEBOUNCE_S", "30"))
-    live_runs_per_session: int = int(_env("FV_LIVE_RUN_CAP", "5"))
-    agent_asks_per_session: int = int(_env("FV_AGENT_ASK_CAP", "30"))
-    qc_live_seconds: int = int(_env("FV_QC_LIVE_SECONDS", "60"))
-    require_auth: bool = _env("FV_REQUIRE_AUTH", "false").lower() == "true"
+    @field_validator("model_orchestrator", "model_module", "model_vision", "model_live")
+    @classmethod
+    def _reject_shutdown_model(cls, value: str) -> str:
+        if value.startswith(SHUTDOWN_MODEL_PREFIX):
+            msg = f"Model {value} is not allowed ({SHUTDOWN_MODEL_PREFIX}-* is shut down on Vertex AI 20 Oct 2026)"
+            raise ValueError(msg)
+        return value
 
 
 settings = Settings()
-
-for _m in (settings.model_orchestrator, settings.model_module, settings.model_vision, settings.model_live):
-    if _m.startswith("gemini-2.5"):
-        raise RuntimeError(f"Model {_m} is not allowed (gemini-2.5-* is shut down on Vertex AI 20 Oct 2026)")

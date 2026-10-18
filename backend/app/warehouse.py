@@ -1,13 +1,7 @@
-"""Read-only analytics access through SQLAlchemy: BigQuery in the cloud, DuckDB locally.
-
-Agent tools only reach data through `query`, which enforces the guardrails of PRD §7:
-SELECT only, allowlisted tables, always a LIMIT. SQL is written once with `fv.<table>` and
-`:param` placeholders and must stay portable (plain aggregates; date math is done in Python).
-"""
-
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
@@ -19,45 +13,54 @@ from app.errors import FVError
 
 ALLOWED_TABLES = set(TABLES)
 MAX_ROWS = 5000
-_FORBIDDEN = re.compile(r"\b(insert|update|delete|merge|drop|create|alter|truncate|grant|call|export|load|copy|attach|pragma|install)\b", re.I)
+
+SQL_REJECTED = "FV-SQL-001"
+SQL_NOT_ALLOWLISTED = "FV-SQL-002"
+DATA_WAREHOUSE = "FV-DATA-002"
+
+BQML_FORECAST_SQL = """
+SELECT DATE(forecast_timestamp) AS d, forecast_value AS q
+FROM ML.FORECAST(MODEL `fv.demand_arima`, STRUCT(CAST(:horizon AS INT64) AS horizon))
+WHERE sku = :sku ORDER BY d
+"""
+
+_FORBIDDEN = re.compile(r"\b(insert|update|delete|merge|drop|create|alter|truncate|grant|call|export|load|copy|attach|pragma|install)\b", re.IGNORECASE)
 _TABLE_REF = re.compile(r"\bfv\.([a-z_]+)\b")
 
 
 def check_sql(sql: str) -> str:
     s = sql.strip().rstrip(";")
     if ";" in s:
-        raise FVError("FV-SQL-001", "one statement only")
-    if not re.match(r"^(select|with)\b", s, re.I):
-        raise FVError("FV-SQL-001", "only SELECT queries are allowed")
+        raise FVError(SQL_REJECTED, "one statement only")
+    if not re.match(r"^(select|with)\b", s, re.IGNORECASE):
+        raise FVError(SQL_REJECTED, "only SELECT queries are allowed")
     if _FORBIDDEN.search(s):
-        raise FVError("FV-SQL-001", "statement contains a forbidden keyword")
+        raise FVError(SQL_REJECTED, "statement contains a forbidden keyword")
     tables = set(_TABLE_REF.findall(s))
     if not tables:
-        raise FVError("FV-SQL-001", "query must read fv.<table>")
+        raise FVError(SQL_REJECTED, "query must read fv.<table>")
     bad = tables - ALLOWED_TABLES
     if bad:
-        raise FVError("FV-SQL-002", f"table not allowlisted: {', '.join(sorted(bad))}")
-    if not re.search(r"\blimit\s+\d+\s*$", s, re.I):
+        raise FVError(SQL_NOT_ALLOWLISTED, f"table not allowlisted: {', '.join(sorted(bad))}")
+    if not re.search(r"\blimit\s+\d+\s*$", s, re.IGNORECASE):
         s = f"{s}\nLIMIT {MAX_ROWS}"
     return s
 
 
-def _run(sql: str, params: dict | None) -> list[dict]:
+def _run(sql: str, params: dict[str, Any] | None) -> list[dict[str, Any]]:
     try:
         with engine().connect() as conn:
-            return [dict(r._mapping) for r in conn.execute(text(sql), params or {})]
+            return [dict(row) for row in conn.execute(text(sql), params or {}).mappings()]
     except OperationalError as e:
-        raise FVError("FV-DATA-002", detail=str(e.orig)[:300]) from e
+        raise FVError(DATA_WAREHOUSE, detail=str(e.orig)[:300]) from e
 
 
-def query(sql: str, params: dict | None = None) -> list[dict]:
-    """Run an allowlisted read-only query and return rows as dicts."""
+def query(sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     return _run(check_sql(sql), params)
 
 
-def raw(sql: str) -> list[dict]:
-    """Unchecked query for trusted server code (BQML forecast); never exposed to agents."""
-    return _run(sql, None)
+def bqml_forecast(sku: str, horizon: int) -> list[dict[str, Any]]:
+    return _run(BQML_FORECAST_SQL, {"sku": sku, "horizon": horizon})
 
 
 def is_bigquery() -> bool:
