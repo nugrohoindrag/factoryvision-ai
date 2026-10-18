@@ -12,22 +12,20 @@ from pathlib import Path
 from typing import Any
 
 from app import plant
+from app.plant import BAD_LOT, DEFAULT_SEED, FEB_PLAN_PER_DAY
 
 from simulator.seed.schema import TABLES
 
 ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_SEED = 20270201
 
 ARKA_FLAT = 560
 RAMP_START = date(2026, 12, 20)
 ARKA_END = 835
 BASE_DEMAND = {"RB-ARKA": 800, "FB-BROMO": 520, "RB-BROMO": 500, "FB-CITRA": 600, "RB-CITRA": 590}
-FEB_PLAN_PER_DAY = {"FB-ARKA": 995, "RB-ARKA": 800, "FB-BROMO": 520, "RB-BROMO": 500, "FB-CITRA": 600, "RB-CITRA": 590}
 IMM04_CYCLE = (70.0, 72.6, 79.6)
 CYCLE_ALARM_RATIO = 1.20
 SHORT_SHOT_EXTRA = 0.06
 STOCKOUT_WORKDAYS = 8.5
-BAD_LOT = "LOT-PPT20-0918"
 BAD_LOT_MULT = {"BUBBLE": 6.0, "GAS_MARK": 6.0}
 HUMID_THRESHOLD = 80.0
 HUMID_MULT = {"DUST_SEED": 2.6}

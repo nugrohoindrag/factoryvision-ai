@@ -11,8 +11,8 @@ from app import actions, twin
 from app.agents import tools as T
 from app.config import settings
 from app.errors import FVError
-from simulator.docs import VENDOR_EMAIL_FACTS, demo_po_line
-from simulator.engine import SCENARIOS
+from app.documents import VENDOR_EMAIL_FACTS, demo_po_line
+from app.simulation.engine import SCENARIOS
 
 DISRUPTION_PROMPT = ("Disruption: OEM-A sent a revised delivery schedule (customer-po-oem-a.pdf) raising FB-ARKA; the resin vendor for PP-EPDM-T20 "
                      "emailed about a late delivery (vendor-email-andalas.txt); IMM-04 is slowing down. Trace the impact across all modules and "

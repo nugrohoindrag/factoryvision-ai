@@ -87,7 +87,7 @@ _SPECS = [
         "The action is marked failed with the reason; approve again after a reset.",
     ),
     ErrorSpec("FV-TWIN-001", 404, "Plant session not found", "No simulator state exists for the session.", "Call POST /api/demo/reset to create it."),
-    ErrorSpec("FV-TWIN-002", 400, "Unknown command", "An agent-commands message names an unknown command.", "Check the command list in simulator/commands.py."),
+    ErrorSpec("FV-TWIN-002", 400, "Unknown command", "An agent-commands message names an unknown command.", "Check the command list in app/simulation/commands.py."),
     ErrorSpec(
         "FV-VIS-001",
         429,

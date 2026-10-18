@@ -1,9 +1,20 @@
 from __future__ import annotations
 
-from typing import Any
+import json
+from typing import TYPE_CHECKING, Any
 
 from app.config import settings
-from simulator.photos import load
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+def load(folder: Path, *, require_review: bool = False) -> list[dict[str, Any]]:
+    p = folder / "catalog.json"
+    cat: list[dict[str, Any]] = json.loads(p.read_text(encoding="utf-8")) if p.exists() else []
+    if require_review:
+        cat = [c for c in cat if c.get("reviewed")]
+    return cat
 
 
 def catalog() -> list[dict[str, Any]]:

@@ -7,8 +7,7 @@ from typing import Any
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 
-from simulator import plant as P
-from simulator.seed.generator import BAD_LOT, DEFAULT_SEED, FEB_PLAN_PER_DAY
+from app import plant
 
 RESIN_START_KG = 138_400.0
 MINUTES_PER_DAY = 3 * 450
@@ -53,7 +52,7 @@ class Machine:
 @dataclass
 class State:
     session_id: str
-    seed: int = DEFAULT_SEED
+    seed: int = plant.DEFAULT_SEED
     scenario: str = "baseline"
     minute: int = 0
     machines: dict = field(default_factory=dict)
@@ -61,8 +60,8 @@ class State:
     warehouse: dict = field(default_factory=dict)
     pull: dict = field(default_factory=dict)
     resin_kg: float = RESIN_START_KG
-    active_lot: str = BAD_LOT
-    next_lot: int = int(BAD_LOT.rsplit("-", 1)[1]) + 1
+    active_lot: str = plant.BAD_LOT
+    next_lot: int = int(plant.BAD_LOT.rsplit("-", 1)[1]) + 1
     receipts: list = field(default_factory=list)
     holds: list = field(default_factory=list)
     output: dict = field(default_factory=dict)
@@ -71,21 +70,21 @@ class State:
     events: list = field(default_factory=list)
 
     @classmethod
-    def new(cls, session_id: str, scenario: str = "baseline", seed: int = DEFAULT_SEED) -> "State":
+    def new(cls, session_id: str, scenario: str = "baseline", seed: int = plant.DEFAULT_SEED) -> "State":
         s = cls(session_id=session_id, seed=seed, scenario=scenario if scenario in SCENARIOS else "baseline")
-        for m in P.MACHINES:
+        for m in plant.MACHINES:
             mm = Machine(m.machine_id, m.area)
-            if m.machine_id in P.INITIAL_MOLDS:
-                sku = P.INITIAL_MOLDS[m.machine_id]
+            if m.machine_id in plant.INITIAL_MOLDS:
+                sku = plant.INITIAL_MOLDS[m.machine_id]
                 mm.mix = {sku: 1.0}
-                mm.ideal_cycle_s = P.PRODUCT_BY_SKU[sku].ideal_cycle_s
+                mm.ideal_cycle_s = plant.PRODUCT_BY_SKU[sku].ideal_cycle_s
                 mm.cycle_s = IMM04_START_CYCLE if m.machine_id == "IMM-04" else round(mm.ideal_cycle_s * 1.058, 1)
                 mm.wear = m.machine_id == "IMM-04"
             s.machines[m.machine_id] = mm
-        for sku in P.SKUS:
-            per_min = FEB_PLAN_PER_DAY[sku] / MINUTES_PER_DAY
+        for sku in plant.SKUS:
+            per_min = plant.FEB_PLAN_PER_DAY[sku] / MINUTES_PER_DAY
             s.wip[sku] = 6 if sku == "FB-ARKA" else min(36, round(per_min * 45))
-            s.warehouse[sku] = [[BAD_LOT, round(per_min * (120 if sku == "FB-ARKA" else 240))]]
+            s.warehouse[sku] = [[plant.BAD_LOT, round(per_min * (120 if sku == "FB-ARKA" else 240))]]
             s.pull[sku] = 0.0
             s.output[sku] = 0
             s.starved[sku] = 0
@@ -103,7 +102,7 @@ class State:
         m.status, m.reason_code, m.timer = status, reason, timer
 
     def demand_per_min(self, sku: str) -> float:
-        return FEB_PLAN_PER_DAY[sku] / MINUTES_PER_DAY
+        return plant.FEB_PLAN_PER_DAY[sku] / MINUTES_PER_DAY
 
     def step(self) -> None:
         self.minute += 1
@@ -133,7 +132,7 @@ class State:
             return
         if m.status != "Running":
             return
-        is_imm = m.machine_id in P.MACHINE_BY_ID and P.MACHINE_BY_ID[m.machine_id].process == "Injection Molding"
+        is_imm = m.machine_id in plant.MACHINE_BY_ID and plant.MACHINE_BY_ID[m.machine_id].process == "Injection Molding"
         if m.wear:
             m.cycle_s = round(m.cycle_s + (IMM04_FAST_WEAR_S_PER_MIN if self.scenario in FAST_WEAR else IMM04_WEAR_S_PER_MIN), 3)
             if self.scenario in FAST_WEAR and self.minute >= IMM04_BREAKDOWN_MIN:
@@ -152,13 +151,13 @@ class State:
             m.progress -= 1.0
             m.shots += 1
             sku = _pick(m.mix, m.shots)
-            self.resin_kg -= P.PRODUCT_BY_SKU[sku].shot_weight_kg
+            self.resin_kg -= plant.PRODUCT_BY_SKU[sku].shot_weight_kg
             if rng.random() < 0.97:
                 self.wip[sku] += 1
                 self.output[sku] += 1
 
     def _paint_and_ship(self) -> None:
-        for sku in P.SKUS:
+        for sku in plant.SKUS:
             self.pull[sku] += self.demand_per_min(sku)
             take = int(self.pull[sku])
             if take <= 0:
@@ -189,7 +188,7 @@ class State:
             self.warehouse[sku] = [r for r in self.warehouse[sku] if r[1] > 0]
 
     def apply(self, command: dict, action_id: str | None = None) -> dict:
-        from simulator.commands import execute
+        from app.simulation.commands import execute
 
         result = execute(self, command)
         self.log.append({"at": self.minute, "command": command, "action_id": action_id})
@@ -256,7 +255,7 @@ def andon(status: str, perf: float | None) -> str:
 
 
 def sim_ts(minute: int) -> str:
-    return (P.DEMO_START + timedelta(minutes=minute)).isoformat(timespec="minutes")
+    return (plant.DEMO_START + timedelta(minutes=minute)).isoformat(timespec="minutes")
 
 
 def conveyor(seed: int, minute: int, scenario: str, photos: list[dict[str, Any]], n: int = 6) -> list[dict[str, Any]]:
@@ -272,11 +271,11 @@ def conveyor(seed: int, minute: int, scenario: str, photos: list[dict[str, Any]]
             ph = photos[r.randrange(len(photos))]
             sku, color, photo_id, defect = ph["sku"], ph["color"], ph["photo_id"], ph.get("defect_code")
         else:
-            sku = P.SKUS[r.randrange(len(P.SKUS))]
-            color, photo_id, defect = P.PRODUCT_BY_SKU[sku].colors[0], None, None
+            sku = plant.SKUS[r.randrange(len(plant.SKUS))]
+            color, photo_id, defect = plant.PRODUCT_BY_SKU[sku].colors[0], None, None
         expected = color
         if k % WRONG_COLOR_EVERY == 5:
-            choices = [c for c in P.PRODUCT_BY_SKU[sku].colors if c != color]
+            choices = [c for c in plant.PRODUCT_BY_SKU[sku].colors if c != color]
             expected = choices[r.randrange(len(choices))]
         items.append({"seq": k, "photo_id": photo_id, "sku": sku, "color": color, "expected_color": expected,
                       "defect_code": defect, "position": round((minute % 2) / 2 + (k - first), 2)})

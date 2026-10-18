@@ -7,7 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from simulator import plant
+from app import plant
+from app.photos import load
 
 ROOT = Path(__file__).resolve().parents[2]
 RAW = ROOT / "data" / "vidad-raw"
@@ -64,13 +65,6 @@ def build(raw_dir: Path | None = None, out: Path = OUT, amap_path: Path = RAW / 
     (out / "catalog.json").write_text(json.dumps(catalog, indent=1), encoding="utf-8")
     return catalog
 
-
-def load(out: Path = OUT, *, require_review: bool = False) -> list[dict[str, Any]]:
-    p = out / "catalog.json"
-    cat: list[dict[str, Any]] = json.loads(p.read_text(encoding="utf-8")) if p.exists() else []
-    if require_review:
-        cat = [c for c in cat if c.get("reviewed")]
-    return cat
 
 
 def main() -> None:

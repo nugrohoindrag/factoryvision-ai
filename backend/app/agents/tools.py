@@ -7,8 +7,8 @@ from app.ai import extract, vision
 from app.errors import FVError
 from app.tools import delivery, forecast, material, mes, planning, purchasing, quality
 from app.tools.impact import impact_calculator as _impact
-from simulator import plant as P
-from simulator.docs import DOCUMENTS
+from app import plant
+from app.documents import DOCUMENTS
 
 
 def _sid(tc: ToolContext) -> str:
@@ -146,22 +146,22 @@ def _propose(tc: ToolContext, kind: str, title: str, rationale: str, args: dict,
 
 
 def propose_maintenance(machine_id: str, rationale: str, tool_context: ToolContext) -> dict:
-    if machine_id not in P.MACHINE_BY_ID:
+    if machine_id not in plant.MACHINE_BY_ID:
         return FVError("FV-DATA-001", f"unknown machine {machine_id}").tool_result()
     return _propose(tool_context, "maintenance", f"Preventive maintenance on {machine_id}", rationale, {"machine_id": machine_id}, "mes")
 
 
 def propose_mold_move(sku: str, to_machine_id: str, rationale: str, tool_context: ToolContext) -> dict:
-    if to_machine_id not in P.MOLD_COMPAT.get(sku, []):
-        return FVError("FV-DATA-001", f"mold {sku} does not fit {to_machine_id}", {"fits": P.MOLD_COMPAT.get(sku)}).tool_result()
+    if to_machine_id not in plant.MOLD_COMPAT.get(sku, []):
+        return FVError("FV-DATA-001", f"mold {sku} does not fit {to_machine_id}", {"fits": plant.MOLD_COMPAT.get(sku)}).tool_result()
     return _propose(tool_context, "mold_move", f"Move {sku} mold to {to_machine_id}", rationale, {"sku": sku, "to_machine_id": to_machine_id}, "planning")
 
 
 def draft_po(vendor_id: str, material_id: str, qty_kg: float, expected_date: str, rationale: str, tool_context: ToolContext) -> dict:
-    if vendor_id not in P.VENDOR_BY_ID or vendor_id not in P.MATERIAL_VENDORS.get(material_id, []):
+    if vendor_id not in plant.VENDOR_BY_ID or vendor_id not in plant.MATERIAL_VENDORS.get(material_id, []):
         return FVError("FV-DATA-001", f"vendor {vendor_id} does not supply {material_id}").tool_result()
     args = {"vendor_id": vendor_id, "material_id": material_id, "qty": float(qty_kg), "expected_date": expected_date}
-    name = P.VENDOR_BY_ID[vendor_id]["vendor_name"]
+    name = plant.VENDOR_BY_ID[vendor_id]["vendor_name"]
     return _propose(tool_context, "purchase_order", f"PO {material_id} {qty_kg:,.0f} kg from {name}", rationale, args, "purchasing",
                     {**args, "demand_change_pct": _ov(tool_context).demand_change_pct or None})
 

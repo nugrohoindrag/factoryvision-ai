@@ -5,7 +5,7 @@ from functools import lru_cache
 from app import warehouse
 from app.tools import delivery, material, mes, quality
 from app.tools.common import TODAY, idr
-from simulator import plant as P
+from app import plant
 
 SCRAP_SQL = """
 SELECT machine_id, sku, SUM(scrap_quantity) AS scrap, SUM(total_quantity) AS total,
@@ -20,15 +20,15 @@ def _losses(day) -> list[dict]:
         losses.append({"kind": "downtime", "title": f"Downtime: {r['reason_name']}", "loss_idr": r["loss_idr"], "detail": f"{r['hours']} h, {r['events']} event(s)",
                        "source": "fv.fact_downtime"})
     for r in warehouse.query(SCRAP_SQL, {"d": day}):
-        p = P.PRODUCT_BY_SKU[r["sku"]]
-        resin_cost = r["scrap"] * p.shot_weight_kg * P.MATERIAL_BY_ID["PP-EPDM-T20"].unit_cost_idr
+        p = plant.PRODUCT_BY_SKU[r["sku"]]
+        resin_cost = r["scrap"] * p.shot_weight_kg * plant.MATERIAL_BY_ID["PP-EPDM-T20"].unit_cost_idr
         if r["scrap"]:
             losses.append({"kind": "scrap", "title": f"Scrap on {r['machine_id']} ({r['sku']})", "loss_idr": idr(resin_cost),
                            "detail": f"{int(r['scrap'])} bumpers, {round(r['scrap'] * p.shot_weight_kg)} kg resin", "source": "fv.fact_production"})
         lost_s = r["actual_s"] - r["ideal_s"]
         if lost_s > 0:
             units = lost_s / p.ideal_cycle_s
-            losses.append({"kind": "speed", "title": f"Speed loss on {r['machine_id']} ({r['sku']})", "loss_idr": idr(units * p.price_idr * P.CONTRIBUTION_MARGIN),
+            losses.append({"kind": "speed", "title": f"Speed loss on {r['machine_id']} ({r['sku']})", "loss_idr": idr(units * p.price_idr * plant.CONTRIBUTION_MARGIN),
                            "detail": f"{round(units)} bumpers not molded; cycle {r['actual_s'] / r['total']:.1f} s vs ideal {p.ideal_cycle_s:.0f} s",
                            "source": "fv.fact_production"})
     losses.sort(key=lambda x: -x["loss_idr"])

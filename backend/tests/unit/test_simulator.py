@@ -1,8 +1,8 @@
 import pytest
 
 from app.errors import FVError
-from simulator import plant as P
-from simulator.engine import RESIN_START_KG, State, andon
+from app import plant
+from app.simulation.engine import RESIN_START_KG, State, andon
 from simulator.seed.generator import Generator
 
 
@@ -36,7 +36,7 @@ def test_initial_state_matches_seed():
     assert RESIN_START_KG == g.truth["resin_on_hand_kg"]
     s = State.new("s1")
     assert s.wip["FB-ARKA"] == 6
-    assert {mid: next(iter(m.mix)) for mid, m in s.machines.items() if m.mix} == P.INITIAL_MOLDS
+    assert {mid: next(iter(m.mix)) for mid, m in s.machines.items() if m.mix} == plant.INITIAL_MOLDS
 
 
 @pytest.mark.parametrize("status,perf,color", [("Running", 95, "green"), ("Running", 80, "yellow"), ("Setup", None, "yellow"),
@@ -66,7 +66,7 @@ def test_maintenance_blue_then_green_at_normal_cycle():
 def test_mold_move_is_a_swap_with_setup():
     s = run("baseline", 5, commands={1: {"name": "move_mold", "args": {"sku": "FB-ARKA", "to_machine_id": "IMM-05"}}})
     assert machine(s, "IMM-05")["status"] == "Setup" and machine(s, "IMM-05")["andon"] == "yellow"
-    for _ in range(P.CHANGEOVER_MINUTES):
+    for _ in range(plant.CHANGEOVER_MINUTES):
         s.step()
     assert s.machines["IMM-05"].mix == {"FB-ARKA": 1.0}
     assert s.machines["IMM-04"].mix == {"RB-ARKA": 1.0}

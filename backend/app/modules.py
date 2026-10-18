@@ -6,7 +6,7 @@ from functools import lru_cache
 from app.effects import Overrides, normal_cycle_factor
 from app.errors import FVError
 from app.tools import delivery, forecast, material, mes, planning, purchasing, quality
-from simulator import plant as P
+from app import plant
 
 MODULES = ("forecast", "planning", "mes", "material", "purchasing", "quality", "delivery")
 

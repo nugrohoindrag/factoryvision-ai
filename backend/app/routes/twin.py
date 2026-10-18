@@ -7,7 +7,7 @@ from app import pubsub, twin
 from app.config import settings
 from app.errors import FVError
 from app.session import session_id
-from simulator.engine import MAX_TICKS_PER_CALL, SCENARIOS
+from app.simulation.engine import MAX_TICKS_PER_CALL, SCENARIOS
 
 router = APIRouter()
 

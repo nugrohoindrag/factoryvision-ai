@@ -10,7 +10,7 @@ from app import actions, effects, photos, pubsub
 from app.config import settings
 from app.session import limiter
 from app.store import store
-from simulator.engine import MAX_TICKS_PER_CALL, SCENARIOS, State
+from app.simulation.engine import MAX_TICKS_PER_CALL, SCENARIOS, State
 
 COLLECTION = "plants"
 COST_BUCKETS = ("live_run", "agent")

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from simulator import plant as P
-from simulator.seed.generator import FEB_PLAN_PER_DAY
+from app import plant
 
 FEB_WORKING_DAYS = 24
 OEM_A_SHARE = 0.80
@@ -11,8 +10,8 @@ PO_CHANGE_PCT = 40
 def schedule_lines() -> list[dict]:
     rows = []
     for sku in ("FB-ARKA", "RB-ARKA", "FB-CITRA", "RB-CITRA"):
-        share = dict(P.CUSTOMER_MIX[P.PRODUCT_BY_SKU[sku].model])["CUS-OEMA"]
-        prev = round(FEB_PLAN_PER_DAY[sku] * FEB_WORKING_DAYS * share)
+        share = dict(plant.CUSTOMER_MIX[plant.PRODUCT_BY_SKU[sku].model])["CUS-OEMA"]
+        prev = round(plant.FEB_PLAN_PER_DAY[sku] * FEB_WORKING_DAYS * share)
         new = round(prev * (1 + PO_CHANGE_PCT / 100)) if sku == "FB-ARKA" else prev
         rows.append({"sku": sku, "month": "2027-02", "previous_qty": prev, "qty": new})
     return rows

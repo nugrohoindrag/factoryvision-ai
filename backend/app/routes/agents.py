@@ -15,7 +15,7 @@ from app.errors import FVError
 from app.modules import MODULES
 from app.session import limiter, session_id
 from app.store import store
-from simulator.engine import SCENARIOS
+from app.simulation.engine import SCENARIOS
 
 router = APIRouter(prefix="/api")
 

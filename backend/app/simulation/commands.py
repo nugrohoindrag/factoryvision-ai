@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from app.errors import FVError
-from simulator import plant as P
+from app import plant
 
 if TYPE_CHECKING:
-    from simulator.engine import State
+    from app.simulation.engine import State
 
 MAINTENANCE_MIN = 120
 
@@ -34,26 +34,26 @@ def start_maintenance(s: "State", a: dict) -> dict:
 def move_mold(s: "State", a: dict) -> dict:
     sku, dst = a["sku"], _machine(s, a["to_machine_id"])
     src = next((m for m in s.machines.values() if sku in m.mix), None)
-    if src is None or dst.machine_id not in P.MOLD_COMPAT.get(sku, []):
-        raise FVError("FV-DATA-001", f"mold {sku} cannot move to {dst.machine_id}", {"fits": P.MOLD_COMPAT.get(sku)})
+    if src is None or dst.machine_id not in plant.MOLD_COMPAT.get(sku, []):
+        raise FVError("FV-DATA-001", f"mold {sku} cannot move to {dst.machine_id}", {"fits": plant.MOLD_COMPAT.get(sku)})
     if src is dst:
         return {"sku": sku, "machine_id": dst.machine_id, "note": "already mounted"}
     back = next(iter(dst.mix), None)
-    if back and src.machine_id not in P.MOLD_COMPAT.get(back, []):
+    if back and src.machine_id not in plant.MOLD_COMPAT.get(back, []):
         raise FVError("FV-DATA-001", f"mold {back} does not fit {src.machine_id}")
     for m, new_sku in ((dst, sku), (src, back)):
         if new_sku is None:
             m.pending_mix = {}
             continue
         m.pending_mix = {new_sku: 1.0}
-        m.ideal_cycle_s = P.PRODUCT_BY_SKU[new_sku].ideal_cycle_s
-        ratio = (m.cycle_s / P.PRODUCT_BY_SKU[next(iter(m.mix))].ideal_cycle_s) if m.cycle_s and m.mix else 1.058
+        m.ideal_cycle_s = plant.PRODUCT_BY_SKU[new_sku].ideal_cycle_s
+        ratio = (m.cycle_s / plant.PRODUCT_BY_SKU[next(iter(m.mix))].ideal_cycle_s) if m.cycle_s and m.mix else 1.058
         m.cycle_s = round(m.ideal_cycle_s * ratio, 1)
         if m.status == "Maintenance":
-            m.timer = max(m.timer, P.CHANGEOVER_MINUTES)
+            m.timer = max(m.timer, plant.CHANGEOVER_MINUTES)
         else:
-            s.set_status(m, "Setup", "CHANGEOVER", timer=P.CHANGEOVER_MINUTES)
-    return {"sku": sku, "from": src.machine_id, "to": dst.machine_id, "swapped_back": back, "running_at_minute": s.minute + P.CHANGEOVER_MINUTES}
+            s.set_status(m, "Setup", "CHANGEOVER", timer=plant.CHANGEOVER_MINUTES)
+    return {"sku": sku, "from": src.machine_id, "to": dst.machine_id, "swapped_back": back, "running_at_minute": s.minute + plant.CHANGEOVER_MINUTES}
 
 
 def hold_lot(s: "State", a: dict) -> dict:
@@ -65,7 +65,7 @@ def hold_lot(s: "State", a: dict) -> dict:
 
 
 def place_po(s: "State", a: dict) -> dict:
-    from simulator.engine import RECEIPT_LEAD_MIN
+    from app.simulation.engine import RECEIPT_LEAD_MIN
 
     if a.get("material_id", "PP-EPDM-T20") != "PP-EPDM-T20":
         return {"logged": True}

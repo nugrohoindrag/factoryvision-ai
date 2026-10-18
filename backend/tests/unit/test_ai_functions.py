@@ -3,8 +3,8 @@ import pytest
 from app.ai import extract, genai, vision
 from app.errors import FVError
 from app.session import limiter
-from simulator.docs import DOCUMENTS, schedule_lines
-from simulator.engine import State
+from app.documents import DOCUMENTS, schedule_lines
+from app.simulation.engine import State
 
 SID = "44444444-4444-4444-4444-444444444444"
 JPEG = b"\xff\xd8\xff" + b"0" * 100

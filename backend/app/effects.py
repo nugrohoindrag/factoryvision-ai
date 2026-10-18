@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from app import actions
 from app.store import store
-from simulator import plant as P
+from app import plant
 
 SCENARIOS = {
     "baseline": {},
@@ -71,5 +71,5 @@ def apply(o: Overrides, cmd: dict) -> None:
 
 
 def normal_cycle_factor(rates: dict) -> float:
-    others = [rates[m]["cycle_factor"] for m in P.IMM_IDS if m != "IMM-04" and m in rates]
+    others = [rates[m]["cycle_factor"] for m in plant.IMM_IDS if m != "IMM-04" and m in rates]
     return sum(others) / len(others) if others else 1.03

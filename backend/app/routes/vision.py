@@ -11,7 +11,7 @@ from app.config import settings
 from app.errors import FVError
 from app.session import limiter, session_id
 from app.store import store
-from simulator.docs import DOCUMENTS
+from app.documents import DOCUMENTS
 
 router = APIRouter(prefix="/api")
 
