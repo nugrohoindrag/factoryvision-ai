@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from app import actions, effects, photos, plant, pubsub
+from app import actions, effects, forecasts, photos, plant, pubsub
 from app.config import settings
 from app.errors import FVError
 from app.session import limiter
@@ -137,6 +137,7 @@ def reset(session_id: str, scenario: str = "baseline") -> dict[str, Any]:
     if scenario not in SCENARIOS:
         raise FVError(UNKNOWN_SCENARIO, detail={"scenario": scenario, "valid": list(SCENARIOS)})
     actions.clear(session_id)
+    forecasts.clear(session_id)
     store().delete("observations", session_id)
     for insp in store().where("inspections", "session_id", session_id):
         store().delete("inspections", insp["inspection_id"])

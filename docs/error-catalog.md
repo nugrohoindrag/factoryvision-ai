@@ -21,6 +21,11 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-SQL-002` | 403 | Table not allowlisted | An agent SQL query reads a table outside the allowlist. | Guardrail; extend the allowlist only through a code change. |
 | `FV-PLAN-001` | 422 | No feasible plan | CP-SAT found no feasible molding plan within the time limit. | Relax the scenario (allow mold moves, extra shifts) and retry. |
 | `FV-FCST-001` | 503 | Forecast model missing | The BQML model fv.demand_arima is not trained. | Run infra/bq_forecast.sql; the tool falls back to the local model meanwhile. |
+| `FV-FC-001` | 400 | Invalid forecast parameters | Generate was sent a window, horizon, SKU filter or per-customer flag outside the allowed values. | Fix the fields listed in `detail.fields`: window 30/60/90 days, horizon 4/6/8 weeks, a non-empty SKU list or none. |
+| `FV-FC-002` | 404 | Forecast snapshot not found | The forecast ID does not exist in this session. | Pick a snapshot from GET /api/forecasts. |
+| `FV-FC-003` | 400 | Invalid snapshot status filter | `GET /api/forecasts?status=` names a status other than Generated or Superseded. | Use Generated, Superseded, or leave the filter out. |
+| `FV-FC-004` | 409 | Forecast snapshot is read-only | A request tried to change or delete a stored forecast snapshot. | Generate a new snapshot; the old one is superseded and keeps its numbers. |
+| `FV-FC-005` | 404 | SKU not in snapshot | The snapshot was generated for a SKU filter that leaves this SKU out. | Pick a SKU the snapshot covers. |
 | `FV-ACT-001` | 404 | Action not found | The proposal ID does not exist in this session. | Refresh the Action Center. |
 | `FV-ACT-002` | 409 | Action already decided | Approve or reject was sent for a proposal that is no longer pending. | No retry needed; the first decision stands. |
 | `FV-ACT-003` | 500 | Action execution failed | The proposal was approved but its command failed in the simulator. | The action is marked failed with the reason; approve again after a reset. |

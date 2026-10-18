@@ -4,7 +4,8 @@ import { RunPanel } from "./components/agents";
 import { AppProvider, useApp } from "./lib/store";
 import ActionCenter from "./pages/ActionCenter";
 import BriefingPage from "./pages/Briefing";
-import { DeliveryPage, ForecastPage, MaterialPage, PlanningPage, PurchasingPage } from "./pages/Modules";
+import { ForecastPage } from "./pages/Forecast";
+import { DeliveryPage, MaterialPage, PlanningPage, PurchasingPage } from "./pages/Modules";
 import OrdersPage from "./pages/Orders";
 import QualityPage from "./pages/Quality";
 
