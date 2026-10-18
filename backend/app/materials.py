@@ -262,9 +262,10 @@ def incoming(sid: str, material_id: str | None = None) -> list[dict[str, Any]]:
                 "source": "session_po",
             }
         )
+    recorded = purchasing_docs.session_po_refs(sid)
     for r in o.extra_receipts:
         mid = r.get("material_id") or "PP-EPDM-T20"
-        if material_id and mid != material_id:
+        if (material_id and mid != material_id) or str(r.get("po_id")) in recorded:
             continue
         exp = to_date(r["expected_date"]).isoformat()
         rows.append(

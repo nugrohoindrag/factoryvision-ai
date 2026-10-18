@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
 from typing import Any
@@ -39,6 +40,7 @@ EPS = 1e-6
 QUOTATION = "price on quotation"
 BUYER = "Vidad bumper plant"
 CURRENCY = "IDR"
+ACTION_REF = re.compile(r"\bACT-[\w-]+")
 SEED_PO_SQL = (
     "SELECT po_id, vendor_id, material_id, order_qty, unit_price_idr, order_date, promised_date, received_date, po_status, received_qty, lot_id "
     "FROM fv.fact_purchase_order ORDER BY po_id"
@@ -303,6 +305,16 @@ def open_lines(sid: str) -> list[dict[str, Any]]:
                 out.append(
                     {"po_id": po["po_id"], "vendor_id": po["vendor_id"], "material_id": ln["material_id"], "qty": q, "promised_date": po["promised_date"]}
                 )
+    return out
+
+
+def session_po_refs(sid: str) -> set[str]:
+    out: set[str] = set()
+    for po in _session_pos(sid):
+        out.add(str(po["po_id"]))
+        if po.get("action_id"):
+            out.add(str(po["action_id"]))
+        out.update(ACTION_REF.findall(str(po.get("note") or "")))
     return out
 
 
