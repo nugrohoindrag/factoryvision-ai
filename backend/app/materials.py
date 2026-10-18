@@ -23,7 +23,7 @@ UNKNOWN_BOM_STATUS = "FV-MAT-009"
 
 RESERVATIONS = "material_reservations"
 TRANSACTIONS = "material_transactions"
-TXN_TYPES = ("Receipt", "Issue", "Adjust", "Reserve", "Release")
+TXN_TYPES = ("Receipt", "Issue", "Adjust", "Reserve", "Release", "Incoming")
 
 MATERIAL_SQL = """
 SELECT material_id, material_name, material_type, material_group, color, unit, unit_cost_idr, safety_stock, reorder_point,
@@ -211,30 +211,61 @@ def color_split(sku: str, qty: float) -> dict[str, int]:
     return dict(zip(colors, parts, strict=True))
 
 
+def vendor_delay(vendor_id: str | None, o: effects.Overrides, delays: dict[str, float]) -> float:
+    return max(0.0, float(delays.get(str(vendor_id), 0.0))) + float(o.vendor_extra_delay.get(str(vendor_id), 0.0))
+
+
+def expected_after(promised: object, delay: float) -> str:
+    return (to_date(promised) + timedelta(days=round(delay))).isoformat()
+
+
 def incoming(sid: str, material_id: str | None = None) -> list[dict[str, Any]]:
+    from app import purchasing_docs
+
     o = effects.overrides(sid)
     delays = delays_by_vendor()
+    got = purchasing_docs.received_by_po(sid)
     rows: list[dict[str, Any]] = []
     for po in warehouse.query(OPEN_PO_SQL):
         if material_id and po["material_id"] != material_id:
             continue
-        delay = max(0.0, float(delays.get(po["vendor_id"], 0.0))) + float(o.vendor_extra_delay.get(po["vendor_id"], 0.0))
+        qty = float(po["order_qty"]) - got.get((str(po["po_id"]), str(po["material_id"])), 0.0)
+        if qty <= purchasing_docs.EPS:
+            continue
+        delay = vendor_delay(po["vendor_id"], o, delays)
         promised = to_date(po["promised_date"])
         rows.append(
             {
                 "po_id": po["po_id"],
                 "material_id": po["material_id"],
                 "vendor_id": po["vendor_id"],
-                "qty": float(po["order_qty"]),
+                "qty": round(qty, 4),
                 "promised_date": promised.isoformat(),
-                "expected_date": (promised + timedelta(days=round(delay))).isoformat(),
+                "expected_date": expected_after(promised, delay),
                 "avg_delay_days": round(delay, 1),
                 "source": "open_po",
             }
         )
+    for ln in purchasing_docs.open_lines(sid):
+        if material_id and ln["material_id"] != material_id:
+            continue
+        delay = vendor_delay(ln["vendor_id"], o, delays)
+        rows.append(
+            {
+                "po_id": ln["po_id"],
+                "material_id": ln["material_id"],
+                "vendor_id": ln["vendor_id"],
+                "qty": round(ln["qty"], 4),
+                "promised_date": ln["promised_date"],
+                "expected_date": expected_after(ln["promised_date"], delay),
+                "avg_delay_days": round(delay, 1),
+                "source": "session_po",
+            }
+        )
+    recorded = purchasing_docs.session_po_refs(sid)
     for r in o.extra_receipts:
         mid = r.get("material_id") or "PP-EPDM-T20"
-        if material_id and mid != material_id:
+        if (material_id and mid != material_id) or str(r.get("po_id")) in recorded:
             continue
         exp = to_date(r["expected_date"]).isoformat()
         rows.append(
@@ -275,7 +306,10 @@ def stock(sid: str, material_id: str | None = None, warehouse_id: str | None = N
         for r in warehouse.query(STOCK_SQL)
         if r["material_id"] in mats
     }
-    keys = set(snap) | {(m["material_id"], m["default_warehouse_id"]) for m in mats.values()}
+    from app import purchasing_docs
+
+    received = purchasing_docs.received_on_hand(sid)
+    keys = set(snap) | {(m["material_id"], m["default_warehouse_id"]) for m in mats.values()} | {k for k in received if k[0] in mats}
     held = _session_reserved(sid)
     inc_all = incoming(sid)
     rows = []
@@ -283,7 +317,7 @@ def stock(sid: str, material_id: str | None = None, warehouse_id: str | None = N
         if (material_id and mid != material_id) or (warehouse_id and wh != warehouse_id):
             continue
         m, s = mats[mid], snap.get((mid, wh), {})
-        on_hand = float(s.get("on_hand_qty") or 0)
+        on_hand = float(s.get("on_hand_qty") or 0) + received.get((mid, wh), 0.0)
         reserved = float(s.get("reserved_qty") or 0) + held.get((mid, wh), 0.0)
         inc = [i for i in inc_all if i["material_id"] == mid] if wh == m["default_warehouse_id"] else []
         inc_qty = sum(i["qty"] for i in inc)
@@ -327,7 +361,7 @@ def inventory(sid: str, material_id: str | None = None, warehouse_id: str | None
             "value_idr": sum(r["value_idr"] for r in rows),
         },
         "formula": "Available = On Hand - Reserved + Incoming",
-        "source": "fv.fact_material_stock, fv.dim_material, fv.fact_purchase_order (open), approved POs and reservations of this session",
+        "source": "fv.fact_material_stock, fv.dim_material, fv.fact_purchase_order (open), session POs, goods receipts and reservations of this session",
     }
 
 
