@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "*": "ask",
+    "read": {
+      "*": "allow",
+      "*.env": "deny",
+      "*.env.*": "deny",
+      "*.env.example": "allow",
+      "**/*.pem": "deny",
+      "**/service-account*.json": "deny",
+      "data/local/**": "deny"
+    },
+    "edit": {
+      "*": "deny",
+      "backend/app/**": "allow",
+      "backend/simulator/**": "allow",
+      "backend/tests/**": "ask",
+      "frontend/src/**": "allow",
+      "frontend/e2e/**": "ask",
+      "evals/**": "allow",
+      "docs/**": "ask",
+      ".github/workflows/**": "ask",
+      "pyproject.toml": "deny",
+      "justfile": "deny",
+      "opencode.json": "deny"
+    },
+    "external_directory": "deny",
+    "doom_loop": "ask"
+  }
+}
