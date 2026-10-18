@@ -50,6 +50,12 @@ it passed; the output is.
 only in CI, so a green `just verify` on a stale `docs/error-catalog.md` still means
 you need to run `just catalog`.
 
+The two command surfaces are kept honest by a test, not by discipline:
+`backend/tests/unit/test_ci_surface.py` fails if CI runs something no `just` recipe
+can reproduce, if CI runs pytest from the wrong directory, or if CI stops exporting
+`UV_PROJECT_ENVIRONMENT`. **Adding a check to one surface means adding it to the
+other.**
+
 ## Labels
 
 | Label | Means |
