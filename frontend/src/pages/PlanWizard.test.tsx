@@ -59,6 +59,18 @@ const LINE = {
 const DRAFT = { plan: plan(), capacity: null, candidates: [CANDIDATE], notes: [] };
 const PLANNING = { plan: plan({ status: "Planning", capacity_status: "Additional Demand", lines: [LINE], readiness: { steps: steps(3, "Generate work orders in step 3 before scheduling."), resume_step: 1, capacity_up_required_lines: [], confirmed_work_orders: 0 } }), capacity: null, candidates: [], notes: [] };
 
+const DRAFT_PREVIEW = {
+  period_start: "2027-02-08",
+  period_end: "2027-02-27",
+  summary: { order_lines: 0, customer_orders: 0, order_qty: 0, forecast_qty: 31638, planned_qty: 29416, worst_capacity_status: "Additional Demand" },
+  lines: [
+    { sku: "FB-ARKA", product_name: "Front bumper ARKA (MPV)", priority: 1, demand_qty: 0, orders: 0, forecast_qty: 17235, planned_qty: 15143, total_capacity: 15143, capacity_status: "Additional Demand", short_of_orders: 0, short_of_forecast: 2092 },
+  ],
+  gaps: [{ sku: "FB-ARKA", wanted_qty: 17235, planned_qty: 15143, gap_qty: 2092, short_of_orders: 0 }],
+  rules: "Open order lines due in the period, then forecast not yet ordered.",
+  source: "open customer orders, forecast engine, capacity check",
+};
+
 const calls: { url: string; method: string; body?: unknown }[] = [];
 
 function mockApi(detail: unknown = DRAFT) {
@@ -68,6 +80,8 @@ function mockApi(detail: unknown = DRAFT) {
     calls.push({ url, method, body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined });
     let body: unknown = { pending: 0, actions: [] };
     if (url.endsWith("/demands") && method === "POST") body = PLANNING;
+    else if (url.endsWith("/draft/propose")) body = { action: { action_id: "ACT-1", status: "pending" }, draft: DRAFT_PREVIEW };
+    else if (url.endsWith("/draft")) body = DRAFT_PREVIEW;
     else if (url.startsWith("/api/production-plans/plan-1")) body = detail;
     else if (url.startsWith("/api/production-plans"))
       body = {
@@ -107,6 +121,17 @@ describe("Production plans", () => {
     expect(screen.getAllByText("Capacity Up Required").length).toBeGreaterThan(0);
     expect(screen.getByText("Open wizard")).toHaveAttribute("href", "/production-plans/plan-1");
     expect(screen.getByText("View")).toHaveAttribute("href", "/production-plans/PP-2027-02");
+  });
+
+  it("lets the planning agent draft a plan and sends it for approval", async () => {
+    mockApi();
+    renderAt("/production-plans");
+    fireEvent.click(await screen.findByRole("button", { name: "Prepare draft" }));
+    expect(await screen.findByText(/FB-ARKA 2,092 pcs short/)).toBeInTheDocument();
+    expect(calls.find((c) => c.url.endsWith("/draft"))?.body).toEqual({ period_start: "2027-02-01", period_end: "2027-02-07", include_forecast: true });
+    fireEvent.click(screen.getByRole("button", { name: "Send draft for approval" }));
+    expect(await screen.findByText(/Approve it there/)).toBeInTheDocument();
+    expect(calls.some((c) => c.url.endsWith("/draft/propose") && c.method === "POST")).toBe(true);
   });
 
   it("locks the later steps and says what is missing", async () => {

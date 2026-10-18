@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Badge, Card, Dialog, Kpi, Status, num } from "../components/ui";
+import { AskAgent } from "../components/agents";
+import { Badge, Card, Dialog, Kpi, Status, Table, num } from "../components/ui";
 import { ApiError, errorText, post } from "../lib/api";
 import { useApp, useData } from "../lib/store";
 
@@ -95,6 +96,124 @@ function NewPlanDialog({ open, asOf, utilization, onClose }: { open: boolean; as
         <button className="primary" onClick={create} disabled={busy || !s || !e}>{busy ? "Creating…" : "Create plan"}</button>
       </div>
     </Dialog>
+  );
+}
+
+/** The planning agent drafts a plan from open orders, forecast and capacity; the draft goes to the Action Center for approval. */
+function AgentDraft({ asOf }: { asOf: string }) {
+  const { bump } = useApp();
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [forecast, setForecast] = useState(true);
+  const [draft, setDraft] = useState<Any>(null);
+  const [sent, setSent] = useState<Any>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const s = start || asOf;
+  const e = end || (asOf ? addDays(asOf, 6) : "");
+  const body = { period_start: s, period_end: e, include_forecast: forecast };
+  const call = async (path: string) => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await post<Any>(path, body);
+      if (r.action) {
+        setSent(r.action);
+        setDraft(r.draft);
+        bump();
+      } else {
+        setDraft(r);
+        setSent(null);
+      }
+    } catch (x) {
+      const fields = x instanceof ApiError ? (x.body.detail as Any)?.fields : null;
+      setErr(fields?.length ? fields.map((f: Any) => f.message).join(" ") : errorText(x));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card title="Draft with the planning agent" actions={<Badge tone="info">Production Planning agent</Badge>}>
+      <p className="muted small">
+        The agent takes every open customer order line due in the period, adds forecast not yet ordered, sets priorities (firm orders first, earliest delivery first) and
+        checks capacity. A line above capacity is planned at what fits and its gap is shown. The draft goes to the Action Center; after approval it opens as a Draft plan
+        you finish in the wizard.
+      </p>
+      <div className="filters">
+        <label>
+          Period start
+          <input type="date" aria-label="Draft period start" value={s} onChange={(x) => (setStart(x.target.value), setDraft(null), setSent(null))} />
+        </label>
+        <label>
+          Period end
+          <input type="date" aria-label="Draft period end" value={e} onChange={(x) => (setEnd(x.target.value), setDraft(null), setSent(null))} />
+        </label>
+        <label className="row small">
+          <input type="checkbox" checked={forecast} onChange={(x) => (setForecast(x.target.checked), setDraft(null), setSent(null))} /> Include forecast not yet ordered
+        </label>
+      </div>
+      <div className="row">
+        <button onClick={() => call("/api/production-plans/draft")} disabled={busy || !s || !e}>{busy && !draft ? "Drafting…" : "Prepare draft"}</button>
+        {draft && !sent && (
+          <button className="primary" onClick={() => call("/api/production-plans/draft/propose")} disabled={busy}>
+            Send draft for approval
+          </button>
+        )}
+        {sent && (
+          <span className="small">
+            Pending in the <Link to="/actions">Action Center</Link>. Approve it there to open it as a Draft plan.
+          </span>
+        )}
+      </div>
+      {err && <p className="error" role="alert">{err}</p>}
+      {draft && (
+        <>
+          <div className="kpis">
+            <Kpi label="Order lines" value={num(draft.summary.order_lines)} sub={`${num(draft.summary.customer_orders)} customer orders, ${num(draft.summary.order_qty)} pcs`} />
+            <Kpi label="Forecast not yet ordered" value={num(draft.summary.forecast_qty)} sub="pcs" />
+            <Kpi label="Planned" value={num(draft.summary.planned_qty)} sub={draft.summary.worst_capacity_status ?? "no line"} tone={draft.gaps.length ? "warn" : "good"} />
+            <Kpi label="Capacity gaps" value={draft.gaps.length} sub={draft.gaps.map((g: Any) => `${g.sku} −${num(g.gap_qty)}`).join(", ") || "everything fits"} tone={draft.gaps.length ? "bad" : "good"} />
+          </div>
+          <Table
+            empty="Nothing to plan in this period."
+            cols={[
+              { key: "p", label: "Priority", align: "right" },
+              { key: "sku", label: "Product" },
+              { key: "orders", label: "Orders", align: "right" },
+              { key: "fc", label: "Forecast", align: "right" },
+              { key: "planned", label: "Planned", align: "right" },
+              { key: "cap", label: "Capacity", align: "right" },
+              { key: "st", label: "Status" },
+            ]}
+            rows={draft.lines.map((l: Any) => ({
+              p: l.priority,
+              sku: (
+                <>
+                  <strong>{l.sku}</strong> <span className="muted small">{l.product_name}</span>
+                </>
+              ),
+              orders: `${num(l.demand_qty)} (${l.orders})`,
+              fc: num(l.forecast_qty),
+              planned: (
+                <>
+                  {num(l.planned_qty)}
+                  {l.short_of_orders + l.short_of_forecast > 0 && <div className="risk small">{num(l.short_of_orders + l.short_of_forecast)} not planned</div>}
+                </>
+              ),
+              cap: num(l.total_capacity),
+              st: <CapacityStatus status={l.capacity_status} />,
+            }))}
+          />
+          {draft.gaps.length > 0 && (
+            <p className="notice-box warn small">
+              Over capacity, planned at what fits: {draft.gaps.map((g: Any) => `${g.sku} ${num(g.gap_qty)} pcs short${g.short_of_orders ? ` (${num(g.short_of_orders)} of them firm orders)` : ""}`).join("; ")}.
+              Options: an extra shift, a mold move, or less forecast. Ask the agent to compare them.
+            </p>
+          )}
+          <p className="source">Source: {draft.source}. {draft.rules}</p>
+        </>
+      )}
+    </Card>
   );
 }
 
@@ -204,6 +323,8 @@ export default function ProductionPlansPage() {
           &lt; Additional Demand &lt; Capacity Up Required.
         </p>
       </Card>
+      <AgentDraft asOf={data?.as_of ?? ""} />
+      <AskAgent module="planning" placeholder="Draft a production plan for 8 to 21 Feb from open orders and forecast, and explain the capacity gaps." />
       <NewPlanDialog open={creating} asOf={data?.as_of ?? ""} utilization={data?.default_utilization_pct ?? 80} onClose={() => setCreating(false)} />
     </>
   );

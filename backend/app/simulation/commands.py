@@ -90,6 +90,7 @@ _COMMANDS = {
     "place_po": place_po,
     "expedite_po": place_po,
     "add_shift": logged,
+    "create_draft_plan": logged,  # the plan itself is written by app.twin.on_command
     "apply_customer_po": logged,
     "create_customer_order": logged,
     "cancel_customer_order": logged,

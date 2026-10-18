@@ -9,11 +9,9 @@ from typing import Any
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
-from app import effects, modules
-from app.effects import normal_cycle_factor
+from app import actions, effects, modules
 from app.session import SessionId, user_label
 from app.store import Doc
-from app.tools import planning
 from app.tools import production_plan as pp
 from app.tools.common import TODAY, to_date
 
@@ -52,17 +50,14 @@ class ResourceIn(BaseModel):
     mold_id: str | None = None
 
 
+class DraftIn(BaseModel):
+    period_start: str | None = None
+    period_end: str | None = None
+    include_forecast: bool = True
+
+
 class CancelIn(BaseModel):
     reason: str = Field(default="", max_length=500)
-
-
-def _rates(o: effects.Overrides) -> dict[str, dict[str, Any]]:
-    """Actual cycle and yield of the last 7 days; a machine under approved maintenance runs at the fleet's normal cycle."""
-    rates = planning.machine_rates()
-    if o.maintenance:
-        normal = normal_cycle_factor(rates)
-        rates = {mid: ({**r, "cycle_factor": normal} if mid in o.maintenance else r) for mid, r in rates.items()}
-    return rates
 
 
 def _out(sid: str, plan: Doc, notes: list[str] | None = None, **extra: Any) -> dict[str, Any]:
@@ -70,7 +65,7 @@ def _out(sid: str, plan: Doc, notes: list[str] | None = None, **extra: Any) -> d
     o = effects.overrides(sid)
     view = modules.order_view(o)
     if plan["status"] in pp.EDITABLE:
-        capacity = pp.apply_assessment(plan, view, _rates(o))
+        capacity = pp.apply_assessment(plan, view, modules.plan_rates(o))
         pp.refresh_status(plan)
     else:
         capacity = None
@@ -118,6 +113,41 @@ def list_plans(sid: SessionId, status: str | None = None, period_from: str | Non
 def create_plan(body: PlanIn, request: Request, sid: SessionId) -> dict[str, Any]:
     plan = pp.new_plan(sid, body.model_dump(), user_label(request))
     return _out(sid, plan)
+
+
+def _draft(sid: str, body: DraftIn) -> dict[str, Any]:
+    o = effects.overrides(sid)
+    return pp.draft(
+        sid,
+        modules.order_view(o),
+        modules.plan_rates(o),
+        body.period_start or "",
+        body.period_end or "",
+        include_forecast=body.include_forecast,
+        demand_change_pct=o.demand_change_pct or None,
+    )
+
+
+@router.post("/draft")
+def preview_draft(body: DraftIn, sid: SessionId) -> dict[str, Any]:
+    """The planning agent's draft for a period, computed by its draft tool; nothing is saved."""
+    return _draft(sid, body)
+
+
+@router.post("/draft/propose")
+def propose_draft(body: DraftIn, sid: SessionId) -> dict[str, Any]:
+    """Send the agent's draft to the Action Center; after approval it becomes a Draft plan the planner finishes in the wizard."""
+    d = _draft(sid, body)
+    a = actions.propose(
+        sid,
+        "production_plan_draft",
+        f"Draft production plan {d['period_start']} to {d['period_end']}: {len(d['lines'])} line(s), {d['summary']['planned_qty']:,} pcs",
+        "planning",
+        pp.draft_rationale(d),
+        d["args"],
+        evidence=[{"source": d["source"], "rules": d["rules"], "lines": d["lines"], "gaps": d["gaps"]}],
+    )
+    return {"action": a, "draft": d}
 
 
 @router.get("/{plan_id}")
@@ -189,7 +219,7 @@ def generate_work_orders(plan_id: str, sid: SessionId) -> dict[str, Any]:
 def schedule(plan_id: str, sid: SessionId) -> dict[str, Any]:
     plan = pp.load(sid, plan_id)
     o = effects.overrides(sid)
-    run = pp.schedule(plan, modules.order_view(o), _rates(o))
+    run = pp.schedule(plan, modules.order_view(o), modules.plan_rates(o))
     return _out(sid, plan, schedule=run)
 
 
@@ -211,7 +241,7 @@ def confirm_work_orders(plan_id: str, sid: SessionId) -> dict[str, Any]:
 def confirm_plan(plan_id: str, request: Request, sid: SessionId) -> dict[str, Any]:
     plan = pp.load(sid, plan_id)
     o = effects.overrides(sid)
-    pp.apply_assessment(plan, modules.order_view(o), _rates(o))  # confirm judges capacity as it is now
+    pp.apply_assessment(plan, modules.order_view(o), modules.plan_rates(o))  # confirm judges capacity as it is now
     pp.confirm(plan, user_label(request))
     return _out(sid, plan)
 

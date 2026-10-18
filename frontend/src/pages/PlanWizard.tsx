@@ -665,6 +665,12 @@ export default function PlanWizardPage() {
           <Field label="Capacity snapshot">{plan.capacity_plan_id ?? "computed now"}</Field>
           <Field label="Created by">{plan.created_by}</Field>
         </div>
+        {plan.created_by === "production_planning_agent" && (
+          <p className="notice-box info small">
+            Drafted by the Production Planning agent{plan.approved_by ? `, approved by ${plan.approved_by} in the Action Center` : ""}. Check the lines, then schedule and confirm.
+            {(plan.draft_notes ?? []).map((n: string) => <span key={n}> {n}</span>)}
+          </p>
+        )}
         {plan.cancel_reason && <p className="notice-box bad small">Cancelled by {plan.cancelled_by}: {plan.cancel_reason}</p>}
         {readOnly && !plan.baseline && <p className="notice-box info small">{plan.locked_reason}</p>}
       </Card>

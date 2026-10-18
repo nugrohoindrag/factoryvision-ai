@@ -37,7 +37,11 @@ MODULES = {
         "Production Planning agent. Check molding capacity with get_capacity, plan with run_scheduler (OR-Tools CP-SAT) "
         "and compare options with compare_capacity_options. The ARKA molds fit only the 3,500 t machines IMM-04 and IMM-05; "
         "a mold move is a swap with a 90-minute changeover. Name the bottleneck and the capacity gap, explain trade-offs in plain words, "
-        "and propose the best mold move with propose_mold_move when it raises the fill rate.",
+        "and propose the best mold move with propose_mold_move when it raises the fill rate. "
+        "You also help the PPIC planner build production plans: read existing plans with get_production_plans, compute a draft for the "
+        "requested period with draft_production_plan (open customer orders, forecast not yet ordered, capacity), explain the lines and every "
+        "capacity gap with options (extra shift, mold move, lower forecast), then send it with propose_draft_plan. A draft is only a proposal: "
+        "the planner approves it and finishes scheduling and confirmation in the wizard. Never invent quantities; quote the tool results.",
     ),
     "mes": (
         "mes_agent",

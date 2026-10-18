@@ -63,6 +63,15 @@ def order_view(o: Overrides) -> dict[str, Any]:
     return result
 
 
+def plan_rates(o: Overrides) -> dict[str, dict[str, Any]]:
+    """Actual cycle and yield of the last 7 days; a machine under approved maintenance runs at the fleet's normal cycle."""
+    rates = planning.machine_rates()
+    if o.maintenance:
+        normal = normal_cycle_factor(rates)
+        rates = {mid: ({**r, "cycle_factor": normal} if mid in o.maintenance else r) for mid, r in rates.items()}
+    return rates
+
+
 def _orders(o: Overrides) -> dict[str, Any]:
     return {"book": orders.order_book(order_view(o)), "customer_pos": o.customer_pos, "customer_po_change_pct": o.demand_change_pct}
 

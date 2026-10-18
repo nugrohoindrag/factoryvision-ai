@@ -3,7 +3,7 @@ from collections.abc import Iterator
 from typing import Any
 
 import pytest
-from app import plant
+from app import actions, plant
 from app.main import app
 from app.tools import production_plan
 from fastapi.testclient import TestClient
@@ -17,6 +17,7 @@ def sid() -> Iterator[str]:
     s = str(uuid.uuid4())
     yield s
     production_plan.clear(s)
+    actions.clear(s)
 
 
 def h(s: str) -> dict[str, str]:
@@ -194,7 +195,7 @@ def test_cp_sat_schedules_molding_on_compatible_machines_within_ten_seconds(sid:
             assert w["mold_id"] == plant.MOLD_ID[w["sku"]]
             assert all(r["machine_id"] in plant.MOLD_COMPAT[w["sku"]] for r in w["runs"])
             assert sum(r["qty"] for r in w["runs"]) + w["short_qty"] == w["planned_qty"]
-    by_line = {}
+    by_line: dict[str, dict[str, Any]] = {}
     for w in d["plan"]["work_orders"]:
         by_line.setdefault(w["line_id"], {})[w["process"]] = w
     assert all(c["PNT"]["planned_start"] > c["MLD"]["planned_start"] for c in by_line.values())
@@ -277,3 +278,70 @@ def test_reset_removes_the_session_plans(sid: str) -> None:
     _create(sid)
     client.post("/api/demo/reset", json={"scenario": "baseline"}, headers=h(sid))
     assert all(p["baseline"] for p in client.get(BASE, headers=h(sid)).json()["plans"])
+
+
+class _Ctx:
+    def __init__(self, s: str) -> None:
+        self.state = {"session_id": s, "plan_id": "ASK-test", "sources": []}
+
+
+@pytest.fixture
+def approving(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app import pubsub, twin
+
+    monkeypatch.setitem(pubsub._handlers, pubsub.AGENT_COMMANDS, twin.on_command)
+
+
+def test_agent_draft_takes_open_orders_and_forecast_and_saves_nothing(sid: str) -> None:
+    d = client.post(f"{BASE}/draft", json={"period_start": "2027-02-01", "period_end": "2027-02-07", "include_forecast": False}, headers=h(sid)).json()
+    due = [c for c in _create(sid)["candidates"] if c["in_period"]]
+    production_plan.clear(sid)
+    assert d["summary"]["order_lines"] == len(due)
+    assert d["summary"]["forecast_qty"] == 0
+    assert [ln["priority"] for ln in d["lines"]] == list(range(1, len(d["lines"]) + 1))
+    assert all(ln["capacity_status"] != "Capacity Up Required" for ln in d["lines"])
+    assert production_plan.session_plans(sid) == []
+    assert "no number comes from the language model" in d["source"]
+
+
+def test_agent_draft_plans_a_line_above_capacity_at_what_fits(sid: str) -> None:
+    d = client.post(f"{BASE}/draft", json={"period_start": "2027-02-08", "period_end": "2027-02-27"}, headers=h(sid)).json()
+    assert d["gaps"], "three weeks of ARKA forecast exceed one machine per mold"
+    for g in d["gaps"]:
+        ln = next(x for x in d["lines"] if x["sku"] == g["sku"])
+        assert g["planned_qty"] == ln["planned_qty"] <= ln["total_capacity"]
+        assert g["gap_qty"] == g["wanted_qty"] - g["planned_qty"] > 0
+    assert d["summary"]["worst_capacity_status"] != "Capacity Up Required"
+
+
+def test_agent_draft_needs_approval_then_becomes_a_draft_plan(sid: str, approving: None) -> None:
+    body = {"period_start": "2027-02-01", "period_end": "2027-02-07"}
+    r = client.post(f"{BASE}/draft/propose", json=body, headers=h(sid)).json()
+    a = r["action"]
+    assert (a["kind"], a["status"], a["origin_agent"]) == ("production_plan_draft", "pending", "planning")
+    assert all(p["baseline"] for p in client.get(BASE, headers=h(sid)).json()["plans"])
+    done = client.post(f"/api/actions/{a['action_id']}/approve", headers=h(sid)).json()
+    assert done["status"] == "approved"
+    mine = [p for p in client.get(BASE, headers=h(sid)).json()["plans"] if not p["baseline"]]
+    assert len(mine) == 1
+    plan = client.get(f"{BASE}/{mine[0]['plan_id']}", headers=h(sid)).json()["plan"]
+    assert (plan["created_by"], plan["approved_by"], plan["status"]) == ("production_planning_agent", "demo-manager", "Planning")
+    assert {ln["sku"]: ln["planned_qty"] for ln in plan["lines"]} == {x["sku"]: x["planned_qty"] for x in r["draft"]["lines"]}
+    assert plan["editable"] is True
+
+
+def test_planning_agent_tools_read_plans_and_only_propose(sid: str) -> None:
+    from app.agents import tools
+
+    ctx = _Ctx(sid)
+    assert any(p["plan_number"] == "PP-2027-02" for p in tools.get_production_plans(tool_context=ctx)["plans"])
+    d = tools.draft_production_plan(period_start="2027-02-01", period_end="2027-02-07", include_forecast=True, tool_context=ctx)
+    assert "args" not in d
+    assert d["lines"]
+    bad = tools.draft_production_plan(period_start="2027-02-07", period_end="2027-02-01", include_forecast=True, tool_context=ctx)
+    assert bad["error"]["code"] == "FV-REQ-001"
+    r = tools.propose_draft_plan(period_start="2027-02-01", period_end="2027-02-07", include_forecast=True, rationale="Week 1 call-offs.", tool_context=ctx)
+    assert r["status"].startswith("pending")
+    a = actions.get(sid, r["action_id"])
+    assert a["rationale"].startswith("Week 1 call-offs.")
+    assert production_plan.session_plans(sid) == []

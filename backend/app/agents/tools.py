@@ -1,11 +1,12 @@
 from collections.abc import Callable
 from typing import Any, Protocol
 
-from app import actions, effects, photos, plant
+from app import actions, effects, modules, photos, plant
 from app.ai import extract, vision
 from app.documents import DOCUMENTS
 from app.errors import FVError
 from app.tools import delivery, forecast, material, mes, planning, purchasing, quality
+from app.tools import production_plan as pp
 from app.tools.impact import impact_calculator as _impact
 from app.tools.impact import plan_total
 
@@ -73,6 +74,52 @@ def run_scheduler(*, apply_customer_po: bool, allow_mold_moves: bool, maintain_i
 
 def compare_capacity_options(*, apply_customer_po: bool, tool_context: ToolContext) -> ToolResult:
     return planning.what_if(demand_change_pct=_demand(tool_context, apply_customer_po=apply_customer_po))
+
+
+def get_production_plans(*, tool_context: ToolContext) -> ToolResult:
+    """Plans recorded from the OEM schedule and the plans made in this session, with their lines and capacity."""
+    o = _ov(tool_context)
+    mine = pp.session_plans(_sid(tool_context))
+    return {
+        "as_of": plant.DEMO_TODAY.isoformat(),
+        "plans": [
+            {
+                **pp.header(p),
+                "lines": [{k: ln.get(k) for k in ("sku", "demand_qty", "forecast_qty", "planned_qty", "priority", "capacity_status")} for ln in p["lines"]],
+                "schedule": {k: (p.get("schedule_run") or {}).get(k) for k in ("fill_rate_pct", "short_qty", "late_work_orders")}
+                if p.get("schedule_run")
+                else None,
+            }
+            for p in [*mine, *pp.baseline_plans(o.demand_change_pct or None)]
+        ],
+    }
+
+
+def _draft(tc: ToolContext, period_start: str, period_end: str, *, include_forecast: bool) -> ToolResult:
+    o = _ov(tc)
+    return pp.draft(
+        _sid(tc),
+        modules.order_view(o),
+        modules.plan_rates(o),
+        period_start,
+        period_end,
+        include_forecast=include_forecast,
+        demand_change_pct=o.demand_change_pct or None,
+    )
+
+
+def draft_production_plan(*, period_start: str, period_end: str, include_forecast: bool, tool_context: ToolContext) -> ToolResult:
+    r = _guard(lambda: _draft(tool_context, period_start, period_end, include_forecast=include_forecast))
+    r.pop("args", None)
+    return r
+
+
+def propose_draft_plan(*, period_start: str, period_end: str, include_forecast: bool, rationale: str, tool_context: ToolContext) -> ToolResult:
+    d = _guard(lambda: _draft(tool_context, period_start, period_end, include_forecast=include_forecast))
+    if "error" in d:
+        return d
+    title = f"Draft production plan {d['period_start']} to {d['period_end']}: {len(d['lines'])} line(s), {d['summary']['planned_qty']:,} pcs"
+    return _propose(tool_context, "production_plan_draft", title, f"{rationale} {pp.draft_rationale(d)}".strip(), d["args"], "planning")
 
 
 def get_oee(*, days: int) -> ToolResult:
@@ -251,6 +298,28 @@ TOOL_DOCS: dict[str, str] = {
         "    allow_mold_moves: allow molds to move to other compatible machines.\n"
         "    maintain_imm04: assume IMM-04 is maintained in week 1 (cycle back to normal)."
     ),
+    "get_production_plans": (
+        "Production plans: the OEM monthly plans and the plans made in this session, with lines, planned qty, capacity status and schedule result."
+    ),
+    "draft_production_plan": (
+        "Compute a draft production plan for a period from open customer orders, forecast not yet ordered and capacity. "
+        "Firm orders first, earlier delivery first; a line above capacity is planned at what fits and its gap is reported. Saves nothing.\n"
+        "\n"
+        "Args:\n"
+        "    period_start: YYYY-MM-DD, today (2027-02-01) or later.\n"
+        "    period_end: YYYY-MM-DD, at most 62 days after the start.\n"
+        "    include_forecast: also plan forecast that customers have not ordered yet."
+    ),
+    "propose_draft_plan": (
+        "Send the draft production plan to the Action Center as a pending proposal. After a person approves it, it becomes a Draft plan "
+        "the PPIC planner finishes in the wizard (schedule, resources, confirm). The quantities are recomputed here, not taken from you.\n"
+        "\n"
+        "Args:\n"
+        "    period_start: YYYY-MM-DD.\n"
+        "    period_end: YYYY-MM-DD.\n"
+        "    include_forecast: same choice as in draft_production_plan.\n"
+        "    rationale: one or two sentences: why this draft, and what the planner must decide about each capacity gap."
+    ),
     "compare_capacity_options": (
         "What-if: compare baseline, IMM-04 maintenance, moving the Arka mold to IMM-05, Sunday shifts, and maintenance + Sunday shifts.\n"
         "\n"
@@ -376,7 +445,7 @@ Tool = Callable[..., ToolResult]
 
 MODULE_TOOLS: dict[str, list[Tool]] = {
     "forecast": [get_forecast, read_customer_po],
-    "planning": [get_capacity, run_scheduler, compare_capacity_options, propose_mold_move],
+    "planning": [get_capacity, run_scheduler, compare_capacity_options, propose_mold_move, get_production_plans, draft_production_plan, propose_draft_plan],
     "mes": [get_oee, get_downtime_pareto, get_machine_health, twin_observations, propose_maintenance],
     "material": [get_material_requirements, get_stock_projection],
     "purchasing": [get_vendor_scorecard, read_vendor_email, compare_vendors_for_po, draft_po],

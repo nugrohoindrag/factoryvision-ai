@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from app import actions, effects, photos, plant, pubsub
+from app import actions, effects, modules, photos, plant, pubsub
 from app.config import settings
 from app.errors import FVError
 from app.session import limiter
@@ -131,6 +131,20 @@ def on_command(message: dict[str, Any]) -> dict[str, Any]:
             return {"duplicate": True, "action_id": aid}
         result = s.apply(message["command"], aid)
     _persist(s)
+    if message["command"]["name"] == "create_draft_plan":
+        o = effects.overrides(s.session_id)
+        result = {
+            **result,
+            **production_plan.materialize(
+                s.session_id,
+                message["command"]["args"],
+                modules.order_view(o),
+                modules.plan_rates(o),
+                aid,
+                message.get("decided_by"),
+                o.demand_change_pct or None,
+            ),
+        }
     return result
 
 

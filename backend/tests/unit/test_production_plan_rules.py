@@ -42,9 +42,9 @@ def test_planned_follows_demand_until_overridden() -> None:
     assert ln["planned_qty"] == 600
     ln["planned_overridden"], ln["planned_qty"] = True, 450
     pp._set_demand(ln, 700, 100)
-    assert ln["planned_qty"] == 450
+    assert ln.get("planned_qty") == 450
     pp._set_demand(ln, 300, 0)
-    assert ln["planned_qty"] == 300  # never above the demand behind it
+    assert ln.get("planned_qty") == 300  # never above the demand behind it
 
 
 def test_readiness_names_what_is_missing() -> None:
