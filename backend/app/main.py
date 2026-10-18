@@ -12,7 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
 from app.errors import FVError
-from app.routes import agents, core, forecasts, master, material_actions, materials, orders, plans, purchasing, twin, vision, work_orders
+from app.routes import agents, core, forecasts, master, master_data, material_actions, materials, orders, plans, purchasing, twin, vision, work_orders
 
 if TYPE_CHECKING:
     from starlette.middleware.base import RequestResponseEndpoint
@@ -29,6 +29,7 @@ def create_app() -> FastAPI:
         plans.router,
         work_orders.router,
         master.router,
+        master_data.router,
         materials.router,
         purchasing.router,
         twin.router,

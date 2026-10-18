@@ -110,6 +110,11 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-MAT-007` | 500 | BOM uses an unknown material | An item of the active BOM points at a material that is not in the material master. | Fix the BOM item in master data; the SKU and material are in the detail. |
 | `FV-MAT-008` | 400 | Unknown material group | The material group filter is not one of the material groups. | Use Resin, Masterbatch, Primer, Basecoat, Clear, Hardener, Thinner, Component or Packaging. |
 | `FV-MAT-009` | 400 | Unknown BOM status | The BOM status filter is not Draft, Active or Inactive. | Use Draft, Active or Inactive. |
+| `FV-MD-001` | 400 | Invalid master data | A created or edited master data row has a missing key, a value of the wrong type, a negative number or an unknown reference. | Fix the fields listed in `detail.fields`. |
+| `FV-MD-002` | 409 | Duplicate key | A master data row with this key already exists. | Use another key, or edit the existing row. |
+| `FV-MD-003` | 404 | Unknown master data row | No row with this key exists in this master data. | Reload the list; the row may have been deleted. |
+| `FV-MD-004` | 409 | Row still referenced | The row is used by other master data (for example a material in a BOM), so deleting it would leave a broken reference. | Change or delete the rows listed in `detail.references` first. |
+| `FV-MD-005` | 400 | Read-only master data | The master data is derived from other master data (product routings) and cannot be edited directly. | Edit the source it is derived from instead. |
 | `FV-PUR-001` | 404 | Unknown vendor | The vendor id is not in the vendor master. | Use a vendor_id from GET /api/purchasing/vendors. |
 | `FV-PUR-002` | 404 | No vendor for material | No vendor in the vendor master supplies this material. | Add the material to a vendor before buying it. |
 | `FV-PUR-003` | 400 | No lines | A requisition, purchase order or goods receipt has no lines. | Send at least one line with a material and a quantity. |
