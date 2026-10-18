@@ -112,8 +112,12 @@ is the real boundary.
   deliberately not renamed — the Google client libraries read that name themselves.
 - **`app/**` imports from `simulator/` in eight places.** Wrong direction, but
   pre-existing. Do not add a ninth.
-- **The SQL guardrail is a regex**, not a parser. It rejects an unrecognised
-  statement shape; it does not reason about the query. Do not treat it as one.
+- **The SQL guardrail parses, it does not pattern-match.** `check_sql` builds a
+  sqlglot AST and inspects it: the root must be a single `SELECT`, no write node may
+  appear anywhere, and every referenced table must be allowlisted. Table functions
+  (`read_csv`, `read_parquet`, `read_text`) are rejected explicitly — an earlier
+  regex could not see them, because it only extracted `fv.<name>`. If you add a
+  query shape, check what the AST calls it before assuming it is a table.
 
 ## When a gate is red
 

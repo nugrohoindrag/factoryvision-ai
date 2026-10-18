@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-import re
 from typing import Any
 
+import sqlglot
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
+from sqlglot import exp
+from sqlglot.errors import ParseError
 
 from app.config import settings
 from app.db.engine import engine
@@ -24,25 +26,54 @@ FROM ML.FORECAST(MODEL `fv.demand_arima`, STRUCT(CAST(:horizon AS INT64) AS hori
 WHERE sku = :sku ORDER BY d
 """
 
-_FORBIDDEN = re.compile(r"\b(insert|update|delete|merge|drop|create|alter|truncate|grant|call|export|load|copy|attach|pragma|install)\b", re.IGNORECASE)
-_TABLE_REF = re.compile(r"\bfv\.([a-z_]+)\b")
+_WRITE_NODES = (
+    exp.Insert,
+    exp.Update,
+    exp.Delete,
+    exp.Create,
+    exp.Drop,
+    exp.Alter,
+    exp.Merge,
+    exp.TruncateTable,
+    exp.Command,
+)
+
+
+def _referenced_tables(tree: exp.Expression) -> tuple[set[str], set[str]]:
+    cte_names = {cte.alias_or_name for cte in tree.find_all(exp.CTE)}
+    names = set()
+    functions = set()
+    for table in tree.find_all(exp.Table):
+        if isinstance(table.this, exp.Subquery):
+            continue
+        if not isinstance(table.this, exp.Identifier):
+            functions.add(table.sql(dialect="duckdb")[:60])
+            continue
+        if table.name and table.name not in cte_names:
+            names.add(table.name)
+    return names, functions
 
 
 def check_sql(sql: str) -> str:
     s = sql.strip().rstrip(";")
-    if ";" in s:
-        raise FVError(SQL_REJECTED, "one statement only")
-    if not re.match(r"^(select|with)\b", s, re.IGNORECASE):
-        raise FVError(SQL_REJECTED, "only SELECT queries are allowed")
-    if _FORBIDDEN.search(s):
-        raise FVError(SQL_REJECTED, "statement contains a forbidden keyword")
-    tables = set(_TABLE_REF.findall(s))
+    try:
+        parsed = sqlglot.parse(s)
+    except ParseError as e:
+        raise FVError(SQL_REJECTED, "query could not be parsed", detail=str(e)[:200]) from e
+    if len(parsed) != 1 or not isinstance(parsed[0], exp.Select):
+        raise FVError(SQL_REJECTED, "one SELECT statement only")
+    root = parsed[0]
+    if root.find(*_WRITE_NODES) is not None:
+        raise FVError(SQL_REJECTED, "statement contains a write")
+    tables, functions = _referenced_tables(root)
+    if functions:
+        raise FVError(SQL_NOT_ALLOWLISTED, f"table functions are not allowlisted: {', '.join(sorted(functions))}")
     if not tables:
         raise FVError(SQL_REJECTED, "query must read fv.<table>")
-    bad = tables - ALLOWED_TABLES
+    bad = {t for t in tables if t not in ALLOWED_TABLES}
     if bad:
         raise FVError(SQL_NOT_ALLOWLISTED, f"table not allowlisted: {', '.join(sorted(bad))}")
-    if not re.search(r"\blimit\s+\d+\s*$", s, re.IGNORECASE):
+    if root.args.get("limit") is None:
         s = f"{s}\nLIMIT {MAX_ROWS}"
     return s
 
