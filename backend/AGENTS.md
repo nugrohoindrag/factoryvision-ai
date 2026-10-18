@@ -61,6 +61,21 @@ client libraries read that name themselves.
 Two variables are still read via `os.environ.get` in `app/db/engine.py` and are not
 covered by that guard: `FV_LOCAL_DB` and `FV_DATABASE_URL`. Treat them as debt.
 
+## DuckDB is opened with external access off
+
+`make_engine` passes `enable_external_access=false`. DuckDB's `read_csv`,
+`read_parquet` and `read_text` reach the filesystem from inside SQL, so a
+guardrail that inspects text is only one layer; this is the other.
+
+`build_local.py` is the single caller that opts out with
+`allow_external_access=True`, because it loads the seed CSVs through a temp
+view. Opening the local warehouse with external access on would make
+`just db-build` fail.
+
+DuckDB refuses two connections to the same file with different configuration.
+If you add a test that needs a different config, give it its own file rather
+than reusing `data/local/fv.duckdb`.
+
 ## Migrations
 
 `migrations/**` is `deny` for a reason: the migration history is the contract with
