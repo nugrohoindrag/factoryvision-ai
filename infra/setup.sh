@@ -25,6 +25,10 @@ for role in roles/aiplatform.user roles/bigquery.dataViewer roles/bigquery.jobUs
   gcloud projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$SA" --role "$role" --condition=None >/dev/null
 done
 
+# New projects no longer grant the Compute Engine default account (which Cloud Build uses) any role.
+BUILD_SA="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')-compute@developer.gserviceaccount.com"
+gcloud projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$BUILD_SA" --role roles/cloudbuild.builds.builder --condition=None >/dev/null
+
 echo "== Artifact Registry"
 gcloud artifacts repositories describe fv --location "$REGION" >/dev/null 2>&1 || \
   gcloud artifacts repositories create fv --repository-format docker --location "$REGION"
