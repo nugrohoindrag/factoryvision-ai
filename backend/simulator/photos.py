@@ -66,7 +66,64 @@ def build(raw_dir: Path | None = None, out: Path = OUT, amap_path: Path = RAW / 
     return catalog
 
 
+# synthetic-defects/labels.json class -> plant.DEFECT_CLASSES code
+DEFECT_CODES = {
+    "Scratch": "SCRATCH",
+    "Bubble/waviness": "BUBBLE",
+    "Dust seed": "DUST_SEED",
+    "Sag/run": "SAG_RUN",
+    "Orange peel": "ORANGE_PEEL",
+    "Blister": "BLISTER",
+}
+
+
+def build_defects(out: Path = OUT, raw: Path = RAW / "synthetic-defects", amap_path: Path = RAW / "anonymization-map.json") -> list[dict[str, Any]]:
+    """Add the defect images to the catalog. They are procedurally rendered defects on real Vidad photos, so each entry
+    says `synthetic: true` and the UI labels it. Only images whose source photo is a reviewed demo photo are kept, and
+    they are never used as clean QC references."""
+    amap = json.loads(amap_path.read_text(encoding="utf-8"))
+    models = {_norm(k): v for k, v in amap["models"].items()}
+    colors = {k: v for k, v in amap["colors"].items() if not k.startswith("_")}
+    catalog = [c for c in load(out) if not c.get("synthetic")]
+    reviewed = {c["photo_id"]: c for c in catalog if c.get("reviewed")}
+    added = []
+    for lab in json.loads((raw / "labels.json").read_text(encoding="utf-8")):
+        code = DEFECT_CODES.get(str(lab.get("class")))
+        m = _FILE.match(Path(str(lab.get("source", ""))).stem)
+        if not code or not m:
+            continue
+        num, real_model, label = m.groups()
+        base = reviewed.get(f"P{int(num):03d}")
+        model = models.get(_norm(real_model))
+        lm = _LABEL.match(label.upper())
+        if base is None or not model or not lm or "sku_front" not in model or colors.get(lm.group(2)) != base["color"]:
+            continue
+        photo_id = f"D{str(lab['id'])[:3]}"
+        name = f"{photo_id}_{base['sku']}_{base['color']}_{code}.png"
+        shutil.copyfile(raw / str(lab["full"]), out / name)
+        added.append(
+            {
+                "photo_id": photo_id,
+                "file": name,
+                "sku": base["sku"],
+                "model": base["model"],
+                "position": base["position"],
+                "color": base["color"],
+                "defect_code": code,
+                "synthetic": True,
+                "source_photo": base["photo_id"],
+                "reviewed": True,
+            }
+        )
+    (out / "catalog.json").write_text(json.dumps(catalog + added, indent=1), encoding="utf-8")
+    return added
+
+
 def main() -> None:
+    if sys.argv[1:] == ["defects"]:
+        added = build_defects()
+        sys.stdout.write(f"{len(added)} synthetic defect photos -> {OUT}\n")
+        return
     cat = build()
     by_sku: dict[str, int] = {}
     for c in cat:

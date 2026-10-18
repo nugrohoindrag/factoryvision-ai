@@ -21,6 +21,7 @@ import LossDetailPage from "./pages/LossDetail";
 import WorkOrdersPage from "./pages/WorkOrders";
 import OutboxPage from "./pages/Outbox";
 import AccountPage from "./pages/Account";
+import LandingPage from "./pages/Landing";
 import AdminRegistrationsPage from "./pages/AdminRegistrations";
 import { AuthProvider, useAuth } from "./lib/auth";
 
@@ -112,7 +113,7 @@ function SideNav({ open, onNavigate }: { open: boolean; onNavigate: () => void }
 function AccountChip() {
   const { enabled, user, account } = useAuth();
   if (!enabled) return null;
-  if (!user) return <NavLink to="/account" className="ghost">Sign in</NavLink>;
+  if (!user) return <NavLink to="/welcome" className="ghost">Sign up / Sign in</NavLink>;
   return (
     <span className="row">
       {account?.is_admin && <NavLink to="/admin/registrations">Registrations</NavLink>}
@@ -187,7 +188,10 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <AppProvider>
-          <Shell />
+          <Routes>
+            <Route path="/welcome" element={<LandingPage />} />
+            <Route path="/*" element={<Shell />} />
+          </Routes>
         </AppProvider>
       </AuthProvider>
     </BrowserRouter>

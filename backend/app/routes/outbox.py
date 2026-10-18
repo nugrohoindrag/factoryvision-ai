@@ -3,7 +3,7 @@ from typing import Any
 from fastapi import APIRouter, Request
 from fastapi.responses import Response
 
-from app import outbox
+from app import outbox, sustainability
 from app.briefing import briefing
 from app.session import SessionId, user_label
 
@@ -20,6 +20,17 @@ def list_outbox(sid: SessionId) -> dict[str, Any]:
 def email_briefing(request: Request, sid: SessionId) -> dict[str, Any]:
     """The morning shift briefing to the plant manager (Cloud Scheduler can call this every morning)."""
     return outbox.shift_briefing(sid, briefing(), actor=user_label(request)) or {"status": "failed"}
+
+
+@router.get("/sustainability")
+def get_sustainability(sid: SessionId) -> dict[str, Any]:
+    return sustainability.report(sid)
+
+
+@router.post("/outbox/sustainability")
+def email_sustainability(request: Request, sid: SessionId) -> dict[str, Any]:
+    """The waste and energy report to management (monthly on Cloud Scheduler, or on demand)."""
+    return outbox.sustainability_report(sid, sustainability.report(sid), actor=user_label(request)) or {"status": "failed"}
 
 
 @router.post("/outbox/{email_id}/send")

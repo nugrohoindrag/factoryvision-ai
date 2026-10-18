@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, Kpi, Source, Status, pct } from "../components/ui";
+import { errorText, post } from "../lib/api";
 import { formatIdr, formatIdrCompact } from "../lib/format";
 import { useApp, useData } from "../lib/store";
 
@@ -13,6 +15,46 @@ type Briefing = {
 
 const SEVERITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
 const MODULE_PATH: Record<string, string> = { mes: "/mes", material: "/material", delivery: "/delivery", quality: "/quality" };
+
+type Period = { from: string; to: string; scrap_kg: number; scrap_rate_pct: number | null; scrap_idr: number; kwh: number; energy_idr: number; co2e_kg: number; kwh_per_good_unit: number | null };
+type Totals = { rupiah_idr: number; scrap_kg: number; kwh: number; co2e_kg: number; count: number };
+type SustainabilityReport = { window_days: number; current: Period; change_pct: Record<string, number | null>; decisions: { approved: Totals; pending: Totals }; source: string };
+
+const trend = (v: number | null | undefined) => (v == null ? "" : `${v > 0 ? "+" : ""}${v}% vs previous 4 weeks`);
+
+/** Waste reduction: scrap, energy and CO2e of the last four weeks, and what the agents' decisions save. */
+function Sustainability() {
+  const { data } = useData<SustainabilityReport>("/api/sustainability");
+  const [sent, setSent] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (!data) return null;
+  const c = data.current;
+  const ap = data.decisions.approved;
+  const pe = data.decisions.pending;
+  const email = async () => {
+    setBusy(true);
+    try {
+      const r = await post<{ status: string; reason: string | null }>("/api/outbox/sustainability");
+      setSent(r.status === "sent" ? "Sent to management." : `In the Outbox (${r.reason ?? r.status}).`);
+    } catch (e) {
+      setSent(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card title={`Waste and energy · ${c.from} to ${c.to}`} actions={<button disabled={busy} onClick={email}>Email to management</button>}>
+      <div className="kpis">
+        <Kpi label="Molding scrap" value={`${c.scrap_kg.toLocaleString()} kg`} sub={`${c.scrap_rate_pct ?? "–"}% · ${formatIdrCompact(c.scrap_idr)} resin · ${trend(data.change_pct.scrap_kg)}`} tone={(data.change_pct.scrap_kg ?? 0) > 5 ? "bad" : "good"} />
+        <Kpi label="Electricity" value={`${c.kwh.toLocaleString()} kWh`} sub={`${formatIdrCompact(c.energy_idr)} · ${trend(data.change_pct.kwh)}`} />
+        <Kpi label="CO2e" value={`${Math.round(c.co2e_kg / 1000).toLocaleString()} t`} sub={trend(data.change_pct.co2e_kg)} />
+        <Kpi label="Saved by approved decisions / month" value={`${ap.scrap_kg.toLocaleString()} kg scrap`} sub={`${ap.kwh.toLocaleString()} kWh · ${ap.co2e_kg.toLocaleString()} kg CO2e · ${ap.count} decision(s); ${pe.count} waiting (${pe.scrap_kg.toLocaleString()} kg)`} tone={ap.count ? "good" : undefined} />
+      </div>
+      {sent && <p className="muted small">{sent}</p>}
+      <Source>{data.source}</Source>
+    </Card>
+  );
+}
 
 export default function BriefingPage() {
   const { data, error, loading } = useData<Briefing>("/api/briefing");
@@ -82,6 +124,7 @@ export default function BriefingPage() {
               </ul>
             </Card>
           </div>
+          <Sustainability />
           <Card title="The disruption">
             <p>
               OEM-A raises its <strong>FB-ARKA</strong> front-bumper order by 40%, the PP-EPDM-T20 resin vendor is late, and injection molding machine

@@ -7,7 +7,7 @@
   "position": "Front",
   "color": "C02",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P009",
@@ -17,7 +17,7 @@
   "position": "Front",
   "color": "C02",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P010",
@@ -27,7 +27,7 @@
   "position": "Rear",
   "color": "C02",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P011",
@@ -37,7 +37,7 @@
   "position": "Front",
   "color": "C02",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P012",
@@ -47,7 +47,7 @@
   "position": "Rear",
   "color": "C02",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P013",
@@ -57,7 +57,7 @@
   "position": "Front",
   "color": "C04",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P014",
@@ -67,7 +67,7 @@
   "position": "Front",
   "color": "C04",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P015",
@@ -77,7 +77,7 @@
   "position": "Front",
   "color": "C04",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P016",
@@ -87,7 +87,7 @@
   "position": "Front",
   "color": "C04",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P017",
@@ -97,7 +97,7 @@
   "position": "Rear",
   "color": "C04",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P018",
@@ -107,7 +107,7 @@
   "position": "Rear",
   "color": "C04",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P019",
@@ -117,7 +117,7 @@
   "position": "Front",
   "color": "C07",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P020",
@@ -127,7 +127,7 @@
   "position": "Rear",
   "color": "C07",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P021",
@@ -137,7 +137,7 @@
   "position": "Rear",
   "color": "C07",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P022",
@@ -147,7 +147,7 @@
   "position": "Front",
   "color": "C07",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P023",
@@ -157,7 +157,7 @@
   "position": "Rear",
   "color": "C08",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P024",
@@ -167,7 +167,7 @@
   "position": "Rear",
   "color": "C08",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P025",
@@ -177,7 +177,7 @@
   "position": "Front",
   "color": "C08",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P026",
@@ -187,7 +187,7 @@
   "position": "Front",
   "color": "C08",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P027",
@@ -197,7 +197,7 @@
   "position": "Front",
   "color": "C08",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P028",
@@ -207,7 +207,7 @@
   "position": "Rear",
   "color": "C08",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P029",
@@ -217,7 +217,7 @@
   "position": "Front",
   "color": "C09",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P030",
@@ -227,7 +227,7 @@
   "position": "Rear",
   "color": "C09",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P031",
@@ -237,7 +237,7 @@
   "position": "Front",
   "color": "C09",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P032",
@@ -247,7 +247,7 @@
   "position": "Rear",
   "color": "C05",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P033",
@@ -257,7 +257,7 @@
   "position": "Rear",
   "color": "C05",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P034",
@@ -267,7 +267,7 @@
   "position": "Rear",
   "color": "C09",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P071",
@@ -277,7 +277,7 @@
   "position": "Front",
   "color": "C01",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P072",
@@ -287,7 +287,7 @@
   "position": "Front",
   "color": "C01",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P073",
@@ -297,7 +297,7 @@
   "position": "Front",
   "color": "C01",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P074",
@@ -307,7 +307,7 @@
   "position": "Front",
   "color": "C01",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P075",
@@ -317,7 +317,7 @@
   "position": "Front",
   "color": "C01",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P076",
@@ -327,7 +327,7 @@
   "position": "Front",
   "color": "C01",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P077",
@@ -337,7 +337,7 @@
   "position": "Front",
   "color": "C06",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P078",
@@ -347,7 +347,7 @@
   "position": "Front",
   "color": "C06",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P079",
@@ -357,7 +357,8 @@
   "position": "Rear",
   "color": "C17",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": false,
+  "review_note": "photo colour does not match the label; excluded"
  },
  {
   "photo_id": "P080",
@@ -367,7 +368,7 @@
   "position": "Front",
   "color": "C06",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P081",
@@ -377,7 +378,7 @@
   "position": "Rear",
   "color": "C06",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P082",
@@ -387,7 +388,7 @@
   "position": "Rear",
   "color": "C17",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P083",
@@ -397,7 +398,7 @@
   "position": "Front",
   "color": "C17",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P084",
@@ -407,7 +408,7 @@
   "position": "Front",
   "color": "C17",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P085",
@@ -417,7 +418,7 @@
   "position": "Front",
   "color": "C17",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P086",
@@ -427,7 +428,7 @@
   "position": "Front",
   "color": "C17",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P087",
@@ -437,7 +438,7 @@
   "position": "Rear",
   "color": "C17",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P088",
@@ -447,7 +448,7 @@
   "position": "Rear",
   "color": "C16",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P089",
@@ -457,7 +458,7 @@
   "position": "Front",
   "color": "C16",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P090",
@@ -467,7 +468,7 @@
   "position": "Rear",
   "color": "C16",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P091",
@@ -477,7 +478,7 @@
   "position": "Front",
   "color": "C16",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P092",
@@ -487,7 +488,7 @@
   "position": "Front",
   "color": "C16",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P093",
@@ -497,7 +498,7 @@
   "position": "Rear",
   "color": "C16",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P129",
@@ -507,7 +508,7 @@
   "position": "Front",
   "color": "C01",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P130",
@@ -517,7 +518,7 @@
   "position": "Front",
   "color": "C02",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P132",
@@ -527,7 +528,7 @@
   "position": "Rear",
   "color": "C12",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P133",
@@ -537,7 +538,7 @@
   "position": "Front",
   "color": "C01",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P134",
@@ -547,7 +548,7 @@
   "position": "Front",
   "color": "C02",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P135",
@@ -557,7 +558,8 @@
   "position": "Rear",
   "color": "C11",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": false,
+  "review_note": "photo colour does not match the label; excluded"
  },
  {
   "photo_id": "P136",
@@ -567,7 +569,7 @@
   "position": "Front",
   "color": "C04",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P137",
@@ -577,7 +579,7 @@
   "position": "Front",
   "color": "C04",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P138",
@@ -587,7 +589,7 @@
   "position": "Front",
   "color": "C12",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P139",
@@ -597,7 +599,7 @@
   "position": "Rear",
   "color": "C06",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P140",
@@ -607,7 +609,7 @@
   "position": "Front",
   "color": "C12",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P141",
@@ -617,7 +619,7 @@
   "position": "Front",
   "color": "C06",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P142",
@@ -627,7 +629,7 @@
   "position": "Front",
   "color": "C06",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P143",
@@ -637,7 +639,7 @@
   "position": "Front",
   "color": "C11",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P144",
@@ -647,7 +649,8 @@
   "position": "Rear",
   "color": "C04",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": false,
+  "review_note": "photo colour does not match the label; excluded"
  },
  {
   "photo_id": "P145",
@@ -657,7 +660,7 @@
   "position": "Front",
   "color": "C08",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P146",
@@ -667,7 +670,7 @@
   "position": "Rear",
   "color": "C10",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P147",
@@ -677,7 +680,7 @@
   "position": "Front",
   "color": "C11",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P148",
@@ -687,7 +690,7 @@
   "position": "Front",
   "color": "C08",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P149",
@@ -697,7 +700,7 @@
   "position": "Front",
   "color": "C10",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P150",
@@ -707,7 +710,7 @@
   "position": "Rear",
   "color": "C01",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P151",
@@ -717,7 +720,7 @@
   "position": "Front",
   "color": "C10",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P152",
@@ -727,7 +730,7 @@
   "position": "Rear",
   "color": "C11",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P153",
@@ -737,7 +740,7 @@
   "position": "Rear",
   "color": "C04",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P154",
@@ -747,7 +750,7 @@
   "position": "Rear",
   "color": "C10",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P155",
@@ -757,7 +760,7 @@
   "position": "Rear",
   "color": "C02",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P156",
@@ -767,7 +770,7 @@
   "position": "Rear",
   "color": "C01",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P157",
@@ -777,7 +780,7 @@
   "position": "Rear",
   "color": "C06",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P158",
@@ -787,7 +790,7 @@
   "position": "Rear",
   "color": "C06",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P159",
@@ -797,7 +800,7 @@
   "position": "Rear",
   "color": "C01",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P160",
@@ -807,7 +810,7 @@
   "position": "Rear",
   "color": "C02",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P161",
@@ -817,7 +820,7 @@
   "position": "Rear",
   "color": "C12",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P162",
@@ -827,7 +830,7 @@
   "position": "Rear",
   "color": "C12",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P163",
@@ -837,7 +840,7 @@
   "position": "Rear",
   "color": "C10",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P164",
@@ -847,7 +850,7 @@
   "position": "Rear",
   "color": "C04",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P165",
@@ -857,7 +860,7 @@
   "position": "Rear",
   "color": "C11",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P166",
@@ -867,7 +870,7 @@
   "position": "Rear",
   "color": "C08",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P167",
@@ -877,7 +880,7 @@
   "position": "Rear",
   "color": "C08",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P168",
@@ -887,7 +890,7 @@
   "position": "Front",
   "color": "C07",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P169",
@@ -897,7 +900,7 @@
   "position": "Front",
   "color": "C09",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P170",
@@ -907,7 +910,8 @@
   "position": "Rear",
   "color": "C05",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": false,
+  "review_note": "photo colour does not match the label; excluded"
  },
  {
   "photo_id": "P171",
@@ -917,7 +921,7 @@
   "position": "Rear",
   "color": "C09",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P172",
@@ -927,7 +931,7 @@
   "position": "Rear",
   "color": "C07",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P174",
@@ -937,7 +941,7 @@
   "position": "Rear",
   "color": "C06",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
  },
  {
   "photo_id": "P175",
@@ -947,6 +951,294 @@
   "position": "Front",
   "color": "C06",
   "defect_code": null,
-  "reviewed": false
+  "reviewed": true
+ },
+ {
+  "photo_id": "D002",
+  "file": "D002_FB-ARKA_C02_SAG_RUN.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C02",
+  "defect_code": "SAG_RUN",
+  "synthetic": true,
+  "source_photo": "P008",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D003",
+  "file": "D003_RB-ARKA_C02_ORANGE_PEEL.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C02",
+  "defect_code": "ORANGE_PEEL",
+  "synthetic": true,
+  "source_photo": "P012",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D004",
+  "file": "D004_FB-ARKA_C04_BLISTER.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C04",
+  "defect_code": "BLISTER",
+  "synthetic": true,
+  "source_photo": "P015",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D005",
+  "file": "D005_FB-ARKA_C07_BUBBLE.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C07",
+  "defect_code": "BUBBLE",
+  "synthetic": true,
+  "source_photo": "P019",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D007",
+  "file": "D007_FB-ARKA_C08_SCRATCH.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C08",
+  "defect_code": "SCRATCH",
+  "synthetic": true,
+  "source_photo": "P026",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D008",
+  "file": "D008_FB-ARKA_C09_SAG_RUN.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C09",
+  "defect_code": "SAG_RUN",
+  "synthetic": true,
+  "source_photo": "P029",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D009",
+  "file": "D009_RB-ARKA_C05_ORANGE_PEEL.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C05",
+  "defect_code": "ORANGE_PEEL",
+  "synthetic": true,
+  "source_photo": "P033",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D020",
+  "file": "D020_FB-CITRA_C01_SAG_RUN.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C01",
+  "defect_code": "SAG_RUN",
+  "synthetic": true,
+  "source_photo": "P072",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D021",
+  "file": "D021_FB-CITRA_C01_ORANGE_PEEL.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C01",
+  "defect_code": "ORANGE_PEEL",
+  "synthetic": true,
+  "source_photo": "P076",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D023",
+  "file": "D023_FB-CITRA_C17_BUBBLE.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C17",
+  "defect_code": "BUBBLE",
+  "synthetic": true,
+  "source_photo": "P083",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D024",
+  "file": "D024_FB-CITRA_C17_DUST_SEED.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C17",
+  "defect_code": "DUST_SEED",
+  "synthetic": true,
+  "source_photo": "P086",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D025",
+  "file": "D025_RB-CITRA_C16_SCRATCH.png",
+  "sku": "RB-CITRA",
+  "model": "CITRA",
+  "position": "Rear",
+  "color": "C16",
+  "defect_code": "SCRATCH",
+  "synthetic": true,
+  "source_photo": "P090",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D026",
+  "file": "D026_RB-CITRA_C16_SAG_RUN.png",
+  "sku": "RB-CITRA",
+  "model": "CITRA",
+  "position": "Rear",
+  "color": "C16",
+  "defect_code": "SAG_RUN",
+  "synthetic": true,
+  "source_photo": "P093",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D036",
+  "file": "D036_FB-BROMO_C01_DUST_SEED.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C01",
+  "defect_code": "DUST_SEED",
+  "synthetic": true,
+  "source_photo": "P129",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D037",
+  "file": "D037_RB-BROMO_C12_SCRATCH.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C12",
+  "defect_code": "SCRATCH",
+  "synthetic": true,
+  "source_photo": "P132",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D038",
+  "file": "D038_FB-BROMO_C04_SAG_RUN.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C04",
+  "defect_code": "SAG_RUN",
+  "synthetic": true,
+  "source_photo": "P136",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D039",
+  "file": "D039_RB-BROMO_C06_ORANGE_PEEL.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C06",
+  "defect_code": "ORANGE_PEEL",
+  "synthetic": true,
+  "source_photo": "P139",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D040",
+  "file": "D040_FB-BROMO_C11_BLISTER.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C11",
+  "defect_code": "BLISTER",
+  "synthetic": true,
+  "source_photo": "P143",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D041",
+  "file": "D041_FB-BROMO_C11_BUBBLE.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C11",
+  "defect_code": "BUBBLE",
+  "synthetic": true,
+  "source_photo": "P147",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D042",
+  "file": "D042_RB-BROMO_C01_DUST_SEED.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C01",
+  "defect_code": "DUST_SEED",
+  "synthetic": true,
+  "source_photo": "P150",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D043",
+  "file": "D043_RB-BROMO_C10_SCRATCH.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C10",
+  "defect_code": "SCRATCH",
+  "synthetic": true,
+  "source_photo": "P154",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D046",
+  "file": "D046_RB-BROMO_C04_BLISTER.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C04",
+  "defect_code": "BLISTER",
+  "synthetic": true,
+  "source_photo": "P164",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D047",
+  "file": "D047_FB-ARKA_C07_BUBBLE.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C07",
+  "defect_code": "BUBBLE",
+  "synthetic": true,
+  "source_photo": "P168",
+  "reviewed": true
+ },
+ {
+  "photo_id": "D048",
+  "file": "D048_RB-ARKA_C09_DUST_SEED.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C09",
+  "defect_code": "DUST_SEED",
+  "synthetic": true,
+  "source_photo": "P171",
+  "reviewed": true
  }
 ]

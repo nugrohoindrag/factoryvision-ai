@@ -79,7 +79,7 @@ def qc_inspections(sid: SessionId) -> dict[str, Any]:
 @router.get("/photos")
 def list_photos() -> dict[str, Any]:
     keys = ("photo_id", "file", "sku", "model", "position", "color", "defect_code")
-    return {"photos": [{k: p[k] for k in keys} for p in photos.catalog()]}
+    return {"photos": [{**{k: p[k] for k in keys}, "synthetic": bool(p.get("synthetic"))} for p in photos.catalog()]}
 
 
 @router.get("/photos/{file}")

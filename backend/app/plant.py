@@ -78,20 +78,21 @@ class Product:
     price_idr: int
 
 
+# Plain colour names read from the Vidad photos (fictional codes; no OEM paint names). QC prompts send both.
 COLOR_NAMES: dict[str, str] = {
-    "C01": "C01",
-    "C02": "C02",
-    "C04": "C04",
-    "C05": "C05",
-    "C06": "C06",
-    "C07": "C07",
-    "C08": "C08",
-    "C09": "C09",
-    "C10": "C10",
-    "C11": "C11",
-    "C12": "C12",
-    "C16": "C16",
-    "C17": "C17",
+    "C01": "solid white",
+    "C02": "pearl white (warmer, pearly sheen)",
+    "C04": "light silver metallic",
+    "C05": "dark grey metallic",
+    "C06": "black",
+    "C07": "black mica",
+    "C08": "deep red metallic",
+    "C09": "bronze-grey (greige) metallic",
+    "C10": "dark green-grey metallic",
+    "C11": "orange-red metallic",
+    "C12": "dark blue metallic",
+    "C16": "yellow",
+    "C17": "bright solid red",
 }
 
 ARKA_COLORS = ("C02", "C04", "C07", "C08", "C09", "C05")

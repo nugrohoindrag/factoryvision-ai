@@ -94,7 +94,7 @@ def test_lifecycle_guards_name_every_unmet_condition(sid: str) -> None:
     assert started["status"] == "In Production"
     assert started["actual_start"] == "2027-02-01T07:00+07:00"
     assert _err(_move(sid, paint, "In Production")) == "FV-PP-019"  # strict: started is not enough, it must be completed
-    _strict(sid, on=False)  # off allows any order (capacity-decisions.md D2)
+    _strict(sid, on=False)  # off allows any order
     r = _move(sid, mold, "Completed")
     assert any("No output reported" in x for x in r.json()["error"]["detail"]["reasons"])
     assert _output(sid, mold, 120, reject=3, scrap=1).json()["output_qty"] == 120

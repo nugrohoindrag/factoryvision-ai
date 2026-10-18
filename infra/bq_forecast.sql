@@ -1,6 +1,8 @@
 -- BigQuery ML demand forecast (DF-1): one ARIMA_PLUS model over daily demand per SKU.
 -- Same rules as the local fallback in backend/app/tools/forecast.py: cancelled orders excluded,
 -- days without orders are zero, history ends the day before the demo "today" (2027-02-01).
+-- Trained on the last 42 days, the same window as the local model (FIT_DAYS): over all 90 days the flat first seven
+-- weeks damp the six-week FB-ARKA ramp to about +10%; over 42 days the trend is the one the plant is living now.
 -- DF-4: the model is registered in Vertex AI Model Registry as fv_demand_arima (registry only;
 -- ARIMA_PLUS cannot be deployed to a Vertex AI endpoint, so nothing is served from there).
 -- Whoever runs this needs Vertex AI model permissions (project Owner has them; setup.sh enables the API).
@@ -19,7 +21,7 @@ OPTIONS (
   vertex_ai_model_id = 'fv_demand_arima'
 ) AS
 WITH days AS (
-  SELECT d FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2026-11-03', DATE '2027-01-31')) AS d
+  SELECT d FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2026-12-21', DATE '2027-01-31')) AS d
 ),
 skus AS (SELECT DISTINCT sku FROM `fv.dim_product`),
 demand AS (
@@ -38,7 +40,7 @@ LEFT JOIN demand ON demand.d = days.d AND demand.sku = skus.sku;
 -- CREATE OR REPLACE MODEL `fv.demand_arima_backtest`
 -- OPTIONS (model_type = 'ARIMA_PLUS', time_series_timestamp_col = 'd', time_series_data_col = 'qty',
 --          time_series_id_col = 'sku', data_frequency = 'DAILY', holiday_region = 'ID', auto_arima = TRUE) AS
--- <same SELECT as above, with GENERATE_DATE_ARRAY(DATE '2026-11-03', DATE '2027-01-03')>;
+-- <same SELECT as above, with GENERATE_DATE_ARRAY(DATE '2026-11-23', DATE '2027-01-03')>;
 -- SELECT * FROM ML.EVALUATE(MODEL `fv.demand_arima_backtest`, (<same SELECT for 2027-01-04..2027-01-31>), STRUCT(TRUE AS perform_aggregation, 28 AS horizon));
 --
 -- Snapshots (DF-R20..R27) are not stored in BigQuery: the warehouse is read-only, so each generate copies the

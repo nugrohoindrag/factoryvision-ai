@@ -282,7 +282,7 @@ def evaluate(by_id: dict[str, dict[str, Any]], plan: dict[str, Any], w: dict[str
             )
             if earlier:
                 reasons.append(f"Strict process sequence is on: the earlier process ({', '.join(earlier)}) is not completed.")
-        # Strict off allows any order (capacity-decisions.md D2); what a process can take in is still capped when output is reported.
+        # Strict off allows any order; what a process can take in is still capped when output is reported.
     if to == "Completed":
         if processed(w) <= 0:
             reasons.append("No output reported yet. Report what was produced before completing.")

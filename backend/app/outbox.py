@@ -485,6 +485,45 @@ def shift_briefing(session_id: str, brief: Doc, actor: str | None = None) -> Doc
     return _guarded("the shift briefing", run)
 
 
+def sustainability_report(session_id: str, rep: Doc, actor: str | None = None) -> Doc | None:
+    def run() -> Doc:
+        cur, ch = rep["current"], rep["change_pct"]
+
+        def line(label: str, key: str, unit: str) -> str:
+            delta = ch.get(key)
+            trend = "" if delta is None else f" ({'+' if delta > 0 else ''}{delta}% vs the previous {rep['window_days']} days)"
+            return f"- {label}: {cur[key]:,} {unit}{trend}"
+
+        ap, pe = rep["decisions"]["approved"], rep["decisions"]["pending"]
+        lines = [
+            "Hello management,",
+            "",
+            f"Waste and energy of the Vidad plant, {cur['from']} to {cur['to']}:",
+            "",
+            line("Molding scrap", "scrap_kg", "kg"),
+            f"- Scrap rate: {cur['scrap_rate_pct']}% · resin value lost Rp{cur['scrap_idr']:,}",
+            line("Electricity", "kwh", "kWh"),
+            line("CO2e", "co2e_kg", "kg"),
+            f"- Energy per good bumper: {cur['kwh_per_good_unit']} kWh",
+            "",
+            f"Approved agent decisions ({ap['count']}) save per month: {ap['scrap_kg']:,} kg scrap, {ap['kwh']:,} kWh, "
+            f"{ap['co2e_kg']:,} kg CO2e, Rp{ap['rupiah_idr']:,}.",
+            f"Waiting for approval ({pe['count']}): {pe['scrap_kg']:,} kg scrap, {pe['kwh']:,} kWh, {pe['co2e_kg']:,} kg CO2e.",
+            "",
+            f"Source: {rep['source']}.",
+            *SIGNATURE,
+        ]
+        mail = {
+            "to": [address("gm")],
+            "cc": [address("plant-manager")],
+            "subject": f"[Vidad] Sustainability report {cur['from']} to {cur['to']}",
+            "body": "\n".join(lines),
+        }
+        return _save(session_id, mail, kind="sustainability", action_id=None, plan_id=None, agent="orchestrator", roles=["gm", "plant-manager"], actor=actor)
+
+    return _guarded("the sustainability report", run)
+
+
 def registration_request(account: Doc) -> Doc | None:
     def run() -> Doc:
         lines = [

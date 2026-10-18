@@ -97,7 +97,8 @@ def read_vendor_email(text: str) -> dict[str, Any]:
 
 
 def references(sku: str, color: str, exclude: str | None = None) -> list[dict[str, Any]]:
-    cat = [p for p in photos.catalog() if p["photo_id"] != exclude]
+    # references are clean real photos only: never a defect image (real or synthetic)
+    cat = [p for p in photos.catalog() if p["photo_id"] != exclude and not p.get("defect_code")]
     same = [p for p in cat if p["sku"] == sku and p["color"] == color][:1]
     other = [p for p in cat if p["sku"] == sku and p["color"] != color][:1]
     return same + other
@@ -112,11 +113,12 @@ def inspect_photo(image: bytes, mime_type: str, expected_sku: str, expected_colo
     contents: list[Any] = []
     for k, r in enumerate(refs):
         contents += [
-            f"Reference {k + 1}: {r['sku']} ({r['model']} {r['position']}) in colour {r['color']}.",
+            f"Reference {k + 1}: {r['sku']} ({r['model']} {r['position']}) in colour {r['color']} ({plant.COLOR_NAMES.get(r['color'], r['color'])}).",
             genai.part_bytes(photos.read(r), photos.mime_type(r)),
         ]
     contents += [
-        f"Inspected bumper. The order line expects {expected_sku} in colour {expected_color}" + (" (reference 1 shows that SKU and colour)." if refs else "."),
+        f"Inspected bumper. The order line expects {expected_sku} in colour {expected_color} ({plant.COLOR_NAMES.get(expected_color, expected_color)})"
+        + (" (reference 1 shows that SKU and colour)." if refs else "."),
         genai.part_bytes(image, mime_type),
     ]
     ng = "; ".join(f"{d[0]} = {d[2]} ({d[3]})" for d in plant.DEFECT_CLASSES)
@@ -125,7 +127,8 @@ def inspect_photo(image: bytes, mime_type: str, expected_sku: str, expected_colo
         contents,
         PHOTO_SCHEMA,
         "You are a QC inspector for painted car bumpers. Compare the inspected bumper with the references: "
-        "same model and position? same paint colour? Then list visible paint or molding defects using only these codes: "
+        "same model and position? same paint colour? Judge colour by hue and lightness; white vs pearl white and silver vs grey "
+        "are different colours. Then list visible paint or molding defects using only these codes: "
         f"{ng}. Report no defect unless it is clearly visible.",
     )
     color_ok = out["same_color_as_reference"]

@@ -7,7 +7,7 @@ import { useApp, useData } from "../lib/store";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Any = any;
-type Photo = { photo_id: string; file: string; sku: string; model: string; position: string; color: string };
+type Photo = { photo_id: string; file: string; sku: string; model: string; position: string; color: string; defect_code: string | null; synthetic: boolean };
 
 export const VERDICT_TONE: Record<string, "good" | "bad" | "warn"> = { OK: "good", WRONG_COLOR: "bad", WRONG_PART: "bad", SCRAP: "bad" };
 
@@ -51,9 +51,14 @@ export function PhotoInspect() {
             <label>
               Photo{" "}
               <select value={sel.photo_id} onChange={(e) => (setPhotoId(e.target.value), setFile(null), setRes(null))}>
-                {list.map((p) => <option key={p.photo_id} value={p.photo_id}>{p.photo_id} · {p.sku} {p.color}</option>)}
+                {list.map((p) => <option key={p.photo_id} value={p.photo_id}>{p.photo_id} · {p.sku} {p.color}{p.defect_code ? ` · ${p.defect_code}${p.synthetic ? " (synthetic)" : ""}` : ""}</option>)}
               </select>
             </label>
+            {!file && sel.synthetic && (
+              <p className="small">
+                <Badge tone="warn">Synthetic defect</Badge> A {sel.defect_code} rendered on a real Vidad photo, used to test the inspector. Real defect photos replace these in production.
+              </p>
+            )}
             <label>
               Order line expects colour{" "}
               <input value={expected} placeholder={sel.color} onChange={(e) => setExpected(e.target.value.toUpperCase())} size={5} />
