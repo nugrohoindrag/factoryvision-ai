@@ -36,6 +36,7 @@ export type CapacityRow = {
   gap: number;
   status: CapacityStatus;
   uncomputed: { machine_id: string; reason: string }[];
+  proposals: { action_id: string; title: string; status: string }[];
 };
 
 /** Rows as the capacity API sends them; tolerant of `demand_qty` vs `demand` and a nested `capacity`. */
@@ -52,6 +53,7 @@ export function normalizeRow(r: Any): CapacityRow {
     gap: c.gap ?? 0,
     status: c.status ?? r.capacity_status,
     uncomputed: c.uncomputed ?? r.uncomputed ?? [],
+    proposals: r.proposals ?? [],
   };
 }
 
@@ -230,6 +232,28 @@ export default function CapacityPage() {
               Capacity gap on {gaps.map((g) => `${g.sku} (${num(g.gap)} short)`).join(", ")}: demand exceeds total capacity. Material, Purchasing and Delivery are notified; lower the planned
               quantity or add capacity.
             </div>
+          )}
+          {gaps.length > 0 && (
+            <Card title="Proposals for the capacity gap">
+              <ul>
+                {gaps.map((g) => (
+                  <li key={g.sku}>
+                    <strong>{g.sku}</strong>:{" "}
+                    {g.proposals.length > 0 ? (
+                      g.proposals.map((p) => (
+                        <span key={p.action_id}>
+                          {p.title} <em className="muted">({p.status})</em>{" "}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="muted">no proposal yet.</span>
+                    )}{" "}
+                    <Link to="/actions">Open Action Center →</Link>
+                  </li>
+                ))}
+              </ul>
+              <p className="muted small">Proposals come from the agents and need a person to approve them in Action Center. Nothing changes until approved.</p>
+            </Card>
           )}
           {uncomputed.length > 0 && (
             <Card title={`Capacity not computed (${uncomputed.length} machine${uncomputed.length === 1 ? "" : "s"})`} className="warn-rail">
