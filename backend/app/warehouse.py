@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import copy
+import threading
+import time
 from typing import Any
 
 import sqlglot
@@ -86,12 +89,37 @@ def _run(sql: str, params: dict[str, Any] | None) -> list[dict[str, Any]]:
         raise FVError(DATA_WAREHOUSE, detail=str(e.orig)[:300]) from e
 
 
+# Each BigQuery query costs ~1-2 s of job round trip and a page runs several, while the fv tables are a read-only
+# seed. Results are kept for CACHE_TTL_S per (sql, params); fv.plant_events, which Pub/Sub keeps writing, is never cached.
+CACHE_TTL_S = 600
+_CACHE_MAX = 1024
+_cache: dict[tuple[str, str], tuple[float, list[dict[str, Any]]]] = {}
+_cache_lock = threading.Lock()
+
+
+def _cached(sql: str, params: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not is_bigquery() or "plant_events" in sql:
+        return _run(sql, params)
+    key = (sql, repr(sorted((params or {}).items())))
+    now = time.monotonic()
+    with _cache_lock:
+        hit = _cache.get(key)
+    if hit and now - hit[0] < CACHE_TTL_S:
+        return copy.deepcopy(hit[1])
+    rows = _run(sql, params)
+    with _cache_lock:
+        if len(_cache) >= _CACHE_MAX:
+            _cache.clear()
+        _cache[key] = (now, rows)
+    return copy.deepcopy(rows)
+
+
 def query(sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-    return _run(check_sql(sql), params)
+    return _cached(check_sql(sql), params)
 
 
 def bqml_forecast(sku: str, horizon: int) -> list[dict[str, Any]]:
-    return _run(BQML_FORECAST_SQL, {"sku": sku, "horizon": horizon})
+    return _cached(BQML_FORECAST_SQL, {"sku": sku, "horizon": horizon})
 
 
 def is_bigquery() -> bool:
