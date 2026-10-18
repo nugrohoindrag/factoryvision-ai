@@ -78,3 +78,12 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-PUB-001` | 400 | Invalid push message | A Pub/Sub push request is malformed. | Pub/Sub retries; check the publisher. |
 | `FV-PUB-002` | 403 | Push not authorised | The push request's OIDC token is missing or invalid. | Check the subscription's service account. |
 | `FV-SYS-001` | 500 | Internal error | Unexpected server error. | Report the `request_id` from the response headers. |
+| `FV-MAT-001` | 404 | No active BOM | The product has no Active bill of materials in date, so its material need cannot be computed. | Activate a BOM for the SKU in master data; readiness is never computed as zero. |
+| `FV-MAT-002` | 404 | Unknown material | The material id is not in the material master. | Use an id from GET /api/master/materials. |
+| `FV-MAT-003` | 400 | Colour not made for this product | The colour is not one of the colours of the SKU's model. | Pick a colour from GET /api/master/colors for that SKU. |
+| `FV-MAT-004` | 404 | Unknown warehouse | The warehouse id is not in the warehouse master. | Use WH-RM, WH-PNT or WH-CMP (GET /api/master/warehouses). |
+| `FV-MAT-005` | 404 | Unknown BOM | The BOM id is not in master data. | Use a bom_id from GET /api/master/boms. |
+| `FV-MAT-006` | 404 | Unknown product | The SKU is not in the product master. | Use a SKU from the product list. |
+| `FV-MAT-007` | 500 | BOM uses an unknown material | An item of the active BOM points at a material that is not in the material master. | Fix the BOM item in master data; the SKU and material are in the detail. |
+| `FV-MAT-008` | 400 | Unknown material group | The material group filter is not one of the material groups. | Use Resin, Masterbatch, Primer, Basecoat, Clear, Hardener, Thinner, Component or Packaging. |
+| `FV-MAT-009` | 400 | Unknown BOM status | The BOM status filter is not Draft, Active or Inactive. | Use Draft, Active or Inactive. |

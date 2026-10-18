@@ -23,6 +23,7 @@ from app.tools import orders
 INVALID_REQUEST = "FV-REQ-001"
 UNKNOWN_ENTITY = "FV-DATA-001"
 NOT_CANCELLABLE = "FV-ORD-001"
+INVALID_COLOR = "FV-MAT-003"
 
 DOCS = "order_documents"
 MAX_DOC_BYTES = 700_000  # base64 of this stays under the 1 MiB Firestore document limit
@@ -46,6 +47,7 @@ def _now() -> str:
 
 class OrderLineIn(BaseModel):
     sku: str = ""
+    color: str | None = None
     qty: int | None = None
     requested_delivery_date: str | None = None
 
@@ -84,6 +86,8 @@ def _detail(sid: str, o: effects.Overrides, order_number: str) -> dict[str, Any]
 def _checked(body: OrderIn, o: effects.Overrides) -> tuple[dict[str, Any], list[str]]:
     data = body.model_dump()
     errors, warnings = orders.validate_order(data, modules.order_view(o))
+    if any(e["field"].endswith(".color") for e in errors):
+        raise FVError(INVALID_COLOR, "A colour on the order is not made for its product.", {"fields": errors})
     if errors:
         raise FVError(INVALID_REQUEST, "The order has fields to fix.", {"fields": errors})
     return data, warnings

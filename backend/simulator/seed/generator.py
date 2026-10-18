@@ -30,6 +30,8 @@ BAD_LOT_MULT = {"BUBBLE": 6.0, "GAS_MARK": 6.0}
 HUMID_THRESHOLD = 80.0
 HUMID_MULT = {"DUST_SEED": 2.6}
 LATE_ORDER_COUNT = 3
+PLANTED_STOCK = {"B-C07": (615.0, 25.0), "BRK-ARKA-F": (5200.0, 400.0)}
+OPEN_NON_RESIN_POS = [("BRK-ARKA-F", 3500, 1), ("B-C07", 120, 7), ("P1", 2400, 3), ("K1", 1500, 4)]
 
 SHIFTS_PER_MACHINE = {"IMM-04": 3, "IMM-05": 3}
 DEFECT_RATE_PCT = {
@@ -93,6 +95,19 @@ def imm04_cycle(i: int) -> float:
     if i <= 68:
         return start + (knee - start) * i / 68
     return knee + (end - knee) * (i - 68) / (plant.HISTORY_DAYS - 1 - 68)
+
+
+class ColorPicker:
+    def __init__(self) -> None:
+        self.given: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+
+    def pick(self, sku: str, qty: int) -> str:
+        given = self.given[sku]
+        total = sum(given.values()) + qty
+        colors = plant.PRODUCT_BY_SKU[sku].colors
+        best = max(colors, key=lambda c: (total * plant.color_weights(sku)[colors.index(c)] - given[c], -colors.index(c)))
+        given[best] += qty
+        return best
 
 
 def utc(d: date, minute_of_day: float) -> datetime:
@@ -163,8 +178,46 @@ class Generator:
                     "unit": mat.unit,
                     "unit_cost_idr": mat.unit_cost_idr,
                     "safety_stock": mat.safety_stock,
+                    "material_group": mat.material_group,
+                    "color": mat.color,
+                    "reorder_point": mat.reorder_point,
+                    "lead_time_days": mat.lead_time_days,
+                    "default_vendor_id": mat.default_vendor_id,
+                    "default_warehouse_id": mat.default_warehouse_id,
                 }
             )
+        t["dim_warehouse"] = [
+            {
+                "warehouse_id": w.warehouse_id,
+                "warehouse_name": w.warehouse_name,
+                "warehouse_type": w.warehouse_type,
+            }
+            for w in plant.WAREHOUSES
+        ]
+        t["bom_header"] = [
+            {
+                "bom_id": h.bom_id,
+                "sku": h.sku,
+                "version": h.version,
+                "status": h.status,
+                "effective_date": h.effective_date,
+            }
+            for h in plant.BOM_HEADERS
+        ]
+        t["bom_item"] = [
+            {
+                "item_id": f"{item.bom_id}-{item.line_no:03d}",
+                "bom_id": item.bom_id,
+                "line_no": item.line_no,
+                "material_id": item.material_id,
+                "qty_per_unit": item.qty_per_unit,
+                "unit": item.unit,
+                "scrap_pct": item.scrap_pct,
+                "process": item.process,
+                "color": item.color,
+            }
+            for item in plant.BOM_ITEMS
+        ]
         t["bom"] = plant.bom_lines()
         t["routing"] = [{"seq": i + 1, "process": proc, "machine_id": mid} for i, (proc, mid) in enumerate(plant.ROUTING)]
         t["dim_customer"] = [dict(c) for c in plant.CUSTOMERS]
@@ -376,8 +429,17 @@ class Generator:
         stock = s0
         for day in days:
             stock += sum(m["quantity"] for m in t["fact_inventory_move"] if m["move_date"] == day)
-            t["fact_material_stock"].append({"snapshot_date": day, "material_id": "PP-EPDM-T20", "on_hand_qty": round(stock, 1)})
-        if min(r["on_hand_qty"] for r in t["fact_material_stock"]) <= 0:
+            t["fact_material_stock"].append(
+                {
+                    "snapshot_date": day,
+                    "material_id": "PP-EPDM-T20",
+                    "warehouse_id": "WH-RM",
+                    "on_hand_qty": round(stock, 1),
+                    "reserved_qty": 0.0,
+                    "incoming_qty": 0.0,
+                }
+            )
+        if min(r["on_hand_qty"] for r in t["fact_material_stock"] if r["material_id"] == "PP-EPDM-T20") <= 0:
             msg = "resin stock must never go non-positive"
             raise ValueError(msg)
         for r in t["fact_production"]:
@@ -386,7 +448,7 @@ class Generator:
         self.resin_end = stock
         self.resin_rate = rate
 
-        others = [("VEN-WARNA", "P1", 2400), ("VEN-KILAU", "K1", 2000), ("VEN-BAJA", "BRK-SET", 30000), ("VEN-RAKIT", "PKG-RT", 400)]
+        others = [("VEN-WARNA", "P1", 2400), ("VEN-KILAU", "K1", 2000), ("VEN-BAJA", "BRK-ARKA-F", 30000), ("VEN-RAKIT", "PKG-RT-ARKA", 400)]
         for k, (vid, mat, q) in enumerate(others):
             for j in range(3):
                 od = days[10 + 25 * j + k]
@@ -408,6 +470,47 @@ class Generator:
                         "lot_id": None,
                     }
                 )
+
+        today = plant.DEMO_TODAY
+        open_pos = [(mat, q, today + timedelta(days=k)) for mat, q, k in OPEN_NON_RESIN_POS]
+        for mat, q, promised in open_pos:
+            m = plant.MATERIAL_BY_ID[mat]
+            od = promised - timedelta(days=m.lead_time_days)
+            po_seq += 1
+            t["fact_purchase_order"].append(
+                {
+                    "po_id": f"PO-{od:%y%m}-{po_seq:03d}",
+                    "vendor_id": m.default_vendor_id,
+                    "material_id": mat,
+                    "order_qty": float(q),
+                    "unit_price_idr": m.unit_cost_idr,
+                    "order_date": od,
+                    "promised_date": promised,
+                    "received_date": None,
+                    "po_status": "Open",
+                    "received_qty": 0.0,
+                    "lot_id": None,
+                }
+            )
+        daily_use = plant.planned_daily_use()
+        for k, spec in enumerate(plant.MATERIALS):
+            if spec.material_id == "PP-EPDM-T20":
+                continue
+            if spec.material_id in PLANTED_STOCK:
+                on_hand, reserved = PLANTED_STOCK[spec.material_id]
+            else:
+                on_hand = round(daily_use[spec.material_id] * (12 + k % 5), -1)
+                reserved = round(on_hand * 0.05, -1)
+            t["fact_material_stock"].append(
+                {
+                    "snapshot_date": days[-1],
+                    "material_id": spec.material_id,
+                    "warehouse_id": spec.default_warehouse_id,
+                    "on_hand_qty": float(on_hand),
+                    "reserved_qty": float(reserved),
+                    "incoming_qty": float(sum(po_qty for po_mat, po_qty, _ in open_pos if po_mat == spec.material_id)),
+                }
+            )
 
     def quality(self, days: list[date]) -> None:
         humidity: dict[tuple[date, str], float] = {}
@@ -450,13 +553,16 @@ class Generator:
     def orders(self, days: list[date]) -> None:
         t = self.t
         seq: defaultdict[date, int] = defaultdict(int)
+        picker = ColorPicker()
 
         def add_order(cust: str, sku: str, qty: int, req: date, status: str, shipped: int) -> dict[str, Any]:
             seq[req] += 1
+            color = picker.pick(sku, qty)
             row = {
                 "order_id": f"SO-{req:%y%m%d}-{seq[req]:03d}",
                 "customer_id": cust,
                 "sku": sku,
+                "color": color,
                 "order_qty": qty,
                 "order_date": req - timedelta(days=7),
                 "requested_delivery_date": req,
@@ -546,8 +652,7 @@ class Generator:
 
         for p in plant.PRODUCTS:
             hourly = feb[p.sku] / 24 / 22.5
-            weights = [1.0 / (k + 1.2) for k in range(len(p.colors))]
-            wsum = sum(weights)
+            weights = plant.color_weights(p.sku)
             if p.sku == "FB-ARKA":
                 total = fb_arka_stock
                 parts = (0.05, 0.25, 0.70)
@@ -555,7 +660,7 @@ class Generator:
                 total = round(hourly * self.rng.uniform(8.0, 10.0))
                 parts = (0.30, 0.30, 0.40)
             for k, c in enumerate(p.colors):
-                share = weights[k] / wsum
+                share = weights[k]
                 qty = total * share
                 wip, mez = round(qty * parts[0]), round(qty * parts[1])
                 sgl = round(qty) - wip - mez

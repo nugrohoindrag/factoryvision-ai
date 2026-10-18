@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from app import actions, capacity, effects, forecasts, photos, plans, plant, pubsub
+from app import actions, capacity, effects, forecasts, materials, photos, plans, plant, pubsub
 from app.config import settings
 from app.errors import FVError
 from app.session import limiter
@@ -145,6 +145,7 @@ def reset(session_id: str, scenario: str = "baseline") -> dict[str, Any]:
         store().delete("order_documents", doc["doc_id"])
     plans.clear(session_id)
     capacity.clear(session_id)
+    materials.clear(session_id)
     effects.set_scenario(session_id, scenario)
     limiter.reset(session_id, keep=COST_BUCKETS)
     s = State.new(session_id, scenario)

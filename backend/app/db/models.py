@@ -57,6 +57,41 @@ class DimMaterial(Base):
     unit: Mapped[str | None] = col()
     unit_cost_idr: Mapped[int | None] = col(Int)
     safety_stock: Mapped[float | None] = col(Dbl)
+    material_group: Mapped[str | None] = col()
+    color: Mapped[str | None] = col()
+    reorder_point: Mapped[float | None] = col(Dbl)
+    lead_time_days: Mapped[int | None] = col(Int)
+    default_vendor_id: Mapped[str | None] = col()
+    default_warehouse_id: Mapped[str | None] = col()
+
+
+class DimWarehouse(Base):
+    __tablename__ = "dim_warehouse"
+    warehouse_id: Mapped[str] = pk()
+    warehouse_name: Mapped[str | None] = col()
+    warehouse_type: Mapped[str | None] = col()
+
+
+class BomHeader(Base):
+    __tablename__ = "bom_header"
+    bom_id: Mapped[str] = pk()
+    sku: Mapped[str | None] = col()
+    version: Mapped[str | None] = col()
+    status: Mapped[str | None] = col()
+    effective_date: Mapped[date | None] = col(Date)
+
+
+class BomItem(Base):
+    __tablename__ = "bom_item"
+    item_id: Mapped[str] = pk()
+    bom_id: Mapped[str | None] = col()
+    line_no: Mapped[int | None] = col(Int)
+    material_id: Mapped[str | None] = col()
+    qty_per_unit: Mapped[float | None] = col(Dbl)
+    unit: Mapped[str | None] = col()
+    scrap_pct: Mapped[float | None] = col(Dbl)
+    process: Mapped[str | None] = col()
+    color: Mapped[str | None] = col()
 
 
 class DimMold(Base):
@@ -209,7 +244,10 @@ class FactMaterialStock(Base):
     __tablename__ = "fact_material_stock"
     snapshot_date: Mapped[date] = pk(Date)
     material_id: Mapped[str] = pk()
+    warehouse_id: Mapped[str | None] = col()
     on_hand_qty: Mapped[float | None] = col(Dbl)
+    reserved_qty: Mapped[float | None] = col(Dbl)
+    incoming_qty: Mapped[float | None] = col(Dbl)
 
 
 class FactCustomerOrder(Base):
@@ -217,6 +255,7 @@ class FactCustomerOrder(Base):
     order_id: Mapped[str] = pk()
     customer_id: Mapped[str | None] = col()
     sku: Mapped[str | None] = col()
+    color: Mapped[str | None] = col()
     order_qty: Mapped[int | None] = col(Int)
     order_date: Mapped[date | None] = col(Date)
     requested_delivery_date: Mapped[date | None] = col(Date)

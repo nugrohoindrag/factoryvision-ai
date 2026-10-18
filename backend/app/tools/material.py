@@ -24,8 +24,11 @@ def ratio(numerator: float, denominator: float | Sequence[Any]) -> float | None:
 
 
 def _on_hand(material_id: str) -> float:
-    r = warehouse.query("SELECT on_hand_qty FROM fv.fact_material_stock WHERE material_id = :m ORDER BY snapshot_date DESC LIMIT 1", {"m": material_id})
-    return float(r[0]["on_hand_qty"]) if r else 0.0
+    r = warehouse.query(
+        "SELECT SUM(on_hand_qty) AS on_hand_qty FROM fv.fact_material_stock WHERE material_id = :m AND snapshot_date = (SELECT MAX(snapshot_date) FROM fv.fact_material_stock)",
+        {"m": material_id},
+    )
+    return float(r[0]["on_hand_qty"]) if r and r[0]["on_hand_qty"] is not None else 0.0
 
 
 def material_requirements(month: str | None = None, demand_change_pct: dict[str, float] | None = None) -> dict[str, Any]:
@@ -38,7 +41,7 @@ def material_requirements(month: str | None = None, demand_change_pct: dict[str,
     stocks = {
         r["material_id"]: float(r["on_hand_qty"])
         for r in warehouse.query(
-            "SELECT material_id, on_hand_qty FROM fv.fact_material_stock WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM fv.fact_material_stock)"
+            "SELECT material_id, SUM(on_hand_qty) AS on_hand_qty FROM fv.fact_material_stock WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM fv.fact_material_stock) GROUP BY material_id"
         )
     }
     rows: list[dict[str, Any]] = []
@@ -96,16 +99,7 @@ def stock_projection(
     scaled = ratio(actual_rate * bom_rate, base_bom_rate) if actual_rate is not None else None
     actual_rate_adj = scaled if scaled is not None else bom_rate
     on_hand = _on_hand(material_id)
-    delays = (
-        {
-            r["vendor_id"]: r["delay"]
-            for r in warehouse.query(
-                "SELECT vendor_id, AVG(DATE_DIFF(received_date, promised_date, DAY)) AS delay FROM fv.fact_purchase_order WHERE received_date IS NOT NULL GROUP BY vendor_id"
-            )
-        }
-        if warehouse.is_bigquery()
-        else _delays_local()
-    )
+    delays = delays_by_vendor()
     receipts = []
     for po in warehouse.query(
         "SELECT po_id, vendor_id, order_qty, promised_date FROM fv.fact_purchase_order WHERE material_id = :m AND po_status = 'Open'", {"m": material_id}
@@ -150,6 +144,17 @@ def stock_projection(
         "demand_change_pct": demand_change_pct or {},
         "source": "fv.fact_material_stock, fv.fact_production (actual use), fv.fact_monthly_plan x fv.bom, fv.fact_purchase_order",
     }
+
+
+def delays_by_vendor() -> dict[str, float]:
+    if warehouse.is_bigquery():
+        return {
+            r["vendor_id"]: r["delay"]
+            for r in warehouse.query(
+                "SELECT vendor_id, AVG(DATE_DIFF(received_date, promised_date, DAY)) AS delay FROM fv.fact_purchase_order WHERE received_date IS NOT NULL GROUP BY vendor_id"
+            )
+        }
+    return _delays_local()
 
 
 def _delays_local() -> dict[str, float]:
