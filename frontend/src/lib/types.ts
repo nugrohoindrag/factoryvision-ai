@@ -38,8 +38,12 @@ export type Recording = {
   proposals: unknown[];
 };
 
+export type ShiftOee = { planned_min: number; run_min: number; shots: number; good: number; availability_pct: number | null; performance_pct: number | null; quality_pct: number | null; oee_pct: number | null };
+
 export type Machine = {
   machine_id: string;
+  machine_name: string;
+  process: string | null;
   area: string;
   status: string;
   reason_code: string | null;
@@ -49,6 +53,7 @@ export type Machine = {
   performance_pct: number | null;
   mix: Record<string, number>;
   timer_min: number | null;
+  shift: ShiftOee;
 };
 
 export type ConveyorItem = { seq: number; photo_id: string | null; sku: string; color: string; expected_color: string; defect_code: string | null; position: number };

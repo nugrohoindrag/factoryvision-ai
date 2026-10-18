@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Badge, Card, Kpi, Source, Status, pct } from "../components/ui";
+import { Card, Kpi, Source, Status, pct } from "../components/ui";
 import { formatIdr, formatIdrCompact } from "../lib/format";
 import { useApp, useData } from "../lib/store";
 
@@ -7,15 +7,18 @@ type Briefing = {
   as_of: string;
   yesterday: string;
   oee: { molding: { oee_pct: number; availability_pct: number; performance_pct: number; quality_pct: number }; plant: { oee_pct: number }; worst_machine: string; worst_machine_oee_pct: number };
-  top_losses: { title: string; loss_idr: number; detail: string; kind: string }[];
+  top_losses: { id: string; title: string; loss_idr: number; detail: string; kind: string }[];
   risks: { module: string; severity: string; title: string; detail: string }[];
 };
 
+const SEVERITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
 const MODULE_PATH: Record<string, string> = { mes: "/mes", material: "/material", delivery: "/delivery", quality: "/quality" };
 
 export default function BriefingPage() {
   const { data, error, loading } = useData<Briefing>("/api/briefing");
   const { startDisruption, run, live } = useApp();
+  const lossTotal = Math.max(1, data?.top_losses.reduce((a, l) => a + l.loss_idr, 0) ?? 0);
+  const risks = [...(data?.risks ?? [])].sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9));
   return (
     <>
       <div className="page-head">
@@ -37,22 +40,40 @@ export default function BriefingPage() {
             <Kpi label="Top-3 losses yesterday" value={formatIdrCompact(data.top_losses.reduce((a, l) => a + l.loss_idr, 0))} />
           </div>
           <div className="grid2">
-            <Card title="Three biggest losses (Rupiah)">
-              <ol className="losses">
-                {data.top_losses.map((l) => (
-                  <li key={l.title}>
-                    <strong>{l.title}</strong> <span className="neg">{formatIdr(l.loss_idr)}</span>
-                    <div className="muted small">{l.detail}</div>
+            <Card title="Three biggest losses" actions={<span className="muted small">{formatIdrCompact(lossTotal)} total</span>}>
+              <ol className="loss-list">
+                {data.top_losses.map((l, i) => (
+                  <li key={l.id}>
+                    <Link to={`/losses/${encodeURIComponent(l.id)}`} className="loss-row" title="See how this loss is calculated">
+                      <span className="loss-rank">{i + 1}</span>
+                      <div className="loss-main">
+                        <div className="loss-head">
+                          <strong>{l.title}</strong>
+                          <span className="loss-idr" title={formatIdr(l.loss_idr)}>{formatIdrCompact(l.loss_idr)}</span>
+                        </div>
+                        <div className="muted small">{l.detail}</div>
+                        <div className="loss-bar" aria-label={`${Math.round((100 * l.loss_idr) / lossTotal)}% of the three`}>
+                          <span style={{ width: `${(100 * l.loss_idr) / lossTotal}%` }} />
+                        </div>
+                      </div>
+                      <span className="risk-go" aria-hidden="true">›</span>
+                    </Link>
                   </li>
                 ))}
               </ol>
             </Card>
-            <Card title="Risks this week">
-              <ul className="risks">
-                {data.risks.map((r) => (
+            <Card title="Risks this week" actions={<span className="muted small">{["high", "medium"].map((s) => `${risks.filter((r) => r.severity === s).length} ${s}`).join(" · ")}</span>}>
+              <ul className="risk-list">
+                {risks.map((r) => (
                   <li key={r.title}>
-                    <Badge tone={r.severity === "high" ? "bad" : "warn"}>{r.severity}</Badge> <Link to={MODULE_PATH[r.module] ?? "/"}>{r.title}</Link>
-                    <div className="muted small">{r.detail}</div>
+                    <Link to={MODULE_PATH[r.module] ?? "/"} className={`risk-row ${r.severity}`}>
+                      <div className="risk-main">
+                        <span className="risk-module">{r.module}</span>
+                        <strong>{r.title}</strong>
+                        <span className="muted small">{r.detail}</span>
+                      </div>
+                      <span className="risk-go" aria-hidden="true">›</span>
+                    </Link>
                   </li>
                 ))}
               </ul>

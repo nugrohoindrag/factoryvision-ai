@@ -73,6 +73,30 @@ def get_oee(day: str | None = None, days: int = 1, machine_id: str | None = None
     }
 
 
+TREND_SQL = """
+SELECT production_date AS d, machine_id, shift_id,
+  SUM(planned_minutes) AS planned, SUM(run_minutes) AS run_min, SUM(downtime_minutes) AS down_min,
+  SUM(ideal_cycle_s * total_quantity) AS ideal_s, SUM(total_quantity) AS total,
+  SUM(output_quantity) AS good, SUM(scrap_quantity) AS scrap, SUM(reject_quantity) AS reject
+FROM fv.fact_production
+WHERE production_date BETWEEN :d0 AND :d1 AND machine_id LIKE 'IMM%'
+GROUP BY d, machine_id, shift_id
+"""
+
+
+def oee_trend(days: int = 14) -> dict[str, Any]:
+    """Daily molding OEE with its A/P/Q factors, good output and downtime: the series behind the overview sparklines."""
+    d1 = last_production_date()
+    d0 = d1 - timedelta(days=days - 1)
+    rows = warehouse.query(TREND_SQL, {"d0": d0, "d1": d1})
+    series = []
+    for d in sorted({to_date(r["d"]) for r in rows}):
+        o = _oee([r for r in rows if to_date(r["d"]) == d])
+        keep = ("oee_pct", "availability_pct", "performance_pct", "quality_pct", "output_quantity", "total_quantity", "downtime_minutes")
+        series.append({"date": d.isoformat(), **{k: o[k] for k in keep}})
+    return {"window": [d0.isoformat(), d1.isoformat()], "daily": series, "source": "fv.fact_production (IMM-01..06)"}
+
+
 PARETO_SQL = """
 SELECT d.reason_code, r.reason_name, r.reason_category, r.loss_category, m.area,
   COUNT(*) AS events, SUM(d.duration_minutes) AS minutes

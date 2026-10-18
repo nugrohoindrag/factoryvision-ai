@@ -44,6 +44,27 @@ def test_briefing_has_oee_losses_and_risks(sid: str, ground_truth: dict[str, Any
     assert late["order_ids"] == ground_truth["stories"]["delivery"]["order_ids"]
 
 
+def test_each_top_loss_traces_to_the_fact_rows_it_is_summed_from(sid: str) -> None:
+    top = client.get("/api/briefing", headers=h(sid)).json()["top_losses"]
+    for rank, x in enumerate(top, 1):
+        d = client.get(f"/api/briefing/losses/{x['id']}", headers=h(sid)).json()
+        assert (d["rank"], d["loss_idr"]) == (rank, x["loss_idr"])
+        assert d["trace"]["rows"]
+        assert d["trace"]["steps"][-1]["value"] == f"Rp{x['loss_idr']:,}"
+    assert client.get("/api/briefing/losses/speed-IMM-99-NOPE", headers=h(sid)).status_code == 404
+
+
+def test_downtime_and_scrap_losses_trace_too() -> None:
+    from app import briefing
+
+    day = briefing.briefing()["yesterday"]
+    kinds = {x["kind"]: x for x in briefing._all_losses(day)}
+    for kind in ("downtime", "scrap"):
+        d = briefing.loss_detail(kinds[kind]["id"])
+        assert d["trace"]["rows"]
+        assert d["trace"]["steps"][-1]["value"] == f"Rp{d['loss_idr']:,}"
+
+
 @pytest.mark.parametrize("module", MODULES)
 def test_every_module_summary(sid: str, module: str) -> None:
     r = client.get(f"/api/modules/{module}/summary", headers=h(sid))

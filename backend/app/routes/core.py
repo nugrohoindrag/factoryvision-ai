@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
 from app import actions, effects, modules, plans
-from app.briefing import briefing
+from app.briefing import briefing, loss_detail
 from app.errors import FVError
 from app.session import SessionId, user_label
 from app.tools import orders
@@ -17,6 +17,11 @@ router = APIRouter(prefix="/api")
 @router.get("/briefing")
 def get_briefing(_sid: SessionId) -> dict[str, Any]:
     return briefing()
+
+
+@router.get("/briefing/losses/{loss_id}")
+def get_loss(loss_id: str, _sid: SessionId) -> dict[str, Any]:
+    return loss_detail(loss_id)
 
 
 @router.get("/modules/planning/what-if")

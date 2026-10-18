@@ -8,13 +8,14 @@ last analysed frame on a 64x36 grey grid; only a change above the threshold (or 
 import { useThree } from "@react-three/fiber";
 import { useEffect } from "react";
 import * as THREE from "three";
+import { HALL } from "./MoldingHall";
 import { CONVEYOR, WH_RACK_X, WIP_RACK_X } from "./Scene";
 
 export type CameraId = "CAM-Molding" | "CAM-WIP" | "CAM-Warehouse" | "CAM-Inspection";
 
 const mid = (xs: number[]) => (xs[0] + xs[xs.length - 1]) / 2;
 export const CAMERAS: Record<CameraId, { pos: [number, number, number]; look: [number, number, number]; fov: number; label: string }> = {
-  "CAM-Molding": { pos: [-21.5, 6, 9], look: [-21.5, 2.2, -8], fov: 46, label: "Molding IMM-01..06" },
+  "CAM-Molding": { pos: [HALL.x, 14, 4], look: [HALL.x, 0.6, -12], fov: 56, label: "Molding IMM-01..06" },
   "CAM-WIP": { pos: [mid(WIP_RACK_X), 2.6, 15], look: [mid(WIP_RACK_X), 1.4, 0], fov: 40, label: "WIP racks" },
   "CAM-Warehouse": { pos: [mid(WH_RACK_X), 2.6, 19], look: [mid(WH_RACK_X), 1.2, 5], fov: 40, label: "Warehouse (SGL)" },
   "CAM-Inspection": { pos: [36, 5, 0.5], look: [36, CONVEYOR.y, CONVEYOR.z], fov: 55, label: "INS-01 conveyor" },

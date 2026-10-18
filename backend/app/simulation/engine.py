@@ -12,6 +12,7 @@ from app import plant
 
 RESIN_START_KG = 138_400.0
 MINUTES_PER_DAY = 3 * 450
+SHIFT_MIN = 8 * 60  # sim minute 0 is 07:00, the start of shift A
 SPEED_LOSS_PCT = 85.0
 WIP_LOW = 10
 IMM04_START_CYCLE = 79.3
@@ -48,6 +49,28 @@ class Machine:
     shots: int = 0
     wear: bool = False
     pending_mix: dict[str, float] | None = None
+    # Shift-to-date counters for the live board; planned time leaves out maintenance.
+    shift_planned_min: int = 0
+    shift_run_min: int = 0
+    shift_shots: int = 0
+    shift_good: int = 0
+
+    def shift_oee(self) -> dict[str, float | int | None]:
+        a = self.shift_run_min / self.shift_planned_min if self.shift_planned_min else None
+        p = min(1.0, self.shift_shots * self.ideal_cycle_s / (self.shift_run_min * 60)) if self.ideal_cycle_s and self.shift_run_min else None
+        q = self.shift_good / self.shift_shots if self.shift_shots else None
+        oee = a * p * q if a is not None and p is not None and q is not None else a if not self.ideal_cycle_s else None
+        r = lambda v: round(100 * v, 1) if v is not None else None  # noqa: E731
+        return {
+            "planned_min": self.shift_planned_min,
+            "run_min": self.shift_run_min,
+            "shots": self.shift_shots,
+            "good": self.shift_good,
+            "availability_pct": r(a),
+            "performance_pct": r(p),
+            "quality_pct": r(q),
+            "oee_pct": r(oee),
+        }
 
     def performance_pct(self) -> float | None:
         if not self.cycle_s or not self.ideal_cycle_s:
@@ -111,6 +134,9 @@ class State:
         return plant.FEB_PLAN_PER_DAY[sku] / MINUTES_PER_DAY
 
     def step(self) -> None:
+        if self.minute and self.minute % SHIFT_MIN == 0:
+            for m in self.machines.values():
+                m.shift_planned_min = m.shift_run_min = m.shift_shots = m.shift_good = 0
         self.minute += 1
         rng = self.rng()
         self._receipts()
@@ -127,6 +153,8 @@ class State:
                 self.active_lot = r["lot"]
 
     def _machine(self, m: Machine, rng: np.random.Generator) -> None:
+        if m.status != "Maintenance":
+            m.shift_planned_min += 1
         if m.timer > 0:
             m.timer -= 1
             if m.timer == 0:
@@ -150,17 +178,21 @@ class State:
             self.set_status(m, "Downtime", reasons[int(rng.integers(len(reasons)))], timer=int(rng.integers(8, 21)))
             return
         if not is_imm or m.cycle_s is None:
+            m.shift_run_min += 1
             return
         if self.resin_kg <= 0:
             self.set_status(m, "Downtime", "NO_MATERIAL", timer=30)
             return
+        m.shift_run_min += 1
         m.progress += 60.0 / m.cycle_s
         while m.progress >= 1.0:
             m.progress -= 1.0
             m.shots += 1
+            m.shift_shots += 1
             sku = _pick(m.mix, m.shots)
             self.resin_kg -= plant.PRODUCT_BY_SKU[sku].shot_weight_kg
             if rng.random() < 0.97:
+                m.shift_good += 1
                 self.wip[sku] += 1
                 self.output[sku] += 1
 
@@ -211,6 +243,8 @@ class State:
             machines.append(
                 {
                     "machine_id": m.machine_id,
+                    "machine_name": plant.MACHINE_BY_ID[m.machine_id].machine_name if m.machine_id in plant.MACHINE_BY_ID else m.machine_id,
+                    "process": plant.MACHINE_BY_ID[m.machine_id].process if m.machine_id in plant.MACHINE_BY_ID else None,
                     "area": m.area,
                     "status": m.status,
                     "reason_code": m.reason_code,
@@ -220,6 +254,7 @@ class State:
                     "performance_pct": perf,
                     "mix": m.mix,
                     "timer_min": m.timer if m.timer < 10_000 else None,
+                    "shift": m.shift_oee(),
                 }
             )
         warehouse = {sku: [{"lot": lot, "units": u, "on_hold": lot in self.holds} for lot, u in racks] for sku, racks in self.warehouse.items()}

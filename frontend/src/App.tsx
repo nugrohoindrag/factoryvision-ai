@@ -16,6 +16,8 @@ import { PlanningPage } from "./pages/Planning";
 import ProductionBoardPage from "./pages/ProductionBoard";
 import QualityPage from "./pages/Quality";
 import FactoryOverviewPage from "./pages/FactoryOverview";
+import LiveBoardPage from "./pages/LiveBoard";
+import LossDetailPage from "./pages/LossDetail";
 import WorkOrdersPage from "./pages/WorkOrders";
 
 // The 3D twin (three.js) loads only when the MES page opens.
@@ -24,7 +26,7 @@ const MesPage = lazy(() => import("./pages/Mes"));
 const NAV: { group: string; links: [string, string][] }[] = [
   { group: "Overview", links: [["/", "Plant Briefing"], ["/actions", "Action Center"], ["/factory-overview", "Factory Overview"]] },
   { group: "Plan", links: [["/orders", "Customer Orders"], ["/forecast", "Demand Forecast"], ["/planning", "Production Planning"], ["/capacity", "Capacity Plan"]] },
-  { group: "Make", links: [["/mes", "MES / Shop Floor"], ["/production-board", "Production Board"], ["/work-orders", "Work Orders"], ["/material", "Material Supply"], ["/purchasing", "Purchasing"], ["/quality", "Quality Control"]] },
+  { group: "Make", links: [["/mes", "MES / Shop Floor"], ["/live-board", "Live Board"], ["/production-board", "Production Board"], ["/work-orders", "Work Orders"], ["/material", "Material Supply"], ["/purchasing", "Purchasing"], ["/quality", "Quality Control"]] },
   { group: "Deliver", links: [["/delivery", "Delivery"]] },
 ];
 
@@ -73,7 +75,8 @@ function SideNav({ open, onNavigate }: { open: boolean; onNavigate: () => void }
   return (
     <nav className={`sidenav${open ? " open" : ""}`} aria-label="Modules">
       <div className="brand">
-        <span className="logo" aria-hidden>◆</span> Factory Vision AI
+        <img src="/brand/factory-vision-logo-white.svg" alt="Factory Vision" className="brand-logo" />
+        <span className="brand-ai">AI</span>
       </div>
       {NAV.map(({ group, links }) => {
         const expanded = isOpen(group, links.map(([to]) => to));
@@ -134,11 +137,13 @@ export function Shell() {
       <main className="content">
         <Routes>
           <Route path="/" element={<BriefingPage />} />
+          <Route path="/losses/:lossId" element={<LossDetailPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/forecast" element={<ForecastPage />} />
           <Route path="/planning" element={<PlanningPage />} />
           <Route path="/planning/:planId" element={<PlanWizard />} />
           <Route path="/capacity" element={<CapacityPage />} />
+          <Route path="/live-board" element={<LiveBoardPage />} />
           <Route path="/production-board" element={<ProductionBoardPage />} />
           <Route path="/work-orders" element={<WorkOrdersPage />} />
           <Route path="/factory-overview" element={<FactoryOverviewPage />} />
