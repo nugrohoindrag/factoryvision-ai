@@ -26,7 +26,7 @@ def planning_what_if(sid: SessionId) -> dict[str, Any]:
 
 @router.get("/modules/{module}/summary")
 def module_summary(module: str, sid: SessionId) -> dict[str, Any]:
-    out = modules.summary(module, effects.overrides(sid))
+    out = modules.summary(module, effects.overrides(sid), sid=sid)
     if module in plans.EVENT_AUDIENCE:
         out = {**out, "production_plans": plans.downstream(sid, module)}
     return out
