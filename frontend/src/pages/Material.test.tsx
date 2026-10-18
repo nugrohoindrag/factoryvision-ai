@@ -74,6 +74,8 @@ const RUN = {
   results: [res("MB-BLK", 0), res("B-C07", 500), res("BRK-ARKA-F", 1200)],
 };
 const INVENTORY = {
+  source: "fv.fact_material_stock",
+  as_of: "2027-02-01",
   rows: [
     { material_id: "BRK-ARKA-F", material_name: "Bracket ARKA front", material_group: "Component", color: null, unit: "set", warehouse_id: "WH-CMP", on_hand_qty: 300, reserved_qty: 50, incoming_qty: 400, incoming: [{ po_id: "PO-9", material_id: "BRK-ARKA-F", vendor_id: "VEN-03", qty: 400, promised_date: "2027-02-04", expected_date: "2027-02-06", avg_delay_days: 2, source: "open_po" }], available_qty: 650, reorder_point: 500, safety_stock: 200, below_reorder: true },
     { material_id: "B-C07", material_name: "Basecoat C07", material_group: "Basecoat", color: "C07", unit: "kg", warehouse_id: "WH-PNT", on_hand_qty: 3000, reserved_qty: 0, incoming_qty: 0, incoming: [], available_qty: 3000, reorder_point: 1000, safety_stock: 500, below_reorder: false },
@@ -89,7 +91,7 @@ const CONSUMPTION = {
     { wo_id: "WO-A", material_id: "P1", unit: "kg", planned_qty: 50, actual_qty: 45, variance_qty: -5, variance_pct: -10, status: "UNDER_CONSUMPTION" },
   ],
 };
-const LEDGER = { rows: [{ txn_id: "TX-1", date: "2027-02-01", material_id: "B-C07", warehouse_id: "WH-PNT", type: "Reserve", qty: -120, balance_after: 2880, ref: "RSV-1" }] };
+const LEDGER = { transactions: [{ txn_id: "TX-1", date: "2027-02-01", material_id: "B-C07", warehouse_id: "WH-PNT", type: "Reserve", qty: -120, balance_after: 2880, ref: "RSV-1" }] };
 const item = (material_id: string, process: string, color: string | null = null) => ({ bom_id: "BOM-2027-002", material_id, material_name: `Name of ${material_id}`, material_group: "x", qty_per_unit: 0.3, unit: "kg", scrap_pct: 30, process, color });
 const BOMS = {
   boms: [
@@ -123,8 +125,8 @@ function mockApi(over: (url: string, method: string) => unknown = () => undefine
       else if (url.startsWith("/api/inventory/transactions")) body = LEDGER;
       else if (url.startsWith("/api/inventory")) body = INVENTORY;
       else if (url.startsWith("/api/master/warehouses")) body = { warehouses: [{ warehouse_id: "WH-CMP", name: "Components" }, { warehouse_id: "WH-PNT", name: "Paint store" }] };
-      else if (url.startsWith("/api/master/materials")) body = { materials: [{ material_id: "B-C07", material_name: "Basecoat C07" }] };
-      else if (url.startsWith("/api/master/colors")) body = { ARKA: ["C02", "C07"] };
+      else if (url.startsWith("/api/master/materials")) body = { materials: [{ material_id: "B-C07", material_name: "Basecoat C07" }], groups: ["Basecoat", "Component", "Resin"] };
+      else if (url.startsWith("/api/master/colors")) body = { models: { ARKA: ["C02", "C07"] }, skus: { "FB-ARKA": ["C02", "C07"], "RB-ARKA": ["C02", "C07"] }, colors: [] };
       else if (url.startsWith("/api/master/boms")) body = BOMS;
       else if (url.endsWith("/release")) body = { ...RESERVATIONS.reservations[0], status: "Released" };
       else if (url.startsWith("/api/materials/reservations") && method === "POST") body = RESERVATIONS;
@@ -232,6 +234,8 @@ it("inventory: stock with filters, the below-reorder badge and incoming; then re
   expect(await screen.findByText("Below reorder")).toBeInTheDocument();
   expect(screen.getByText(formatIdrCompact(125000000))).toBeInTheDocument();
   expect(screen.getByText("PO-9")).toBeInTheDocument();
+  expect(screen.getByText(/fv\.fact_material_stock · as of 2027-02-01/)).toBeInTheDocument();
+  expect(await screen.findByRole("option", { name: "Resin" })).toBeInTheDocument();
   expect(screen.getByText(/\+2 d vendor delay/)).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Filter by group"), { target: { value: "Component" } });
   fireEvent.change(await screen.findByLabelText("Filter by warehouse"), { target: { value: "WH-CMP" } });

@@ -137,7 +137,7 @@ function mockApi() {
     calls.push({ url, method, body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined });
     let body: unknown = { pending: 0, actions: [] };
     if (url.includes("/api/orders/po/read")) body = READ;
-    else if (url.includes("/api/master/colors")) body = { ARKA: ["C02", "C04", "C05", "C07", "C08", "C09"], BROMO: ["C01", "C02", "C04"] };
+    else if (url.includes("/api/master/colors")) body = { models: { ARKA: ["C02", "C04", "C05", "C07", "C08", "C09"], BROMO: ["C01", "C02", "C04", "C06"] }, skus: { "FB-BROMO": ["C01", "C02", "C04"] }, colors: [] };
     else if (url.includes("/api/modules/orders")) body = SUMMARY;
     else if (url.includes("/api/mode")) body = { ai_enabled: false };
     else if (url.endsWith("/api/orders/validate")) body = { errors: [], warnings: ["Reference SET-PO-1 is already on order CO-1."], preview: { at_risk: false } };

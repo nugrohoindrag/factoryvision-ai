@@ -578,6 +578,7 @@ function StockView() {
   const qs = new URLSearchParams(Object.entries({ group, warehouse_id: wh }).filter(([, v]) => v)).toString();
   const { data, error, loading } = useData<InventoryView>(`/api/inventory${qs ? `?${qs}` : ""}`);
   const whs = listOf<Warehouse>(useData<Any>("/api/master/warehouses").data, "warehouses");
+  const groups: string[] = useData<Any>("/api/master/materials").data?.groups ?? GROUPS;
   const rows = data?.rows ?? [];
   const incoming = useMemo(() => {
     const seen = new Map<string, IncomingReceipt>();
@@ -601,7 +602,7 @@ function StockView() {
             Group
             <select aria-label="Filter by group" value={group} onChange={(e) => setGroup(e.target.value)}>
               <option value="">All groups</option>
-              {GROUPS.map((g) => <option key={g}>{g}</option>)}
+              {groups.map((g) => <option key={g}>{g}</option>)}
             </select>
           </label>
           <label>
@@ -648,6 +649,7 @@ function StockView() {
             }))}
           />
         )}
+        {(data as Any)?.source && <Source>{(data as Any).source}{(data as Any).as_of ? ` · as of ${(data as Any).as_of}` : ""}</Source>}
       </Card>
       <Card title={`Incoming (${incoming.length})`}>
         <Table
