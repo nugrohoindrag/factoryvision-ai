@@ -876,6 +876,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "sqlalchemy" },
     { name = "sqlalchemy-bigquery" },
+    { name = "sqlglot" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -923,6 +924,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.16,<3" },
     { name = "sqlalchemy", specifier = "==2.1.5" },
     { name = "sqlalchemy-bigquery", specifier = "==1.17.3" },
+    { name = "sqlglot", specifier = "==30.23.0" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.54.0" },
 ]
 
@@ -3586,6 +3588,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/06/bd/12799120e3e23d1c825ecd9a1afcb8c612b00bcae18b4aed5f7104e14f7c/sqlalchemy_spanner-1.20.1.tar.gz", hash = "sha256:73537add78fe258752545d1e2d3e13be081ba278b0612cbd671b26f6c24fad64", size = 83277, upload-time = "2026-09-03T22:31:23.33Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/30/d7/ddde98fc154aa2c09f19c7734afc4f2247ea41457de51431a217973e289f/sqlalchemy_spanner-1.20.1-py3-none-any.whl", hash = "sha256:bf72778b440e74240453cf755b071469ef54c0972d4a2cc3eb6b6240b9a4a275", size = 32177, upload-time = "2026-09-03T22:30:46.705Z" },
+]
+
+[[package]]
+name = "sqlglot"
+version = "30.23.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0c/40/4afe7d21cdf3dbb5a7529ea33a0e07055081fb3d37bc0550e7c2278d6ec0/sqlglot-30.23.0.tar.gz", hash = "sha256:34b5b62fa4cbf042ee6b9e829236577b2f8db4538dd20007de2aa5383c92e845", size = 6108071, upload-time = "2026-10-14T21:48:38.209Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2d/73/9e749f3e57ca471bf663eb6d51fbe79b9921c5b7376706cd1cac999c8e2e/sqlglot-30.23.0-py3-none-any.whl", hash = "sha256:b5a645722cb4c6b649e9131b94830d9df9a557e87be63713179d848320f2baa1", size = 783709, upload-time = "2026-10-14T21:48:36.327Z" },
 ]
 
 [[package]]

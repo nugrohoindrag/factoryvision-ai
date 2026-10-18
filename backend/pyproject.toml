@@ -15,6 +15,7 @@ dependencies = [
   "pydantic-settings>=2.16,<3",
   "sqlalchemy==2.1.5",
   "sqlalchemy-bigquery==1.17.3",
+  "sqlglot==30.23.0",
   "uvicorn[standard]==0.54.0",
 ]
 

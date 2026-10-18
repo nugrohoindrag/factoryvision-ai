@@ -36,9 +36,12 @@ own change with its own review.
   evaluated and rejected: replacing the RNGs broke 2 of 7 story tests, and
   regenerating `ground_truth.json` would have changed the numbers that job exists to
   verify.
-- **The SQL guardrail is a regex.** It rejects statement shapes it does not
-  recognise. It does not parse, and it will not stop a CTE. Do not describe it as
-  protection you can rely on for query semantics.
+- **The SQL guardrail is an AST check, and its allowlist is the whole policy.**
+  It parses with sqlglot and rejects writes, multi-statements, non-allowlisted
+  tables and table functions. Two things it deliberately does not do: it validates
+  the text you give it and then executes that same text (it never regenerates SQL,
+  which would change dialect semantics), and it does not know whether a filter is
+  *correct* — only whether it is a read of an allowlisted table.
 
 ## Data access
 
