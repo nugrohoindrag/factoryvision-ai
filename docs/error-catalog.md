@@ -38,7 +38,7 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-PP-016` | 422 | Invalid routing | A product routing failed validation, so no work order was created at all. | Fix the routing listed in `detail`, then generate again. |
 | `FV-PP-017` | 404 | Work order not found | The work order ID does not belong to this plan. | Refresh the plan's work orders. |
 | `FV-PP-018` | 400 | Invalid work order resource or schedule | The machine or mold cannot run the product, or the schedule fields are invalid. | Choose a compatible machine and mold; planned end must follow planned start. |
-| `FV-PP-019` | 409 | Work order transition not allowed | The work order status change skips back, or the plan is not confirmed yet. | Move work orders forward only, after the plan is confirmed. |
+| `FV-PP-019` | 409 | Work order transition not allowed | The status change is not a step of the work order lifecycle, a guard fails (schedule, machine, previous process, output), or the plan is not confirmed yet. | Fix every reason in `detail.reasons`; work orders move on the floor only after the plan is confirmed. |
 | `FV-PP-020` | 409 | Work orders not ready to confirm | A work order lacks quantity, schedule, machine, mold or shift, or overlaps another on its machine. | Complete the checklist in `detail`; no work order was confirmed. |
 | `FV-PP-021` | 409 | Plan has no lines | Confirmation was asked for a plan without plan lines. | Add demand first. |
 | `FV-PP-022` | 409 | Capacity Up Required | A plan line's planned quantity is above total capacity. | Request more capacity or lower the planned quantity of the SKUs named. |
@@ -49,6 +49,9 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-PP-027` | 409 | Plan cannot be cancelled | The plan is already cancelled, or some of its work orders are in production or completed. | Leave the plan; stop the running work orders first. |
 | `FV-PP-028` | 422 | No feasible schedule | CP-SAT found no schedule for the plan's work orders within the time limit. | Lower planned quantities or widen the period, then schedule again. |
 | `FV-PP-029` | 400 | Invalid forecast demand | The SKU is unknown, no forecast snapshot exists, or the quantity is above the unordered forecast. | Use a SKU in the snapshot and at most the unordered forecast quantity. |
+| `FV-WO-001` | 409 | Schedule clash | A reschedule or machine change would double-book the machine or run into its approved maintenance. | Pick another time or machine; the message names the work order already booked there. |
+| `FV-WO-002` | 409 | Work order cannot be split | The work order is not Confirmed, Released or In Production, was already split or is a part, has reported output, or its plan is not confirmed. | Split a confirmed work order before it reports output. |
+| `FV-WO-003` | 409 | Work order not dispatchable here | The work order's plan is still being planned (use the wizard) or is final, the work order was split (act on its parts), or it is completed or cancelled. | Change an open plan in its wizard; dispatch the parts of a split work order. |
 | `FV-CAP-001` | 400 | Invalid capacity period | The capacity period start or end is not a date, or the end is before the start. | Send ISO dates with period_end on or after period_start. |
 | `FV-CAP-002` | 404 | Capacity snapshot not found | The CAP snapshot to recalculate does not exist in this session. | List snapshots with GET /api/capacity/snapshots. |
 | `FV-CAP-003` | 400 | Invalid planning utilization | The planning utilization is not above 0 and at most 100 percent. | Send a percentage in (0, 100]. |

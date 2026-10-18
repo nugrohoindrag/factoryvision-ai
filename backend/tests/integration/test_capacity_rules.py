@@ -46,6 +46,12 @@ def test_strict_flag_and_utilization_update_independently(sid: str) -> None:
     assert off_util["planning_utilization_pct"] == 65
 
 
+def test_strict_flag_alone_keeps_the_default_utilization(sid: str) -> None:
+    on = client.put("/api/capacity/settings", json={"strict_process_sequence": True}, headers=h(sid))
+    assert on.status_code == 200
+    assert on.json()["planning_utilization_pct"] == 80.0
+
+
 def test_snapshot_list_filters_by_status(sid: str) -> None:
     client.post("/api/capacity/recalculate", json=FEB, headers=h(sid))
     client.post("/api/capacity/recalculate", json=FEB, headers=h(sid))
@@ -79,9 +85,10 @@ def test_strict_sequence_blocks_a_work_order_whose_earlier_process_is_open(sid: 
         client.post(f"/api/plans/{pid}/demand", json={"order_id": c["order_id"]}, headers=h(sid))
     g = client.post(f"/api/plans/{pid}/work-orders", headers=h(sid)).json()
     later = next(w for w in g["created"] if w["routing_step"] > 1)
-    p = plans._doc(sid, pid)
-    p["status"] = "Confirmed"
-    plans._save(p)
+    # work orders reach the floor through a confirmed plan: scheduled, resourced and confirmed (app.work_orders)
+    client.post(f"/api/plans/{pid}/schedule", headers=h(sid))
+    client.post(f"/api/plans/{pid}/work-orders/confirm", headers=h(sid))
+    assert client.post(f"/api/plans/{pid}/confirm", headers=h(sid)).status_code == 200
 
     client.put("/api/capacity/settings", json={"strict_process_sequence": False}, headers=h(sid))
     assert client.post(f"/api/plans/{pid}/work-orders/{later['wo_id']}/status", json={"status": "In Production"}, headers=h(sid)).status_code == 200
