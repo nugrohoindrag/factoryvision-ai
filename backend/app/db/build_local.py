@@ -35,7 +35,7 @@ def build(seed_dir: Path, db_path: Path) -> Path:
         db_path.unlink()
     url = f"duckdb:///{db_path.as_posix()}"
     command.upgrade(alembic_config(url), "head")
-    eng = make_engine(url)
+    eng = make_engine(url, allow_external_access=True)
     with eng.begin() as conn:
         for table in Base.metadata.sorted_tables:
             csv = seed_dir / f"{table.name}.csv"
