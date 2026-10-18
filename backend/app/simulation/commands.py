@@ -19,6 +19,8 @@ def execute(s: State, command: dict[str, Any]) -> dict[str, Any]:
     fn = _COMMANDS.get(name)
     if fn is None:
         raise FVError(UNKNOWN_COMMAND, detail={"command": name, "valid": sorted(_COMMANDS)})
+    if name in _NEEDS_APPROVAL_META:
+        a = {**a, "_action_id": command.get("action_id"), "_decided_by": command.get("decided_by")}
     return fn(s, a)
 
 
@@ -79,9 +81,32 @@ def place_po(s: State, a: dict[str, Any]) -> dict[str, Any]:
     return {"arrives_at_minute": at, "lot": lot, "qty_kg": float(a.get("qty", 0))}
 
 
+def create_replan(s: State, a: dict[str, Any]) -> dict[str, Any]:
+    from app import forecasts, plans
+    from app.store import store
+
+    aid = a.get("_action_id")
+    done = store().get("actions", str(aid)) if aid else None
+    if done and done.get("status") == "approved" and (done.get("execution") or {}).get("ok"):
+        prior: dict[str, Any] = done["execution"]["result"]
+        return prior
+    forecasts.list_snapshots(s.session_id)
+    p = plans.replan(
+        s.session_id,
+        reason=str(a.get("reason", "")),
+        forecast_id=a.get("forecast_id"),
+        demand_change_pct=a.get("demand_change_pct") or None,
+        user=str(a.get("_decided_by") or "agent"),
+    )
+    keys = ("plan_id", "plan_number", "status", "forecast_id", "capacity_delta")
+    return {k: p.get(k) for k in keys}
+
+
 def logged(_s: State, _a: dict[str, Any]) -> dict[str, Any]:
     return {"logged": True}
 
+
+_NEEDS_APPROVAL_META = {"create_replan"}
 
 _COMMANDS = {
     "start_maintenance": start_maintenance,
@@ -89,6 +114,7 @@ _COMMANDS = {
     "hold_lot": hold_lot,
     "place_po": place_po,
     "expedite_po": place_po,
+    "create_replan": create_replan,
     "add_shift": logged,
     "apply_customer_po": logged,
     "create_customer_order": logged,

@@ -81,7 +81,7 @@ def after_tool(tool: BaseTool, args: dict[str, Any], tool_context: ToolContext, 
     if src:
         tool_context.state["sources"] = [*tool_context.state.get("sources", []), f"{tool.name}: {src}"]
     err = tool_response.get("error") if isinstance(tool_response, dict) else None
-    summary = _brief(err["code"] if err else summarize(tool_response))
+    summary = _brief((err.get("code", err) if isinstance(err, dict) else err) if err else summarize(tool_response))
     _add(tool_context.state.get("run_id"), {"kind": "tool_result", "agent": tool_context.agent_name, "tool": tool.name, "summary": summary, "error": bool(err)})
     return None
 
