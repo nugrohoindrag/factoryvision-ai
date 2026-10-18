@@ -182,7 +182,9 @@ def scripted(session_id: str, plan_id: str) -> dict[str, Any]:
         f"{best['vendor_name']} arrives {best['expected_arrival']}.",
     )
     other = next((r for r in run.get("shortages", []) if r["material_id"] != "PP-EPDM-T20" and r.get("default_vendor_id")), None)
+    call("purchasing_agent", agent_tools.list_overdue_purchase_orders)
     if other:
+        call("purchasing_agent", agent_tools.recommend_vendor, material_id=other["material_id"], qty=other["net_qty"], need_by=other["required_date"])
         call("purchasing_agent", agent_tools.propose_po_from_shortage, material_id=other["material_id"])
     end("purchasing_agent")
 

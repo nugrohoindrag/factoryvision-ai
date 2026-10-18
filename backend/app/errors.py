@@ -507,6 +507,41 @@ _SPECS = [
         "The material has no known default vendor, so a draft PO cannot be built.",
         "Set the material's default vendor in the material master.",
     ),
+    ErrorSpec(
+        "FV-AGT-020",
+        409,
+        "Nothing to requisition",
+        "A requisition was proposed from an MRP run that has no material with a net requirement above zero.",
+        "No requisition is needed; run MRP again after the plans change.",
+    ),
+    ErrorSpec(
+        "FV-AGT-021",
+        422,
+        "Vendor does not supply the material",
+        "A purchase order was proposed with a vendor that is not listed for the material.",
+        "Pick a vendor from recommend_vendor, or leave the vendor empty to use the recommended one.",
+    ),
+    ErrorSpec(
+        "FV-AGT-022",
+        422,
+        "Quantity must be above zero",
+        "A purchase order was proposed with a quantity of zero or less.",
+        "Use the net quantity from the MRP run or the readiness shortage.",
+    ),
+    ErrorSpec(
+        "FV-AGT-023",
+        409,
+        "PO cannot be expedited",
+        "An expedite was proposed for a PO that is not Issued or Partially Received, or for a seed PO.",
+        "Expedite only open session POs; list them with list_purchase_orders.",
+    ),
+    ErrorSpec(
+        "FV-AGT-024",
+        422,
+        "Expedite date not earlier",
+        "The new promised date of an expedite is not earlier than the PO's current promised date.",
+        "Give a date before the current promised date.",
+    ),
     ErrorSpec("FV-PUB-001", 400, "Invalid push message", "A Pub/Sub push request is malformed.", "Pub/Sub retries; check the publisher."),
     ErrorSpec("FV-PUB-002", 403, "Push not authorised", "The push request's OIDC token is missing or invalid.", "Check the subscription's service account."),
     ErrorSpec("FV-SYS-001", 500, "Internal error", "Unexpected server error.", "Report the `request_id` from the response headers."),
@@ -545,6 +580,70 @@ _SPECS = [
         "Use Resin, Masterbatch, Primer, Basecoat, Clear, Hardener, Thinner, Component or Packaging.",
     ),
     ErrorSpec("FV-MAT-009", 400, "Unknown BOM status", "The BOM status filter is not Draft, Active or Inactive.", "Use Draft, Active or Inactive."),
+    ErrorSpec("FV-PUR-001", 404, "Unknown vendor", "The vendor id is not in the vendor master.", "Use a vendor_id from GET /api/purchasing/vendors."),
+    ErrorSpec(
+        "FV-PUR-002", 404, "No vendor for material", "No vendor in the vendor master supplies this material.", "Add the material to a vendor before buying it."
+    ),
+    ErrorSpec(
+        "FV-PUR-003", 400, "No lines", "A requisition, purchase order or goods receipt has no lines.", "Send at least one line with a material and a quantity."
+    ),
+    ErrorSpec("FV-PUR-004", 400, "Quantity must be positive", "A line quantity is zero or negative.", "Send a quantity greater than zero."),
+    ErrorSpec(
+        "FV-PUR-005",
+        409,
+        "Action not allowed in this status",
+        "The requisition or purchase order is in a status that does not allow this action.",
+        "Check `detail.status` and `detail.allowed_from`; refresh the document and retry.",
+    ),
+    ErrorSpec(
+        "FV-PUR-006",
+        404,
+        "Requisition not found",
+        "The purchase requisition id does not exist in this session.",
+        "List requisitions with GET /api/purchasing/requisitions.",
+    ),
+    ErrorSpec(
+        "FV-PUR-007",
+        400,
+        "Vendor does not supply material",
+        "The chosen vendor is not a supplier of this material.",
+        "Pick one of the vendors in `detail.valid` (GET /api/purchasing/recommend lists them).",
+    ),
+    ErrorSpec(
+        "FV-PUR-008",
+        400,
+        "Expedite date not earlier",
+        "The new promised date is not earlier than the current promised date.",
+        "Send a date before the current one.",
+    ),
+    ErrorSpec(
+        "FV-PUR-009",
+        400,
+        "Receipt over tolerance",
+        "A received quantity is more than the open quantity plus the 5% tolerance.",
+        "Receive at most `detail.max_qty`; raise a new PO for the rest.",
+    ),
+    ErrorSpec("FV-PUR-010", 400, "Invalid date", "A date field is not an ISO date.", "Send dates as YYYY-MM-DD."),
+    ErrorSpec("FV-PUR-011", 400, "Reason required", "A reject or expedite was sent without a reason.", "Give a reason of at least 3 characters."),
+    ErrorSpec(
+        "FV-PUR-012",
+        404,
+        "Purchase order not found",
+        "The PO id is neither a session PO nor a seed PO.",
+        "List purchase orders with GET /api/purchasing/orders.",
+    ),
+    ErrorSpec(
+        "FV-PUR-013",
+        409,
+        "Seed PO is read-only",
+        "The action edits, issues, closes, cancels or expedites a seed PO from the warehouse.",
+        "Only receiving is allowed on seed POs; raise a session PO instead.",
+    ),
+    ErrorSpec("FV-PUR-014", 400, "Unknown action", "The document action is not one of the actions listed in `detail.valid`.", "Use one of `detail.valid`."),
+    ErrorSpec("FV-PUR-015", 400, "Unknown status", "The status filter is not a requisition or PO status.", "Use one of `detail.valid`."),
+    ErrorSpec(
+        "FV-PUR-016", 400, "Material not on PO", "A goods-receipt line names a material that is not on the purchase order.", "Receive only the PO's materials."
+    ),
 ]
 CATALOG: dict[str, ErrorSpec] = {s.code: s for s in _SPECS}
 
