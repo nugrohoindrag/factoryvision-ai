@@ -4,30 +4,35 @@ import base64
 import json
 import logging
 from functools import lru_cache
-from typing import Callable
+from typing import TYPE_CHECKING, Any
 
 from app.config import settings
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 log = logging.getLogger("fv.pubsub")
 
 PLANT_EVENTS = "plant-events"
 AGENT_COMMANDS = "agent-commands"
 
-_handlers: dict[str, Callable[[dict], object]] = {}
+Message = dict[str, Any]
+
+_handlers: dict[str, Callable[[Message], object]] = {}
 
 
-def subscribe(topic: str, handler: Callable[[dict], object]) -> None:
+def subscribe(topic: str, handler: Callable[[Message], object]) -> None:
     _handlers[topic] = handler
 
 
 @lru_cache(maxsize=1)
-def _publisher():
-    from google.cloud import pubsub_v1
+def _publisher() -> Any:
+    from google.cloud.pubsub_v1 import PublisherClient
 
-    return pubsub_v1.PublisherClient()
+    return PublisherClient()
 
 
-def publish(topic: str, message: dict) -> object:
+def publish(topic: str, message: Message) -> object:
     if settings.pubsub == "gcp":
         data = json.dumps(message, default=str).encode()
         future = _publisher().publish(_publisher().topic_path(settings.project, topic), data)
@@ -40,11 +45,11 @@ def publish(topic: str, message: dict) -> object:
     return handler(message)
 
 
-def publish_batch(topic: str, messages: list[dict]) -> None:
+def publish_batch(topic: str, messages: list[Message]) -> None:
     for m in messages:
         publish(topic, m)
 
 
-def decode_push(body: dict) -> dict:
-    data = body["message"]["data"]
-    return json.loads(base64.b64decode(data))
+def decode_push(body: Message) -> Message:
+    decoded: Message = json.loads(base64.b64decode(body["message"]["data"]))
+    return decoded

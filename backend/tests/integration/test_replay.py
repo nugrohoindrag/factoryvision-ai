@@ -1,9 +1,8 @@
 import uuid
 
-from fastapi.testclient import TestClient
-
 from app.agents import replay
 from app.main import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app, raise_server_exceptions=False)
 
@@ -15,8 +14,16 @@ def h(s):
 def test_scripted_playbook_covers_the_chain(ground_truth):
     rec = replay.load("disruption_response")
     agents = {e["agent"] for e in rec["timeline"]}
-    assert {"demand_forecast_agent", "production_planning_agent", "material_supply_agent", "purchasing_agent", "mes_agent",
-            "quality_control_agent", "delivery_agent", "orchestrator"} <= agents
+    assert {
+        "demand_forecast_agent",
+        "production_planning_agent",
+        "material_supply_agent",
+        "purchasing_agent",
+        "mes_agent",
+        "quality_control_agent",
+        "delivery_agent",
+        "orchestrator",
+    } <= agents
     kinds = [p["kind"] for p in rec["proposals"]]
     assert {"maintenance", "mold_move", "purchase_order", "quality_hold", "ship_date", "customer_notice"} <= set(kinds)
     ship = sorted(p["args"]["order_id"] for p in rec["proposals"] if p["kind"] == "ship_date")

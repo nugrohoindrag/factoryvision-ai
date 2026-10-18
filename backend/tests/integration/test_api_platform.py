@@ -1,11 +1,10 @@
 import uuid
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app import actions, pubsub
 from app.main import app
 from app.modules import MODULES
+from fastapi.testclient import TestClient
 
 client = TestClient(app, raise_server_exceptions=False)
 
@@ -63,8 +62,14 @@ def test_approved_maintenance_clears_late_orders(sid):
 
 def test_approved_po_moves_stockout(sid):
     before = client.get("/api/modules/material/summary", headers=h(sid)).json()["resin"]["days_to_stockout"]
-    a = actions.propose(sid, "purchase_order", "PO resin", "purchasing", "x",
-                        {"vendor_id": "VEN-MERAPI", "material_id": "PP-EPDM-T20", "qty": 160000, "expected_date": "2027-02-06"})
+    a = actions.propose(
+        sid,
+        "purchase_order",
+        "PO resin",
+        "purchasing",
+        "x",
+        {"vendor_id": "VEN-MERAPI", "material_id": "PP-EPDM-T20", "qty": 160000, "expected_date": "2027-02-06"},
+    )
     client.post(f"/api/actions/{a['action_id']}/approve", headers=h(sid))
     after = client.get("/api/modules/material/summary", headers=h(sid)).json()["resin"]["days_to_stockout"]
     assert after is None or after > before

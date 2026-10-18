@@ -620,7 +620,7 @@ class Generator:
                 w = csv.DictWriter(f, fieldnames=names, extrasaction="raise")
                 w.writeheader()
                 for row in self.t[name]:
-                    w.writerow({k: fmt(int(round(row[k])) if k in ints and isinstance(row.get(k), float) else row.get(k)) for k in names})
+                    w.writerow({k: fmt(round(row[k]) if k in ints and isinstance(row.get(k), float) else row.get(k)) for k in names})
         (out / "_schema.json").write_text(json.dumps({n: [{"name": c, "type": ty} for c, ty in cols] for n, cols in TABLES.items()}, indent=1))
 
 

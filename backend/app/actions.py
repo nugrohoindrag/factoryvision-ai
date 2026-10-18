@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
 
 from app import pubsub
 from app.errors import FVError
-from app.store import store
+from app.store import Doc, store
+
+ACTION_NOT_FOUND = "FV-ACT-001"
+ACTION_ALREADY_DECIDED = "FV-ACT-002"
+ACTION_EXECUTION_FAILED = "FV-ACT-003"
 
 COLLECTION = "actions"
 STATUSES = ("pending", "approved", "rejected", "failed")
@@ -24,46 +29,66 @@ KINDS = {
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
-def propose(session_id: str, kind: str, title: str, origin_agent: str, rationale: str, args: dict,
-            evidence: list[dict] | None = None, impact: dict | None = None, plan_id: str | None = None,
-            action_id: str | None = None) -> dict:
+def propose(
+    session_id: str,
+    kind: str,
+    title: str,
+    origin_agent: str,
+    rationale: str,
+    args: dict[str, Any],
+    evidence: list[dict[str, Any]] | None = None,
+    impact: dict[str, Any] | None = None,
+    plan_id: str | None = None,
+    action_id: str | None = None,
+) -> Doc:
     if kind not in KINDS:
-        raise ValueError(f"unknown action kind {kind}")
+        msg = f"unknown action kind {kind}"
+        raise ValueError(msg)
     module, command = KINDS[kind]
-    doc = {
+    doc: Doc = {
         "action_id": action_id or f"ACT-{uuid.uuid4().hex[:10]}",
-        "session_id": session_id, "plan_id": plan_id, "kind": kind, "module": module, "title": title,
-        "origin_agent": origin_agent, "rationale": rationale, "evidence": evidence or [],
+        "session_id": session_id,
+        "plan_id": plan_id,
+        "kind": kind,
+        "module": module,
+        "title": title,
+        "origin_agent": origin_agent,
+        "rationale": rationale,
+        "evidence": evidence or [],
         "impact": {k: (impact or {}).get(k) for k in IMPACT_KEYS},
         "command": {"name": command, "args": args},
-        "status": "pending", "created_at": _now(), "decided_at": None, "decided_by": None, "execution": None,
+        "status": "pending",
+        "created_at": _now(),
+        "decided_at": None,
+        "decided_by": None,
+        "execution": None,
     }
     store().set(COLLECTION, doc["action_id"], doc)
     return doc
 
 
-def get(session_id: str, action_id: str) -> dict:
+def get(session_id: str, action_id: str) -> Doc:
     doc = store().get(COLLECTION, action_id)
     if not doc or doc["session_id"] != session_id:
-        raise FVError("FV-ACT-001", detail={"action_id": action_id})
+        raise FVError(ACTION_NOT_FOUND, detail={"action_id": action_id})
     return doc
 
 
-def list_actions(session_id: str, status: str | None = None) -> list[dict]:
+def list_actions(session_id: str, status: str | None = None) -> list[Doc]:
     docs = store().where(COLLECTION, "session_id", session_id)
     if status:
         docs = [d for d in docs if d["status"] == status]
-    return sorted(docs, key=lambda d: d["created_at"])
+    return sorted(docs, key=lambda d: str(d["created_at"]))
 
 
-def decide(session_id: str, action_id: str, approve: bool, user: str, note: str | None = None) -> dict:
+def decide(session_id: str, action_id: str, *, approve: bool, user: str, note: str | None = None) -> Doc:
     doc = get(session_id, action_id)
     if doc["status"] != "pending":
-        raise FVError("FV-ACT-002", detail={"action_id": action_id, "status": doc["status"]})
-    fields = {"decided_at": _now(), "decided_by": user, "note": note}
+        raise FVError(ACTION_ALREADY_DECIDED, detail={"action_id": action_id, "status": doc["status"]})
+    fields: Doc = {"decided_at": _now(), "decided_by": user, "note": note}
     if not approve:
         fields["status"] = "rejected"
         store().update(COLLECTION, action_id, fields)
@@ -76,25 +101,26 @@ def decide(session_id: str, action_id: str, approve: bool, user: str, note: str 
     store().update(COLLECTION, action_id, fields)
     out = {**doc, **fields}
     if out["status"] == "failed":
-        raise FVError("FV-ACT-003", detail={"action_id": action_id, "reason": fields["execution"]["error"]})
+        raise FVError(ACTION_EXECUTION_FAILED, detail={"action_id": action_id, "reason": fields["execution"]["error"]})
     return out
 
 
-def decide_plan(session_id: str, plan_id: str, approve: bool, user: str) -> dict:
-    results, failed = [], []
+def decide_plan(session_id: str, plan_id: str, *, approve: bool, user: str) -> Doc:
+    results: list[Doc] = []
+    failed: list[Doc] = []
     for doc in list_actions(session_id, "pending"):
         if doc["plan_id"] != plan_id:
             continue
         try:
-            results.append(decide(session_id, doc["action_id"], approve, user))
+            results.append(decide(session_id, doc["action_id"], approve=approve, user=user))
         except FVError as e:
             failed.append({"action_id": doc["action_id"], "error": e.body()["error"]})
     if not results and not failed:
-        raise FVError("FV-ACT-001", detail={"plan_id": plan_id})
+        raise FVError(ACTION_NOT_FOUND, detail={"plan_id": plan_id})
     return {"plan_id": plan_id, "decided": results, "failed": failed}
 
 
-def approved_commands(session_id: str) -> list[dict]:
+def approved_commands(session_id: str) -> list[Doc]:
     return [d["command"] | {"action_id": d["action_id"]} for d in list_actions(session_id, "approved")]
 
 

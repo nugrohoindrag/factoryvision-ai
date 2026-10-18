@@ -34,8 +34,15 @@ def test_run_finishes_with_one_plan(live_run):
 def test_chain_covers_every_module(live_run):
     items, _ = live_run
     agents = {i.get("agent") for i in items if i["kind"] == "agent_start"}
-    assert {"demand_forecast_agent", "production_planning_agent", "material_supply_agent", "purchasing_agent",
-            "mes_agent", "quality_control_agent", "delivery_agent"} <= agents
+    assert {
+        "demand_forecast_agent",
+        "production_planning_agent",
+        "material_supply_agent",
+        "purchasing_agent",
+        "mes_agent",
+        "quality_control_agent",
+        "delivery_agent",
+    } <= agents
 
 
 def test_planted_stories_become_proposals(live_run, ground_truth):

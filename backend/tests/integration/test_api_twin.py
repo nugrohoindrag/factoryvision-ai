@@ -2,10 +2,9 @@ import base64
 import json
 import uuid
 
-from fastapi.testclient import TestClient
-
 from app import actions, twin
 from app.main import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app, raise_server_exceptions=False)
 

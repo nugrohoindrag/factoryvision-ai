@@ -1,5 +1,4 @@
 import pytest
-
 from app import actions, effects, pubsub
 from app.errors import FVError
 from app.session import Limiter
@@ -43,6 +42,7 @@ def test_reject_never_executes(executed):
 def test_failed_execution_is_recorded(monkeypatch):
     def boom(m):
         raise FVError("FV-TWIN-002")
+
     monkeypatch.setitem(pubsub._handlers, pubsub.AGENT_COMMANDS, boom)
     a = actions.propose(SID, "maintenance", "Maintain IMM-04", "mes", "x", {"machine_id": "IMM-04"})
     with pytest.raises(FVError) as e:

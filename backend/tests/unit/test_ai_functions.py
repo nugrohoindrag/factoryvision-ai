@@ -1,9 +1,8 @@
 import pytest
-
 from app.ai import extract, genai, vision
+from app.documents import DOCUMENTS, schedule_lines
 from app.errors import FVError
 from app.session import limiter
-from app.documents import DOCUMENTS, schedule_lines
 from app.simulation.engine import State
 
 SID = "44444444-4444-4444-4444-444444444444"
@@ -41,6 +40,7 @@ def test_vision_cache_debounce_and_cap(fake_analyzer):
     assert e.value.code == "FV-VIS-002"
     limiter.reset(SID)
     from app.config import settings
+
     for k in range(settings.vision_calls_per_session):
         limiter._last.clear()
         vision.frame(SID, "CAM-Molding", f"cap-{k}", JPEG, "image/jpeg", None)
@@ -70,10 +70,16 @@ def test_score_against_simulator_state():
     assert "wip_low:FB-ARKA" in vision.score([], snap, "CAM-WIP")["missed"]
 
 
-@pytest.mark.parametrize("model_ok,color_ok,defects,expected", [
-    (True, True, [], "OK"), (True, False, [], "WRONG_COLOR"), (False, True, [], "WRONG_PART"),
-    (True, True, [{"disposition": "Scrap"}], "SCRAP"), (True, True, [{"disposition": "Touch Up"}], "TOUCH_UP"),
-])
+@pytest.mark.parametrize(
+    "model_ok,color_ok,defects,expected",
+    [
+        (True, True, [], "OK"),
+        (True, False, [], "WRONG_COLOR"),
+        (False, True, [], "WRONG_PART"),
+        (True, True, [{"disposition": "Scrap"}], "SCRAP"),
+        (True, True, [{"disposition": "Touch Up"}], "TOUCH_UP"),
+    ],
+)
 def test_qc_verdict(model_ok, color_ok, defects, expected):
     assert extract.verdict(model_ok, color_ok, defects) == expected
 
@@ -89,9 +95,18 @@ def test_demo_po_raises_fb_arka_by_40_pct():
 
 def test_inspect_photo_maps_defects(monkeypatch):
     monkeypatch.setattr(extract, "references", lambda *a: [])
-    monkeypatch.setattr(genai, "generate_json", lambda *a, **k: {
-        "model": "ARKA", "position": "Front", "same_model_as_reference": True, "same_color_as_reference": True,
-        "defects": [{"defect_code": "BUBBLE", "confidence": 0.8}, {"defect_code": "NOT_A_CODE", "confidence": 0.9}], "confidence": 0.9})
+    monkeypatch.setattr(
+        genai,
+        "generate_json",
+        lambda *a, **k: {
+            "model": "ARKA",
+            "position": "Front",
+            "same_model_as_reference": True,
+            "same_color_as_reference": True,
+            "defects": [{"defect_code": "BUBBLE", "confidence": 0.8}, {"defect_code": "NOT_A_CODE", "confidence": 0.9}],
+            "confidence": 0.9,
+        },
+    )
     out = extract.inspect_photo(JPEG, "image/jpeg", "FB-ARKA", "C02")
     assert [d["defect_code"] for d in out["defects"]] == ["BUBBLE"]
     assert out["defects"][0]["category"] == "Material" and out["verdict"] == "SCRAP"

@@ -1,5 +1,4 @@
 import pytest
-
 from app.actions import IMPACT_KEYS
 from app.tools.impact import impact_calculator, plan_total
 

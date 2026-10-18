@@ -1,7 +1,6 @@
 import pytest
-
-from app.errors import FVError
 from app import plant
+from app.errors import FVError
 from app.simulation.engine import RESIN_START_KG, State, andon
 from simulator.seed.generator import Generator
 
@@ -33,14 +32,24 @@ def test_no_tick_no_change():
 def test_initial_state_matches_seed():
     g = Generator()
     g.run()
-    assert RESIN_START_KG == g.truth["resin_on_hand_kg"]
+    assert g.truth["resin_on_hand_kg"] == RESIN_START_KG
     s = State.new("s1")
     assert s.wip["FB-ARKA"] == 6
     assert {mid: next(iter(m.mix)) for mid, m in s.machines.items() if m.mix} == plant.INITIAL_MOLDS
 
 
-@pytest.mark.parametrize("status,perf,color", [("Running", 95, "green"), ("Running", 80, "yellow"), ("Setup", None, "yellow"),
-                                               ("Downtime", None, "red"), ("Maintenance", None, "blue"), ("Idle", None, "grey"), ("Offline", None, "grey")])
+@pytest.mark.parametrize(
+    "status,perf,color",
+    [
+        ("Running", 95, "green"),
+        ("Running", 80, "yellow"),
+        ("Setup", None, "yellow"),
+        ("Downtime", None, "red"),
+        ("Maintenance", None, "blue"),
+        ("Idle", None, "grey"),
+        ("Offline", None, "grey"),
+    ],
+)
 def test_andon_colours(status, perf, color):
     assert andon(status, perf) == color
 

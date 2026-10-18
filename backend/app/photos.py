@@ -30,4 +30,5 @@ def mime_type(entry: dict[str, Any]) -> str:
 
 
 def read(entry: dict[str, Any]) -> bytes:
-    return (settings.photos_dir / entry["file"]).read_bytes()
+    path: Path = settings.photos_dir / str(entry["file"])
+    return path.read_bytes()

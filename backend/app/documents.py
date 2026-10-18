@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from app import plant
 
 FEB_WORKING_DAYS = 24
@@ -7,7 +9,7 @@ OEM_A_SHARE = 0.80
 PO_CHANGE_PCT = 40
 
 
-def schedule_lines() -> list[dict]:
+def schedule_lines() -> list[dict[str, Any]]:
     rows = []
     for sku in ("FB-ARKA", "RB-ARKA", "FB-CITRA", "RB-CITRA"):
         share = dict(plant.CUSTOMER_MIX[plant.PRODUCT_BY_SKU[sku].model])["CUS-OEMA"]
@@ -31,8 +33,7 @@ def po_text() -> list[str]:
         "",
         "Part no.    Month     Previous qty   Revised qty",
     ]
-    for r in schedule_lines():
-        lines.append(f"{r['sku']:<11} {r['month']:<9} {r['previous_qty']:>12,}   {r['qty']:>11,}")
+    lines.extend(f"{r['sku']:<11} {r['month']:<9} {r['previous_qty']:>12,}   {r['qty']:>11,}" for r in schedule_lines())
     lines += ["", "Delivery: JIT to OEM-A plant, returnable racks, 3 call-offs per day.", "Late delivery penalty as per supply agreement."]
     return lines
 
@@ -77,11 +78,16 @@ Best regards,
 Sales Admin, PT Andalas Polimindo
 """
 
-VENDOR_EMAIL_FACTS = {"vendor_name": "PT Andalas Polimindo", "material_id": "PP-EPDM-T20",
-                      "original_date": "2027-02-08", "new_date": "2027-02-11", "delay_days": 3}
+VENDOR_EMAIL_FACTS = {
+    "vendor_name": "PT Andalas Polimindo",
+    "material_id": "PP-EPDM-T20",
+    "original_date": "2027-02-08",
+    "new_date": "2027-02-11",
+    "delay_days": 3,
+}
 
 
-def demo_po_line() -> dict:
+def demo_po_line() -> dict[str, Any]:
     r = next(x for x in schedule_lines() if x["sku"] == "FB-ARKA")
     return {**r, "change_pct": round(100 * (r["qty"] / r["previous_qty"] - 1), 1)}
 

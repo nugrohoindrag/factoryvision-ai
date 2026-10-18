@@ -66,7 +66,6 @@ def build(raw_dir: Path | None = None, out: Path = OUT, amap_path: Path = RAW / 
     return catalog
 
 
-
 def main() -> None:
     cat = build()
     by_sku: dict[str, int] = {}

@@ -1,6 +1,12 @@
 import asyncio
 import uuid
+from typing import Any
 
+from app import actions
+from app.agents.agents import module_agents, orchestrator
+from app.agents.runner import run
+from app.agents.tools import MODULE_TOOLS, ORCHESTRATOR_TOOLS
+from app.store import store
 from google.adk.agents import LlmAgent
 from google.adk.models.base_llm import BaseLlm
 from google.adk.models.llm_response import LlmResponse
@@ -8,16 +14,9 @@ from google.adk.tools import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
 from google.genai import types
 
-from app import actions
-from app.agents.agents import module_agents, orchestrator
-from app.agents.runner import run
-from app.agents.tools import MODULE_TOOLS, ORCHESTRATOR_TOOLS
-from app.store import store
-
 
 class ScriptedLlm(BaseLlm):
-
-    calls: list = []
+    calls: list[Any] = []
     final: str = "done"
 
     async def generate_content_async(self, llm_request, stream: bool = False):
@@ -43,13 +42,27 @@ def test_real_agents_are_wired():
 
 
 def test_orchestrator_run_traces_sub_agent_tools_and_creates_pending_proposal():
-    mes = LlmAgent(name="mes_agent", model=ScriptedLlm(model="fake", calls=[
-        ("get_machine_health", {"machine_id": "IMM-04"}),
-        ("propose_maintenance", {"machine_id": "IMM-04", "rationale": "cycle rising"}),
-    ], final="IMM-04 needs maintenance."), tools=MODULE_TOOLS["mes"])
-    orch = LlmAgent(name="orchestrator", model=ScriptedLlm(model="fake", calls=[("mes_agent", {"request": "check IMM-04"}), ("plan_summary", {})],
-                                                           final="One plan. All actions are pending your approval in the Action Center."),
-                    tools=[AgentTool(agent=mes), *ORCHESTRATOR_TOOLS])
+    mes = LlmAgent(
+        name="mes_agent",
+        model=ScriptedLlm(
+            model="fake",
+            calls=[
+                ("get_machine_health", {"machine_id": "IMM-04"}),
+                ("propose_maintenance", {"machine_id": "IMM-04", "rationale": "cycle rising"}),
+            ],
+            final="IMM-04 needs maintenance.",
+        ),
+        tools=MODULE_TOOLS["mes"],
+    )
+    orch = LlmAgent(
+        name="orchestrator",
+        model=ScriptedLlm(
+            model="fake",
+            calls=[("mes_agent", {"request": "check IMM-04"}), ("plan_summary", {})],
+            final="One plan. All actions are pending your approval in the Action Center.",
+        ),
+        tools=[AgentTool(agent=mes), *ORCHESTRATOR_TOOLS],
+    )
     sid, plan = str(uuid.uuid4()), "PLAN-test"
     rec = asyncio.run(run(orch, "disruption", sid, plan, timeout_s=60))
     assert "pending your approval" in rec["text"]

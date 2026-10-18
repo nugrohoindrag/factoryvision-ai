@@ -1,9 +1,9 @@
-from __future__ import annotations
-
 import json
 import uuid
+from collections.abc import AsyncIterator
+from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -13,18 +13,29 @@ from app.ai import genai
 from app.config import settings
 from app.errors import FVError
 from app.modules import MODULES
-from app.session import limiter, session_id
-from app.store import store
+from app.session import SessionId, limiter
 from app.simulation.engine import SCENARIOS
+from app.store import store
+
+MODEL_UNAVAILABLE = "FV-AI-001"
+UNKNOWN_ENTITY = "FV-DATA-001"
+UNKNOWN_MODULE = "FV-REQ-002"
+UNKNOWN_SCENARIO = "FV-REQ-003"
+LIVE_RUN_LIMIT_REACHED = "FV-RATE-001"
+AGENT_QUESTION_LIMIT_REACHED = "FV-RATE-002"
 
 router = APIRouter(prefix="/api")
 
 
 @router.get("/mode")
-def mode() -> dict:
-    return {"ai_enabled": genai.enabled(), "replays": [s for s in SCENARIOS if replay.path(s).exists()], "scenarios": list(SCENARIOS),
-            "models": {"orchestrator": settings.model_orchestrator, "module": settings.model_module, "vision": settings.model_vision},
-            "caps": {"live_runs": settings.live_runs_per_session, "agent_asks": settings.agent_asks_per_session, "vision_calls": settings.vision_calls_per_session}}
+def mode() -> dict[str, Any]:
+    return {
+        "ai_enabled": genai.enabled(),
+        "replays": [s for s in SCENARIOS if replay.path(s).exists()],
+        "scenarios": list(SCENARIOS),
+        "models": {"orchestrator": settings.model_orchestrator, "module": settings.model_module, "vision": settings.model_vision},
+        "caps": {"live_runs": settings.live_runs_per_session, "agent_asks": settings.agent_asks_per_session, "vision_calls": settings.vision_calls_per_session},
+    }
 
 
 class Ask(BaseModel):
@@ -32,12 +43,12 @@ class Ask(BaseModel):
 
 
 @router.post("/agents/{module}/ask")
-async def ask(module: str, body: Ask, sid: str = Depends(session_id)) -> dict:
+async def ask(module: str, body: Ask, sid: SessionId) -> dict[str, Any]:
     if module not in MODULES:
-        raise FVError("FV-REQ-002", detail={"module": module, "valid": list(MODULES)})
+        raise FVError(UNKNOWN_MODULE, detail={"module": module, "valid": list(MODULES)})
     if not genai.enabled():
-        raise FVError("FV-AI-001", "AI is disabled in this environment; use Replay")
-    limiter.take(sid, "agent", settings.agent_asks_per_session, "FV-RATE-002")
+        raise FVError(MODEL_UNAVAILABLE, "AI is disabled in this environment; use Replay")
+    limiter.take(sid, "agent", settings.agent_asks_per_session, AGENT_QUESTION_LIMIT_REACHED)
     from app.agents.agents import module_agents
     from app.agents.runner import run
 
@@ -47,8 +58,8 @@ async def ask(module: str, body: Ask, sid: str = Depends(session_id)) -> dict:
     return {"module": module, "run_id": rec["run_id"], "text": rec["text"], "timeline": rec["timeline"], "actions": created, "duration_s": rec["duration_s"]}
 
 
-def _sse(items) -> StreamingResponse:
-    async def gen():
+def _sse(items: AsyncIterator[dict[str, Any]]) -> StreamingResponse:
+    async def gen() -> AsyncIterator[str]:
         async for item in items:
             yield f"data: {json.dumps(item, default=str)}\n\n"
 
@@ -56,12 +67,12 @@ def _sse(items) -> StreamingResponse:
 
 
 @router.post("/disruptions/{scenario}")
-async def disruption(scenario: str, sid: str = Depends(session_id)):
+async def disruption(scenario: str, sid: SessionId) -> StreamingResponse:
     if scenario not in SCENARIOS or scenario == "baseline":
-        raise FVError("FV-REQ-003", detail={"scenario": scenario, "valid": [s for s in SCENARIOS if s != "baseline"]})
+        raise FVError(UNKNOWN_SCENARIO, detail={"scenario": scenario, "valid": [s for s in SCENARIOS if s != "baseline"]})
     if not genai.enabled():
-        raise FVError("FV-AI-001", "AI is disabled in this environment; use Replay")
-    limiter.take(sid, "live_run", settings.live_runs_per_session, "FV-RATE-001")
+        raise FVError(MODEL_UNAVAILABLE, "AI is disabled in this environment; use Replay")
+    limiter.take(sid, "live_run", settings.live_runs_per_session, LIVE_RUN_LIMIT_REACHED)
     from app.agents.agents import orchestrator
     from app.agents.runner import stream
 
@@ -71,18 +82,18 @@ async def disruption(scenario: str, sid: str = Depends(session_id)):
 
 
 @router.get("/replay/{scenario}")
-def get_replay(scenario: str) -> dict:
+def get_replay(scenario: str) -> dict[str, Any]:
     return replay.load(scenario)
 
 
 @router.post("/replay/{scenario}")
-def play_replay(scenario: str, sid: str = Depends(session_id)) -> dict:
+def play_replay(scenario: str, sid: SessionId) -> dict[str, Any]:
     return replay.play(sid, scenario)
 
 
 @router.get("/runs/{run_id}")
-def get_run(run_id: str, sid: str = Depends(session_id)) -> dict:
+def get_run(run_id: str, sid: SessionId) -> dict[str, Any]:
     rec = store().get("agent_runs", run_id)
     if not rec or rec["session_id"] != sid:
-        raise FVError("FV-DATA-001", f"unknown run {run_id}")
+        raise FVError(UNKNOWN_ENTITY, f"unknown run {run_id}")
     return rec
