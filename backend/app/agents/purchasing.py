@@ -52,12 +52,12 @@ def pr_view(pr: Doc) -> Doc:
 
 
 def list_pos(sid: str, status: str | None = None, *, overdue: bool | None = None) -> Doc:
-    rows = purchasing_docs.list_pos(sid, status=status, overdue=overdue)["orders"]
+    rows = purchasing_docs.list_pos(sid, status=status, overdue=overdue)
     return {"count": len(rows), "orders": [po_view(r) for r in rows[:MAX_ROWS]], "truncated": len(rows) > MAX_ROWS, "source": SOURCE}
 
 
 def list_prs(sid: str, status: str | None = None) -> Doc:
-    rows = purchasing_docs.list_requisitions(sid, status)["requisitions"]
+    rows = purchasing_docs.list_requisitions(sid, status)
     return {"count": len(rows), "requisitions": [pr_view(r) for r in rows[:MAX_ROWS]], "source": "purchasing_docs requisitions of this session"}
 
 

@@ -133,14 +133,14 @@ def fake(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
 
     def list_pos(
         sid: str, status: str | None = None, vendor_id: str | None = None, material_id: str | None = None, *, overdue: bool | None = None
-    ) -> dict[str, Any]:
+    ) -> list[dict[str, Any]]:
         calls["list_pos"].append((sid, status, vendor_id, material_id, overdue))
         rows = [p for p in pos.values() if (not status or p["status"] == status)]
-        return {"orders": [{**p, "overdue": True, "days_late": 3} for p in rows] if overdue else rows}
+        return [{**p, "overdue": True, "days_late": 3} for p in rows] if overdue else rows
 
-    def list_requisitions(_sid: str, status: str | None = None) -> dict[str, Any]:
+    def list_requisitions(_sid: str, status: str | None = None) -> list[dict[str, Any]]:
         pr = {"pr_id": "PR-2702-001", "status": "Submitted", "created_by": "user", "history": [1, 2], "lines": [{"material_id": "B-C07", "qty": 420.0}]}
-        return {"requisitions": [pr] if status in (None, "Submitted") else []}
+        return [pr] if status in (None, "Submitted") else []
 
     monkeypatch.setattr(mrp, "get_run", lambda _sid, rid: run_doc if rid == RUN_ID else (_ for _ in ()).throw(FVError("FV-DATA-001")))
     monkeypatch.setattr(mrp, "latest_run", lambda _sid: run_doc)
@@ -386,5 +386,5 @@ def test_approved_resin_po_shows_in_the_po_list(sid: str) -> None:
     out = actions.decide(sid, a["action_id"], approve=True, user=APPROVER)["execution"]["result"]
     po = purchasing_docs.get_po(sid, out["session_po_id"])
     assert (po["origin"], po["status"], po["vendor_id"]) == ("session", "Issued", "VEN-MERAPI")
-    assert out["session_po_id"] in {o["po_id"] for o in purchasing_docs.list_pos(sid)["orders"]}
-    assert out["session_po_id"] not in {o["po_id"] for o in purchasing_docs.list_pos(str(uuid.uuid4()))["orders"]}
+    assert out["session_po_id"] in {o["po_id"] for o in purchasing_docs.list_pos(sid)}
+    assert out["session_po_id"] not in {o["po_id"] for o in purchasing_docs.list_pos(str(uuid.uuid4()))}

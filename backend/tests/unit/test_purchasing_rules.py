@@ -128,17 +128,17 @@ def test_vendor_price_rule() -> None:
 
 
 def test_choose_earliest_in_time_then_cheapest_and_zero_never_cheapest() -> None:
-    def o(v: str, exp: str, ok: bool | None, price: int) -> dict[str, Any]:
+    def o(v: str, exp: str, price: int, *, ok: bool | None) -> dict[str, Any]:
         return {"vendor_id": v, "expected_arrival": exp, "arrives_before_need": ok, "unit_price_idr": price, "po_value_idr": price * 10}
 
-    opts = [o("A", "2027-02-05", True, 10), o("B", "2027-02-03", True, 12), o("C", "2027-02-01", False, 1)]
+    opts = [o("A", "2027-02-05", 10, ok=True), o("B", "2027-02-03", 12, ok=True), o("C", "2027-02-01", 1, ok=False)]
     assert pd.choose(opts)["vendor_id"] == "B"
     assert pd.premium(pd.choose(opts), opts) == 110
-    tie = [o("Z", "2027-02-03", True, 0), o("Y", "2027-02-03", True, 50)]
+    tie = [o("Z", "2027-02-03", 0, ok=True), o("Y", "2027-02-03", 50, ok=True)]
     assert pd.choose(tie)["vendor_id"] == "Y"
-    late = [o("A", "2027-02-09", False, 10), o("B", "2027-02-07", False, 12)]
+    late = [o("A", "2027-02-09", 10, ok=False), o("B", "2027-02-07", 12, ok=False)]
     assert pd.choose(late)["vendor_id"] == "B"
-    assert pd.premium(o("Q", "x", True, 0), tie) == 0
+    assert pd.premium(o("Q", "x", 0, ok=True), tie) == 0
 
 
 def test_tolerance_and_receipt_status() -> None:
@@ -374,7 +374,13 @@ def test_expedite(sid: str) -> None:
     assert out["promised_date"] == "2027-02-04"
     assert out["expected_date"] == "2027-02-08"
     h = out["history"][-1]
-    assert (h["action"], h["by"], h["reason"], h["old_promised_date"], h["new_promised_date"]) == ("expedite", "boss", "line stop risk", "2027-02-08", "2027-02-04")
+    assert (h["action"], h["by"], h["reason"], h["old_promised_date"], h["new_promised_date"]) == (
+        "expedite",
+        "boss",
+        "line stop risk",
+        "2027-02-08",
+        "2027-02-04",
+    )
 
 
 def test_seed_po_is_read_only_but_receivable(sid: str) -> None:
