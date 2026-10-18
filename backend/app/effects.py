@@ -10,6 +10,8 @@ DEMAND_CHANGE_PCT: dict[str, dict[str, float]] = {
     "disruption_response": {"FB-ARKA": 40},
     "demand_spike": {"FB-ARKA": 40},
 }
+DEFAULT_PLANNING_UTILIZATION_PCT = 80.0
+PLANNING_SETTINGS = "planning_settings"
 VENDOR_EXTRA_DELAY: dict[str, dict[str, float]] = {
     "disruption_response": {"VEN-ANDALAS": 3},
     "vendor_late": {"VEN-ANDALAS": 3},
@@ -32,6 +34,7 @@ class Overrides:
     new_orders: list[dict[str, Any]] = field(default_factory=list)
     cancelled_orders: dict[str, str] = field(default_factory=dict)
     applied: list[dict[str, Any]] = field(default_factory=list)
+    planning_utilization_pct: float = DEFAULT_PLANNING_UTILIZATION_PCT
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -47,7 +50,14 @@ def set_scenario(session_id: str, scenario: str) -> None:
 
 def overrides(session_id: str) -> Overrides:
     sc = str(session_doc(session_id).get("scenario", "baseline"))
-    o = Overrides(scenario=sc, demand_change_pct=dict(DEMAND_CHANGE_PCT.get(sc, {})), vendor_extra_delay=dict(VENDOR_EXTRA_DELAY.get(sc, {})))
+    setting = store().get(PLANNING_SETTINGS, session_id) or {}
+    util = float(setting.get("planning_utilization_pct", DEFAULT_PLANNING_UTILIZATION_PCT))
+    o = Overrides(
+        scenario=sc,
+        demand_change_pct=dict(DEMAND_CHANGE_PCT.get(sc, {})),
+        vendor_extra_delay=dict(VENDOR_EXTRA_DELAY.get(sc, {})),
+        planning_utilization_pct=util,
+    )
     for cmd in actions.approved_commands(session_id):
         apply(o, cmd)
     return o

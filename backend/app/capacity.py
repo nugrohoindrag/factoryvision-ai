@@ -4,7 +4,7 @@ import math
 from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from app import plant
+from app import effects, plant
 from app.effects import normal_cycle_factor
 from app.errors import FVError
 from app.store import store
@@ -21,10 +21,10 @@ INVALID_ASSESSMENT = "FV-CAP-004"
 
 WITHIN, ADDITIONAL, UP = "Within Plan", "Additional Demand", "Capacity Up Required"
 STATUS_RANK = {WITHIN: 0, ADDITIONAL: 1, UP: 2}
-DEFAULT_UTILIZATION_PCT = 80.0
+DEFAULT_UTILIZATION_PCT = effects.DEFAULT_PLANNING_UTILIZATION_PCT
 MAINTENANCE_DOWNTIME_MIN = 120  # the heater band and check ring job the maintenance action books (see planning.run_scheduler)
 SNAPSHOTS = "capacity_snapshots"
-SETTINGS = "planning_settings"
+SETTINGS = effects.PLANNING_SETTINGS
 
 FORMULAS = {
     "total": "Total = sum over compatible machines of (effective minutes x share / cycle time); "

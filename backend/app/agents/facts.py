@@ -113,8 +113,9 @@ def _arka_group(cap: Doc) -> Doc:
 def molding_delta(o: effects.Overrides, before_change: dict[str, float] | None) -> Doc:
     cyc = {m: effects.normal_cycle_factor(planning.machine_rates()) for m in o.maintenance} or None
     extra = o.extra_shifts or None
-    before = planning.get_capacity(demand_change_pct=before_change or None, cycle_override=cyc, extra_days=extra)
-    after = planning.get_capacity(demand_change_pct=o.demand_change_pct or None, cycle_override=cyc, extra_days=extra)
+    util = o.planning_utilization_pct
+    before = planning.get_capacity(demand_change_pct=before_change or None, cycle_override=cyc, extra_days=extra, utilization_pct=util)
+    after = planning.get_capacity(demand_change_pct=o.demand_change_pct or None, cycle_override=cyc, extra_days=extra, utilization_pct=util)
     b, a = _arka_group(before), _arka_group(after)
     return {
         "group": a["group"],

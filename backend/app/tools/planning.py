@@ -48,11 +48,20 @@ def current_molds_by_machine() -> dict[str, str]:
     return {mid: sku for sku, mid in current_molds().items()}
 
 
+def group_status(required: float, available: float, utilization_pct: float) -> str:
+    if required > available:
+        return "Capacity Up Required"
+    if required > available * utilization_pct / 100:
+        return "Additional Demand"
+    return "Within Plan"
+
+
 def get_capacity(
     month: str | None = None,
     demand_change_pct: dict[str, float] | None = None,
     cycle_override: dict[str, float] | None = None,
     extra_days: dict[str, int] | None = None,
+    utilization_pct: float = 80.0,
 ) -> dict[str, Any]:
     m = _month(month)
     plan = monthly_plan(m, demand_change_pct)
@@ -91,7 +100,7 @@ def get_capacity(
                 "required_minutes": round(req),
                 "available_minutes": round(av),
                 "capacity_gap_pct": pct(req / av - 1),
-                "status": "Capacity Up Required" if req > av else ("Additional Demand" if req > 0.95 * av else "Within Plan"),
+                "status": group_status(req, av, utilization_pct),
             }
         )
     bottleneck = max(machines, key=lambda x: x["load_pct"])
@@ -100,6 +109,7 @@ def get_capacity(
         "working_days": wd,
         "plan_qty": plan,
         "demand_change_pct": demand_change_pct or {},
+        "planning_utilization_pct": utilization_pct,
         "machines": machines,
         "groups": groups,
         "bottleneck_machine": bottleneck["machine_id"],
