@@ -91,6 +91,8 @@ _COMMANDS = {
     "expedite_po": place_po,
     "add_shift": logged,
     "apply_customer_po": logged,
+    "create_customer_order": logged,
+    "cancel_customer_order": logged,
     "revise_ship_date": logged,
     "notify_customer": logged,
 }

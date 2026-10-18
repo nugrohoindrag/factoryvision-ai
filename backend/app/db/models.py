@@ -95,6 +95,10 @@ class DimCustomer(Base):
     customer_name: Mapped[str | None] = col()
     customer_type: Mapped[str | None] = col()
     penalty_idr_per_day: Mapped[int | None] = col(Int)
+    pic_name: Mapped[str | None] = col()
+    pic_contact: Mapped[str | None] = col()
+    delivery_address: Mapped[str | None] = col()
+    dock_number: Mapped[str | None] = col()
 
 
 class DimVendor(Base):
@@ -218,6 +222,14 @@ class FactCustomerOrder(Base):
     requested_delivery_date: Mapped[date | None] = col(Date)
     order_status: Mapped[str | None] = col()
     shipped_qty: Mapped[int | None] = col(Int)
+    # Header fields, repeated on every line of the order (one row = one order line).
+    order_number: Mapped[str | None] = col()
+    line_no: Mapped[int | None] = col(Int)
+    po_number: Mapped[str | None] = col()
+    order_channel: Mapped[str | None] = col()
+    customer_pic: Mapped[str | None] = col()
+    delivery_address: Mapped[str | None] = col()
+    dock_number: Mapped[str | None] = col()
 
 
 class FactMonthlyPlan(Base):

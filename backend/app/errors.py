@@ -86,6 +86,13 @@ _SPECS = [
         "The proposal was approved but its command failed in the simulator.",
         "The action is marked failed with the reason; approve again after a reset.",
     ),
+    ErrorSpec(
+        "FV-ORD-001",
+        409,
+        "Order cannot be cancelled",
+        "The customer order is shipped, completed, already cancelled, or a work order for it is in production.",
+        "Leave the order as it is, or revise its ship date in Delivery.",
+    ),
     ErrorSpec("FV-TWIN-001", 404, "Plant session not found", "No simulator state exists for the session.", "Call POST /api/demo/reset to create it."),
     ErrorSpec(
         "FV-TWIN-002", 400, "Unknown command", "An agent-commands message names an unknown command.", "Check the command list in app/simulation/commands.py."

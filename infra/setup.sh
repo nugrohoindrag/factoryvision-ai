@@ -29,7 +29,8 @@ gcloud artifacts repositories describe fv --location "$REGION" >/dev/null 2>&1 |
   gcloud artifacts repositories create fv --repository-format docker --location "$REGION"
 
 echo "== Firestore (native mode)"
-gcloud firestore databases describe --database="(default)" >/dev/null 2>&1 || \n  gcloud firestore databases create --location "$REGION" --type firestore-native
+gcloud firestore databases describe --database="(default)" >/dev/null 2>&1 || \
+  gcloud firestore databases create --location "$REGION" --type firestore-native
 
 echo "== Cloud Storage"
 for b in docs qc-photos twin-assets frames; do

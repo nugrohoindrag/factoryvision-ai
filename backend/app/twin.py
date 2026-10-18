@@ -140,6 +140,8 @@ def reset(session_id: str, scenario: str = "baseline") -> dict[str, Any]:
     store().delete("observations", session_id)
     for insp in store().where("inspections", "session_id", session_id):
         store().delete("inspections", insp["inspection_id"])
+    for doc in store().where("order_documents", "session_id", session_id):
+        store().delete("order_documents", doc["doc_id"])
     effects.set_scenario(session_id, scenario)
     limiter.reset(session_id, keep=COST_BUCKETS)
     s = State.new(session_id, scenario)

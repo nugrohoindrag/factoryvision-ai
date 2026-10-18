@@ -277,3 +277,47 @@ button.small { padding: 0.15rem 0.45rem; font-size: 0.75rem; }
   .po-head { grid-template-columns: 1fr 1fr; }
   .hero { padding: 1.1rem 1.1rem; border-radius: 22px; }
 }
+
+/* Customer Orders: dialogs, wizard, expandable order rows */
+.dialog-backdrop { position: fixed; inset: 0; background: rgba(5, 5, 5, 0.38); display: flex; align-items: flex-start; justify-content: center; padding: 6vh 16px; z-index: 50; overflow-y: auto; }
+.dialog { background: var(--panel); border-radius: var(--radius-lg); box-shadow: var(--shadow-2); width: min(560px, 100%); }
+.dialog.wide { width: min(920px, 100%); }
+.dialog-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem 0.5rem; }
+.dialog-head h2 { margin: 0; font-size: 18px; }
+.dialog-body { padding: 0.5rem 1.25rem 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+.dialog-body h3 { margin: 0 0 0.4rem; font-size: 14px; }
+.dialog-foot { display: flex; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; }
+.field { display: flex; flex-direction: column; min-width: 0; }
+.field strong { font-weight: 600; overflow-wrap: anywhere; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; }
+.form-grid label, .filters label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; color: var(--muted); }
+.form-grid input, .form-grid select, .form-grid textarea, .filters input, .filters select { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.4rem 0.6rem; }
+.form-grid .invalid, .filters .invalid { border-color: var(--bad); }
+.field-error { color: var(--bad); font-size: 0.8rem; }
+.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 0.75rem; }
+.steps { display: flex; gap: 0.5rem; list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
+.steps li { display: flex; align-items: center; gap: 0.4rem; color: var(--muted); font-size: 0.9rem; }
+.steps li button { border: 0; background: none; padding: 0; color: inherit; font: inherit; display: flex; align-items: center; gap: 0.4rem; }
+.steps .dot { width: 22px; height: 22px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: var(--panel-2); font-size: 12px; font-weight: 700; }
+.steps li.active { color: var(--accent); font-weight: 600; }
+.steps li.active .dot, .steps li.done .dot { background: var(--accent); color: var(--accent-ink); }
+.steps li + li::before { content: ""; width: 24px; height: 1px; background: var(--line); }
+.notice-box { border-radius: var(--radius); padding: 0.6rem 0.8rem; font-size: 0.9rem; }
+.notice-box.warn { background: var(--warn-bg); color: var(--warn); }
+.notice-box.bad { background: var(--bad-bg); color: var(--bad); }
+.notice-box.good { background: var(--good-bg); color: var(--good); }
+.notice-box.info { background: var(--info-bg); color: var(--info); }
+.order-table { width: 100%; border-collapse: collapse; }
+.order-table th button { border: 0; background: none; padding: 0; font: inherit; color: inherit; font-weight: 600; }
+.order-table tr.sub td { background: var(--panel-2); padding: 0.5rem 0.75rem 0.75rem 2rem; }
+.order-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.progress { display: flex; align-items: center; gap: 0.4rem; min-width: 140px; }
+.progress .bar { flex: 1; height: 6px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
+.progress .bar span { display: block; height: 100%; background: var(--accent); }
+.risk { color: var(--bad); font-weight: 700; cursor: help; }
+.doc-list { margin: 0 0 0.5rem; padding-left: 1.2rem; }
+.upload { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--accent); cursor: pointer; font-size: 0.9rem; }
+.upload input { display: none; }
+.pager { display: flex; align-items: center; justify-content: flex-end; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.75rem; }
+.pager > .muted { margin-right: auto; }

@@ -12,7 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
 from app.errors import FVError
-from app.routes import agents, core, twin, vision
+from app.routes import agents, core, orders, twin, vision
 
 if TYPE_CHECKING:
     from starlette.middleware.base import RequestResponseEndpoint
@@ -22,7 +22,7 @@ log = logging.getLogger("fv")
 
 def create_app() -> FastAPI:
     application = FastAPI(title="Factory Vision AI", version="0.1.0")
-    for router in (core.router, twin.router, vision.router, agents.router):
+    for router in (core.router, orders.router, twin.router, vision.router, agents.router):
         application.include_router(router)
     if (settings.web_dist / "assets").is_dir():
         application.mount("/assets", StaticFiles(directory=settings.web_dist / "assets"), name="assets")

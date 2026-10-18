@@ -46,8 +46,23 @@ def delivery_rates(o: Overrides) -> dict[str, Any]:
     return out
 
 
+@lru_cache(maxsize=64)
+def _order_view(key: str) -> str:
+    o = Overrides(**json.loads(key))
+    view = orders.order_view(rates=delivery_rates(o) or None, new_orders=o.new_orders, cancelled=o.cancelled_orders, mold_moves=o.mold_moves)
+    return json.dumps(view, default=str)
+
+
+def order_view(o: Overrides) -> dict[str, Any]:
+    """Customer orders with lines, derived status, at-risk and work-order pegging; cached per session state."""
+    keep = ("maintenance", "mold_moves", "new_orders", "cancelled_orders")
+    key = json.dumps({k: v for k, v in o.as_dict().items() if k in keep}, sort_keys=True, default=str)
+    result: dict[str, Any] = json.loads(_order_view(key))
+    return result
+
+
 def _orders(o: Overrides) -> dict[str, Any]:
-    return {"book": orders.order_book(), "customer_pos": o.customer_pos, "customer_po_change_pct": o.demand_change_pct}
+    return {"book": orders.order_book(order_view(o)), "customer_pos": o.customer_pos, "customer_po_change_pct": o.demand_change_pct}
 
 
 def _forecast(o: Overrides) -> dict[str, Any]:
@@ -119,8 +134,10 @@ def _quality(o: Overrides) -> dict[str, Any]:
 
 def _delivery(o: Overrides) -> dict[str, Any]:
     rates = delivery_rates(o)
-    risk = delivery.orders_at_risk(rate_override=rates or None)
-    base = delivery.orders_at_risk() if rates else risk
+    extra = orders.session_lines(o.new_orders)
+    gone = [ln["order_id"] for h in order_view(o)["orders"] if h["order_number"] in o.cancelled_orders for ln in h["lines"]]
+    risk = delivery.orders_at_risk(rate_override=rates or None, extra_orders=extra, cancelled=gone)
+    base = delivery.orders_at_risk(extra_orders=extra, cancelled=gone) if rates else risk
     for r in risk["orders_at_risk"]:
         r["revised_ship_date"] = o.ship_dates.get(r["order_id"])
     return {

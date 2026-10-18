@@ -29,6 +29,8 @@ class Overrides:
     ship_dates: dict[str, str] = field(default_factory=dict)
     notices: list[dict[str, Any]] = field(default_factory=list)
     customer_pos: list[dict[str, Any]] = field(default_factory=list)
+    new_orders: list[dict[str, Any]] = field(default_factory=list)
+    cancelled_orders: dict[str, str] = field(default_factory=dict)
     applied: list[dict[str, Any]] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
@@ -58,6 +60,10 @@ def apply(o: Overrides, cmd: Doc) -> None:
             if line.get("change_pct"):
                 o.demand_change_pct[line["sku"]] = float(line["change_pct"])
         o.customer_pos.append(a)
+    elif name == "create_customer_order":
+        o.new_orders.append(a["order"])
+    elif name == "cancel_customer_order":
+        o.cancelled_orders[a["order_number"]] = a["reason"]
     elif name == "start_maintenance":
         o.maintenance.append(a["machine_id"])
     elif name == "move_mold":

@@ -54,6 +54,35 @@ export function Table({ cols, rows, empty = "Nothing to show." }: { cols: { key:
   );
 }
 
+/** Modal dialog: Escape and the backdrop close it; the title names it for screen readers. */
+export function Dialog({ open, title, onClose, children, wide = false }: { open: boolean; title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+  if (!open) return null;
+  return (
+    <div className="dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()} onKeyDown={(e) => {
+        if (e.key !== "Escape") return;
+        e.stopPropagation(); // a dialog opened from a dialog closes alone
+        onClose();
+      }}>
+      <div className={`dialog ${wide ? "wide" : ""}`} role="dialog" aria-modal="true" aria-label={title}>
+        <header className="dialog-head">
+          <h2>{title}</h2>
+          <button className="ghost" aria-label="Close" onClick={onClose}>✕</button>
+        </header>
+        <div className="dialog-body">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+export function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="field">
+      <span className="muted small">{label}</span>
+      <strong>{children}</strong>
+    </div>
+  );
+}
+
 export function Source({ children }: { children: ReactNode }) {
   return <p className="source">Source: {children}</p>;
 }
