@@ -32,6 +32,7 @@ export function OrderLines({ order }: { order: Any }) {
     <Table
       cols={[
         { key: "product", label: "Product" },
+        { key: "color", label: "Colour" },
         { key: "ordered", label: "Ordered", align: "right" },
         { key: "planned", label: "Planned", align: "right" },
         { key: "produced", label: "Produced", align: "right" },
@@ -44,6 +45,7 @@ export function OrderLines({ order }: { order: Any }) {
             <strong>{l.sku}</strong> <span className="muted small">{l.product_name}</span>
           </>
         ),
+        color: l.color ?? <span className="muted" title="No colour on this line: material planning splits it by usage share">–</span>,
         ordered: num(l.ordered_qty),
         planned: num(l.planned_qty),
         produced: num(l.produced_qty),

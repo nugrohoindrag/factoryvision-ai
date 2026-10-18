@@ -251,6 +251,33 @@ it("step 6: summary, warnings, and the server's reason when confirm is refused",
   expect(await screen.findByRole("alert")).toHaveTextContent("Plan cannot be confirmed (FV-PP-020): Line FB-ARKA is Capacity Up Required.");
 });
 
+it("step 6: checks material readiness, warns on SHORTAGE, and still allows Confirm", async () => {
+  plan = {
+    ...BASE,
+    readiness: { steps: steps(6), resume_step: 6 },
+    work_orders: [wo("WO-A", { confirmed: true, status: "Confirmed" })],
+    summary: { lines: 1, total_planned: 22000, work_orders: 1, customer_orders: 2 },
+  };
+  const short = {
+    material_id: "B-C07", material_name: "Basecoat C07", material_group: "Basecoat", color: "C07", unit: "kg",
+    required_qty: 8580, required_date: "2027-02-03", on_hand_qty: 0, reserved_qty: 0, incoming_qty: 0, incoming_counted_qty: 0, incoming: [],
+    available_qty: 0, shortage_qty: 8580, status: "SHORTAGE", at_risk: false, note: null,
+  };
+  const checked = { plan_id: "p1", plan_number: "PP-2027-02", wo_id: null, status: "SHORTAGE", readiness_pct: 0, required_date: "2027-02-03", checked_at: "2027-02-01T08:00:00Z", materials: [short], shortages: [short] };
+  mockApi((url, method) =>
+    url === "/api/materials/readiness/plans/p1" ? (method === "POST" ? checked : { plan_id: "p1", plan_number: "PP-2027-02", status: "NOT_CHECKED", readiness_pct: null, materials: [], shortages: [] }) : undefined,
+  );
+  renderWizard();
+  expect(await screen.findByRole("heading", { name: "Material readiness" })).toBeInTheDocument();
+  expect(await screen.findByText(/No material of this plan is fully covered/)).toBeInTheDocument();
+  const table = screen.getByRole("table", { name: "Material shortages" });
+  expect(within(table).getByText("B-C07")).toBeInTheDocument();
+  expect(within(table).getByText("8,580")).toBeInTheDocument();
+  expect(within(table).getByText("8,580 kg")).toBeInTheDocument();
+  expect(calls.filter((c) => c.url === "/api/materials/readiness/plans/p1").map((c) => c.method)).toEqual(["GET", "POST"]);
+  expect(screen.getByRole("button", { name: "Confirm production plan" })).toBeEnabled();
+});
+
 it("cancels with a reason of at least 3 characters and shows a refusal", async () => {
   mockApi((url) => (url.endsWith("/cancel") ? fail("FV-PP-024", "Plan cannot be cancelled", "2 work orders are In Production or Completed.") : undefined));
   renderWizard();

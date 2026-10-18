@@ -120,6 +120,8 @@ export type PlanDemand = {
   customer_id: string;
   customer_name: string;
   sku: string;
+  /** MR-R04: null for demand with no colour (old orders); material readiness splits it by usage share. */
+  color?: string | null;
   qty: number;
   requested_delivery_date: string | null;
   line_id: string;
@@ -201,3 +203,170 @@ export type DemandCandidate = {
   remaining_qty: number;
   requested_delivery_date: string | null;
 };
+
+/* Material readiness, MRP, inventory and BOM (CONTRACT-MR.md); hand-mirrored from the material API. */
+
+export type ReadinessStatus = "READY" | "PARTIAL" | "SHORTAGE" | "NOT_CHECKED";
+
+export type ReadinessIncoming = { po_id: string; qty: number; expected_date: string; counted: boolean };
+
+export type MaterialCheckRow = {
+  material_id: string;
+  material_name: string;
+  material_group: string;
+  color: string | null;
+  unit: string;
+  required_qty: number;
+  required_date: string | null;
+  on_hand_qty: number;
+  reserved_qty: number;
+  incoming_qty: number;
+  incoming_counted_qty: number;
+  incoming: ReadinessIncoming[];
+  available_qty: number;
+  shortage_qty: number;
+  status: Exclude<ReadinessStatus, "NOT_CHECKED">;
+  at_risk: boolean;
+  note: string | null;
+};
+
+export type MaterialCheck = {
+  plan_id: string;
+  plan_number: string;
+  wo_id: string | null;
+  status: ReadinessStatus;
+  readiness_pct: number | null;
+  required_date: string | null;
+  checked_at: string | null;
+  materials: MaterialCheckRow[];
+  shortages: MaterialCheckRow[];
+};
+
+export type ReadinessPlanRow = {
+  plan_id: string;
+  plan_number: string;
+  period_start: string;
+  period_end: string;
+  status: ReadinessStatus;
+  readiness_pct: number | null;
+  short_count: number;
+  checked_at: string | null;
+  origin: string;
+};
+
+export type ReadinessOverview = {
+  from: string;
+  to: string;
+  kpis: { readiness_pct: number | null; plans_monitored: number; plans_short: number; materials_short: number };
+  plans: ReadinessPlanRow[];
+};
+
+export type MrpResult = {
+  material_id: string;
+  material_name: string;
+  color: string | null;
+  unit: string;
+  gross_qty: number;
+  available_qty: number;
+  net_qty: number;
+  required_date: string | null;
+  order_by_date: string | null;
+  lead_time_days: number | null;
+  default_vendor_id: string | null;
+  recommendation: string | null;
+};
+
+export type MrpRun = {
+  run_id: string;
+  horizon_start: string;
+  horizon_end: string;
+  plan_ids: string[];
+  created_at: string;
+  created_by: string;
+  total_materials: number;
+  shortage_materials: number;
+  results: MrpResult[];
+};
+
+export type IncomingReceipt = {
+  po_id: string;
+  material_id: string;
+  vendor_id: string | null;
+  qty: number;
+  promised_date: string | null;
+  expected_date: string | null;
+  avg_delay_days: number | null;
+  source: "open_po" | "approved_po" | string;
+};
+
+export type StockRow = {
+  material_id: string;
+  material_name: string;
+  material_group: string;
+  color: string | null;
+  unit: string;
+  warehouse_id: string;
+  on_hand_qty: number;
+  reserved_qty: number;
+  incoming_qty: number;
+  incoming: IncomingReceipt[];
+  available_qty: number;
+  reorder_point: number | null;
+  safety_stock: number | null;
+  below_reorder: boolean;
+};
+
+export type InventoryView = { rows: StockRow[]; kpis: { materials: number; below_reorder: number; incoming_pos: number; value_idr: number } };
+
+export type Reservation = {
+  reservation_id: string;
+  plan_id: string;
+  wo_id: string;
+  material_id: string;
+  warehouse_id: string | null;
+  qty: number;
+  status: "Active" | "Released";
+  created_at: string;
+  released_at: string | null;
+  unit?: string;
+  material_name?: string;
+};
+
+export type ConsumptionRow = {
+  wo_id?: string | null;
+  material_id: string;
+  material_name?: string;
+  unit?: string;
+  planned_qty: number;
+  actual_qty: number;
+  variance_qty: number;
+  variance_pct: number | null;
+  status: "NORMAL" | "OVER_CONSUMPTION" | "UNDER_CONSUMPTION" | string;
+};
+
+export type LedgerRow = {
+  txn_id: string;
+  date: string;
+  material_id: string;
+  warehouse_id: string | null;
+  type: "Receipt" | "Issue" | "Adjust" | "Reserve" | "Release" | string;
+  qty: number;
+  balance_after: number;
+  ref: string | null;
+};
+
+export type BomItem = {
+  bom_id: string;
+  material_id: string;
+  material_name: string;
+  material_group: string;
+  qty_per_unit: number;
+  unit: string;
+  scrap_pct: number;
+  process: "Molding" | "Painting" | "Assembly" | "Packing" | string;
+  color: string | null;
+};
+
+export type Bom = { bom_id: string; sku: string; version: number | string; status: "Draft" | "Active" | "Inactive"; effective_date: string | null; items: BomItem[] };
+
+export type Warehouse = { warehouse_id: string; name?: string; warehouse_name?: string };

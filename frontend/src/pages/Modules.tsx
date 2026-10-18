@@ -1,46 +1,12 @@
-/** Module pages with thin-to-medium depth: Material, Purchasing, Delivery. Forecast and Planning have their own files. */
+/** Module pages with thin-to-medium depth: Purchasing, Delivery. Forecast, Planning and Material have their own files. */
 
 import { AskAgent } from "../components/agents";
-import { Line } from "../components/charts";
 import { Badge, Card, Kpi, Source, Status, Table, num, pct } from "../components/ui";
 import { formatIdr, formatIdrCompact } from "../lib/format";
 import { useData } from "../lib/store";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Any = any;
-
-export function MaterialPage() {
-  const { data, error, loading } = useData<Any>("/api/modules/material/summary");
-  const r = data?.resin;
-  return (
-    <>
-      <h1>Material Supply</h1>
-      <Status loading={loading} error={error} />
-      {data && (
-        <>
-          <div className="kpis">
-            <Kpi label="PP-EPDM-T20 stockout" value={r.stockout_date ?? "none in 21 days"} sub={r.days_to_stockout != null ? `in ${r.days_to_stockout} days` : "covered"} tone={r.days_to_stockout != null && r.days_to_stockout <= 10 ? "bad" : "good"} />
-            <Kpi label="On hand" value={`${num(r.on_hand_qty)} kg`} />
-            <Kpi label="Use per working day" value={`${num(r.actual_rate_per_workday)} kg`} sub={`BOM ${num(r.bom_rate_per_workday)} kg`} />
-            <Kpi label="Above BOM" value={pct(r.overconsumption_vs_bom_pct)} sub="short-shot scrap" tone="warn" />
-          </div>
-          <Card title="Resin PP-EPDM-T20 projection (kg)">
-            <Line label="Resin projection" history={r.projection.map((p: Any) => ({ x: p.date, y: Math.max(0, p.projected_qty) }))} />
-            {r.open_receipts.length > 0 && <p className="small">Incoming: {r.open_receipts.map((x: Any) => `${num(x.qty)} kg on ${x.expected_date}`).join("; ")}</p>}
-            <Source>{r.source}</Source>
-          </Card>
-          <Card title="Requirements this month (plan × BOM)">
-            <Table
-              cols={[{ key: "m", label: "Material" }, { key: "req", label: "Required", align: "right" }, { key: "on", label: "On hand", align: "right" }, { key: "cov", label: "Coverage", align: "right" }]}
-              rows={data.requirements.requirements.map((x: Any) => ({ m: `${x.material_id} · ${x.material_name}`, req: `${num(x.required_qty)} ${x.unit}`, on: x.on_hand_qty == null ? "–" : `${num(x.on_hand_qty)} ${x.unit}`, cov: x.coverage_pct == null ? "–" : <Badge tone={x.coverage_pct < 50 ? "bad" : "neutral"}>{pct(x.coverage_pct)}</Badge> }))}
-            />
-            <Source>{data.requirements.source}</Source>
-          </Card>
-        </>
-      )}
-    </>
-  );
-}
 
 export function PurchasingPage() {
   const { data, error, loading } = useData<Any>("/api/modules/purchasing/summary");
