@@ -35,7 +35,7 @@ Run these before claiming anything works. Paste the output, do not assert it.
 ```bash
 just lint        # ruff check + ruff format --check
 just typecheck   # mypy (backend) + tsc (frontend)
-just test        # 45 unit + 20 integration
+just test        # 82 unit + 56 integration
 ```
 
 **Why each one exists:**
@@ -59,8 +59,8 @@ it, and say so in the PR.
 
 Two tiers and the tier is part of the contract:
 
-- **`unit`** (`-m unit`, 45 tests) — pure logic. No I/O, no warehouse, no network.
-- **`integration`** (`-m integration`, 20 tests) — real DuckDB built through the
+- **`unit`** (`-m unit`, 82 tests) — pure logic. No I/O, no warehouse, no network.
+- **`integration`** (`-m integration`, 56 tests) — real DuckDB built through the
   migrations, no network.
 
 A test with no marker runs in **neither** tier. Locally you might run it by
