@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import datetime
 import threading
 from functools import lru_cache
 from typing import Any, Protocol
@@ -45,6 +46,22 @@ class MemoryStore:
             return [copy.deepcopy(d) for d in self._data.get(collection, {}).values() if d.get(field) == value]
 
 
+def plain(value: Any) -> Any:
+    """What Firestore accepts: numpy scalars become Python numbers, a date without time becomes ISO text, tuples
+    become lists. The memory store takes anything, so these only fail in the cloud."""
+    if isinstance(value, dict):
+        return {str(k): plain(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [plain(v) for v in value]
+    if isinstance(value, datetime.datetime):
+        return value
+    if isinstance(value, datetime.date):
+        return value.isoformat()
+    if hasattr(value, "item") and callable(value.item) and type(value).__module__ == "numpy":
+        return value.item()
+    return value
+
+
 class FirestoreStore:
     def __init__(self) -> None:
         from google.cloud import firestore
@@ -60,10 +77,10 @@ class FirestoreStore:
         return dict(snap.to_dict() or {}) if snap.exists else None
 
     def set(self, collection: str, doc_id: str, doc: Doc) -> None:
-        self._ref(collection, doc_id).set(doc)
+        self._ref(collection, doc_id).set(plain(doc))
 
     def update(self, collection: str, doc_id: str, fields: Doc) -> None:
-        self._ref(collection, doc_id).set(fields, merge=True)
+        self._ref(collection, doc_id).set(plain(fields), merge=True)
 
     def delete(self, collection: str, doc_id: str) -> None:
         self._ref(collection, doc_id).delete()

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -11,6 +13,8 @@ from app.store import Doc, store
 ACTION_NOT_FOUND = "FV-ACT-001"
 ACTION_ALREADY_DECIDED = "FV-ACT-002"
 ACTION_EXECUTION_FAILED = "FV-ACT-003"
+
+log = logging.getLogger(__name__)
 
 COLLECTION = "actions"
 STATUSES = ("pending", "approved", "rejected", "failed")
@@ -102,9 +106,14 @@ def decide(session_id: str, action_id: str, *, approve: bool, user: str, note: s
     try:
         command = {**doc["command"], "action_id": action_id, "decided_by": user}
         result = pubsub.publish(pubsub.AGENT_COMMANDS, {"session_id": session_id, "action_id": action_id, "command": command})
-        fields.update(status="approved", execution={"ok": True, "result": result, "executed_at": _now()})
+        # Firestore stores only plain JSON values (no numpy numbers, tuples or dates); the memory store accepts anything
+        fields.update(status="approved", execution={"ok": True, "result": json.loads(json.dumps(result, default=str)), "executed_at": _now()})
     except FVError as e:
         fields.update(status="failed", execution={"ok": False, "error": e.body()["error"], "executed_at": _now()})
+    except Exception as e:  # an unexpected failure fails this action only, never a whole plan approval
+        log.exception("executing %s failed", action_id)
+        error = {"code": "FV-SYS-001", "message": f"{type(e).__name__}: {str(e)[:200]}"}
+        fields.update(status="failed", execution={"ok": False, "error": error, "executed_at": _now()})
     store().update(COLLECTION, action_id, fields)
     out = {**doc, **fields}
     if out["status"] == "failed":
