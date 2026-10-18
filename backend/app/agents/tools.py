@@ -1,9 +1,10 @@
 from collections.abc import Callable
 from typing import Any, Protocol
 
-from app import actions, effects, forecasts, photos, plans, plant, readiness
+from app import actions, effects, forecasts, photos, plans, plant, purchasing_docs, readiness
 from app.agents import facts
 from app.agents import material as material_facts
+from app.agents import purchasing as purchasing_facts
 from app.ai import extract, vision
 from app.documents import DOCUMENTS
 from app.errors import FVError
@@ -268,6 +269,61 @@ def read_vendor_email(*, document_name: str) -> ToolResult:
 
 def compare_vendors_for_po(*, material_id: str, need_by: str, qty_kg: float, tool_context: ToolContext) -> ToolResult:
     return purchasing.recommend_po(material_id, need_by or None, qty_kg or None, extra_delay=_ov(tool_context).vendor_extra_delay or None)
+
+
+def list_purchase_orders(*, status: str, tool_context: ToolContext) -> ToolResult:
+    return _guard(lambda: purchasing_facts.list_pos(_sid(tool_context), status or None))
+
+
+def get_purchase_order(*, po_id: str, tool_context: ToolContext) -> ToolResult:
+    def run() -> ToolResult:
+        po = purchasing_docs.get_po(_sid(tool_context), po_id)
+        return {**purchasing_facts.po_view(po), "receipts": po.get("receipts", []), "history": po.get("history", []), "source": purchasing_facts.SOURCE}
+
+    return _guard(run)
+
+
+def list_overdue_purchase_orders(*, tool_context: ToolContext) -> ToolResult:
+    return _guard(lambda: purchasing_facts.list_pos(_sid(tool_context), overdue=True))
+
+
+def recommend_vendor(*, material_id: str, qty: float, need_by: str) -> ToolResult:
+    return _guard(purchasing_facts.vendor_options, material_id, float(qty), need_by or None)
+
+
+def list_requisitions(*, status: str, tool_context: ToolContext) -> ToolResult:
+    return _guard(lambda: purchasing_facts.list_prs(_sid(tool_context), status or None))
+
+
+def _proposal(doc: dict[str, Any], *, created: bool, note: str) -> ToolResult:
+    out = {"action_id": doc["action_id"], "title": doc["title"], "args": doc["command"]["args"], "rationale": doc["rationale"], "impact": doc["impact"]}
+    return {**out, "status": "pending (needs human approval)" if created else "pending", "note": None if created else note}
+
+
+def propose_requisition_from_mrp(*, run_id: str, tool_context: ToolContext) -> ToolResult:
+    def run() -> ToolResult:
+        user = str(getattr(tool_context, "agent_name", "") or "agent")
+        doc, created = purchasing_facts.propose_requisition(_sid(tool_context), run_id or None, user=user, plan_id=tool_context.state.get("plan_id"))
+        return _proposal(doc, created=created, note="a requisition for this MRP run is already waiting for approval")
+
+    return _guard(run)
+
+
+def propose_purchase_order(*, material_id: str, qty: float, need_by: str, vendor_id: str, tool_context: ToolContext) -> ToolResult:
+    def run() -> ToolResult:
+        sid = _sid(tool_context)
+        doc, created = purchasing_facts.propose_po(sid, material_id, float(qty), need_by or None, vendor_id or None, plan_id=tool_context.state.get("plan_id"))
+        return _proposal(doc, created=created, note="a PO for this material is already waiting for approval")
+
+    return _guard(run)
+
+
+def propose_expedite(*, po_id: str, new_promised_date: str, reason: str, tool_context: ToolContext) -> ToolResult:
+    def run() -> ToolResult:
+        doc, created = purchasing_facts.propose_expedite(_sid(tool_context), po_id, new_promised_date, reason, plan_id=tool_context.state.get("plan_id"))
+        return _proposal(doc, created=created, note="an expedite for this PO is already waiting for approval")
+
+    return _guard(run)
 
 
 def get_defect_correlation(*, days: int) -> ToolResult:
@@ -542,6 +598,58 @@ TOOL_DOCS: dict[str, str] = {
         "    need_by: date the material must arrive, YYYY-MM-DD (e.g. the stockout date).\n"
         "    qty_kg: order quantity in kg."
     ),
+    "list_purchase_orders": (
+        "Purchase orders of this session plus the seed open POs (origin seed is read-only): vendor, status, promised and expected "
+        "date, value, received percent, overdue and days late, and lines with open qty.\n"
+        "\n"
+        "Args:\n"
+        "    status: Draft, Issued, Partially Received, Received, Closed, Cancelled, or empty for all."
+    ),
+    "get_purchase_order": (
+        "One purchase order with its lines (ordered, received, open qty), receipts and history.\n\nArgs:\n    po_id: e.g. PO-2702-S-001 or PO-2702-030."
+    ),
+    "list_overdue_purchase_orders": ("Open purchase orders whose expected date has passed and that are not fully received, with days late."),
+    "recommend_vendor": (
+        "Vendor options for any material: expected arrival (today + quoted lead time + average delay + announced delay), whether it "
+        "arrives before the need date, unit price and PO value, the recommended vendor and the cheapest priced one.\n"
+        "\n"
+        "Args:\n"
+        "    material_id: e.g. PP-EPDM-T20 or B-C07.\n"
+        "    qty: order quantity in the material's unit.\n"
+        "    need_by: date the material must arrive, YYYY-MM-DD, or empty."
+    ),
+    "list_requisitions": (
+        "Purchase requisitions (PR) of this session with lines, suggested vendor, duplicate flag and linked POs.\n"
+        "\n"
+        "Args:\n"
+        "    status: Draft, Submitted, Approved, Rejected, Cancelled, Converted, or empty for all."
+    ),
+    "propose_requisition_from_mrp": (
+        "Propose a purchase requisition with every material that has a net requirement in an MRP run. Lines, quantities, need dates "
+        "and vendor options come from the run and the vendor data, never from you. Creates a pending proposal only; on approval the "
+        "PR is created and approved.\n"
+        "\n"
+        "Args:\n"
+        "    run_id: e.g. MRP-2027-02-001, or empty for the latest run."
+    ),
+    "propose_purchase_order": (
+        "Propose a purchase order for one material. Expected arrival, price, PO value and the premium vs the cheapest vendor are "
+        "computed from the vendor data. Creates a pending proposal only; on approval a session PO is created and issued.\n"
+        "\n"
+        "Args:\n"
+        "    material_id: e.g. B-C07.\n"
+        "    qty: quantity in the material's unit, from MRP or readiness.\n"
+        "    need_by: need date YYYY-MM-DD, or empty.\n"
+        "    vendor_id: e.g. VEN-MERAPI, or empty for the recommended vendor."
+    ),
+    "propose_expedite": (
+        "Propose to expedite an open session PO to an earlier promised date. Creates a pending proposal only.\n"
+        "\n"
+        "Args:\n"
+        "    po_id: e.g. PO-2702-S-001, from list_purchase_orders.\n"
+        "    new_promised_date: YYYY-MM-DD, earlier than the current promised date.\n"
+        "    reason: one sentence citing the need date or shortage."
+    ),
     "get_defect_correlation": (
         "Defect rate by resin lot and by humidity band, with lift versus the overall rate, and hold candidates.\n"
         "\n"
@@ -640,7 +748,22 @@ MODULE_TOOLS: dict[str, list[Tool]] = {
     ],
     "mes": [get_oee, get_downtime_pareto, get_machine_health, twin_observations, propose_maintenance],
     "material": [get_material_requirements, get_stock_projection, get_material_readiness, get_plan_material_check, get_latest_mrp],
-    "purchasing": [get_vendor_scorecard, read_vendor_email, compare_vendors_for_po, draft_po, get_latest_mrp, propose_po_from_shortage],
+    "purchasing": [
+        get_vendor_scorecard,
+        read_vendor_email,
+        compare_vendors_for_po,
+        draft_po,
+        get_latest_mrp,
+        propose_po_from_shortage,
+        list_purchase_orders,
+        get_purchase_order,
+        list_overdue_purchase_orders,
+        recommend_vendor,
+        list_requisitions,
+        propose_requisition_from_mrp,
+        propose_purchase_order,
+        propose_expedite,
+    ],
     "quality": [get_defect_correlation, inspect_conveyor_photo, propose_hold],
     "delivery": [get_orders_at_risk, get_atp, propose_ship_date, draft_customer_notice],
 }
