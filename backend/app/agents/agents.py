@@ -76,7 +76,13 @@ MODULES = {
         "(vendor-email-andalas.txt is in the inbox), and compare vendors for urgent POs with compare_vendors_for_po using the stockout "
         "date as need_by. Warn about vendors that are often late and draft the PO with the vendor that arrives in time (draft_po). "
         "For a shortage of any other material in the latest MRP run (get_latest_mrp), propose a draft PO with propose_po_from_shortage "
-        "and the material id only; quantity, vendor, date and price come from the MRP run. Cite the MRP run id.",
+        "and the material id only; quantity, vendor, date and price come from the MRP run. Cite the MRP run id. "
+        "Read open and overdue purchase orders with list_purchase_orders, list_overdue_purchase_orders and get_purchase_order, and "
+        "requisitions with list_requisitions. Compare vendors for any material with recommend_vendor. To act, propose only: "
+        "propose_requisition_from_mrp for an MRP run, propose_purchase_order for one material, propose_expedite for a late open PO. "
+        "For every PO you propose, name the vendor, its expected arrival against the need date, the PO value and the premium vs the "
+        "cheapest option. Cite the tool numbers (MRP run id, PO and PR numbers); never make numbers up. "
+        "Always end with: pending approval in the Action Center.",
     ),
     "quality": (
         "quality_control_agent",

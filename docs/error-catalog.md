@@ -93,6 +93,11 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-AGT-010` | 404 | Material not in MRP run | A draft PO was asked for a material that has no result row in the MRP run. | Pick a material from the run's results, or run MRP again. |
 | `FV-AGT-011` | 409 | Nothing to order | A draft PO was asked for a material whose MRP net requirement is zero. | No PO is needed; the material is covered by stock and dated incoming. |
 | `FV-AGT-012` | 422 | No default vendor | The material has no known default vendor, so a draft PO cannot be built. | Set the material's default vendor in the material master. |
+| `FV-AGT-020` | 409 | Nothing to requisition | A requisition was proposed from an MRP run that has no material with a net requirement above zero. | No requisition is needed; run MRP again after the plans change. |
+| `FV-AGT-021` | 422 | Vendor does not supply the material | A purchase order was proposed with a vendor that is not listed for the material. | Pick a vendor from recommend_vendor, or leave the vendor empty to use the recommended one. |
+| `FV-AGT-022` | 422 | Quantity must be above zero | A purchase order was proposed with a quantity of zero or less. | Use the net quantity from the MRP run or the readiness shortage. |
+| `FV-AGT-023` | 409 | PO cannot be expedited | An expedite was proposed for a PO that is not Issued or Partially Received, or for a seed PO. | Expedite only open session POs; list them with list_purchase_orders. |
+| `FV-AGT-024` | 422 | Expedite date not earlier | The new promised date of an expedite is not earlier than the PO's current promised date. | Give a date before the current promised date. |
 | `FV-PUB-001` | 400 | Invalid push message | A Pub/Sub push request is malformed. | Pub/Sub retries; check the publisher. |
 | `FV-PUB-002` | 403 | Push not authorised | The push request's OIDC token is missing or invalid. | Check the subscription's service account. |
 | `FV-SYS-001` | 500 | Internal error | Unexpected server error. | Report the `request_id` from the response headers. |
