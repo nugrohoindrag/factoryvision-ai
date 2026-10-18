@@ -53,6 +53,12 @@ local_partial_types = true
 plugins = []
 num_workers = "auto"
 
+# google-cloud-pubsub ships no py.typed marker, so mypy cannot analyse it.
+# Scoped to that one package; everything in backend/ stays strictly typed.
+[[tool.mypy.overrides]]
+module = ["google.cloud.pubsub_v1"]
+ignore_missing_imports = true
+
 [tool.coverage.run]
 source = ["app", "simulator"]
 omit = ["app/db/load_bigquery.py"]

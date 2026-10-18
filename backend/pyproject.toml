@@ -8,7 +8,12 @@ dependencies = [
   "duckdb==1.5.6",
   "duckdb-engine==0.17.0",
   "fastapi==0.143.3",
+  "google-adk==1.14.1",
   "google-cloud-bigquery==3.46.2",
+  "google-cloud-firestore==2.34.1",
+  "google-cloud-pubsub==2.43.0",
+  "google-cloud-storage==2.19.0",
+  "google-genai==1.75.0",
   "httpx==0.28.1",
   "numpy==2.5.4",
   "ortools==9.15.6755",
@@ -38,14 +43,6 @@ types = [
   "mypy==2.4.0",
 ]
 
-planned = [
-  "google-adk==1.14.1",
-  "google-cloud-firestore==2.34.1",
-  "google-cloud-pubsub==2.43.0",
-  "google-cloud-storage==2.19.0",
-  "google-genai==1.75.0",
-]
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
@@ -70,7 +67,17 @@ markers = [
 # summary instead of disappearing again. starlette fixed it upstream in 1.7.0;
 # the durable fix is bumping starlette, which regenerates uv.lock and is a
 # dependency decision, not a warning policy.
+#
+# Second allowlist entry, same reasoning: google-adk 1.14.1 pins
+# google-cloud-storage < 3, and google-cloud-aiplatform (pulled in by adk)
+# warns at import time whenever storage < 3 is installed. Nothing in this
+# repo can avoid it at the pinned versions. It is matched on the message
+# text because aiplatform attributes the warning to its caller's module, so
+# a module pattern does not match. `default`, not `ignore`, so it stays in
+# the warnings summary. The durable fix is an adk release that allows
+# google-cloud-storage 3.
 filterwarnings = [
   "error",
   "default::DeprecationWarning:starlette\\.testclient",
+  "default:Support for google-cloud-storage:FutureWarning",
 ]
