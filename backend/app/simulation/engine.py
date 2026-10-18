@@ -120,9 +120,10 @@ class State:
 
     def _receipts(self) -> None:
         for r in [r for r in self.receipts if r["at"] == self.minute]:
+            depleted = self.resin_kg <= 0
             self.resin_kg += r["qty"]
             self.emit("resin.received", "PP-EPDM-T20", qty_kg=r["qty"], lot=r["lot"], po_id=r["po_id"])
-            if self.active_lot in self.holds or self.resin_kg > 0:
+            if self.active_lot in self.holds or depleted:
                 self.active_lot = r["lot"]
 
     def _machine(self, m: Machine, rng: np.random.Generator) -> None:

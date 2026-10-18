@@ -17,7 +17,7 @@ from app.store import Doc, store
 UNKNOWN_SCENARIO = "FV-REQ-003"
 
 COLLECTION = "plants"
-COST_BUCKETS = ("live_run", "agent")
+COST_BUCKETS = ("live_run", "agent", "vision")
 PERSIST_EVERY_MIN = 10
 _cache: dict[str, State] = {}
 _wall: dict[str, float] = {}
@@ -137,6 +137,9 @@ def reset(session_id: str, scenario: str = "baseline") -> dict[str, Any]:
     if scenario not in SCENARIOS:
         raise FVError(UNKNOWN_SCENARIO, detail={"scenario": scenario, "valid": list(SCENARIOS)})
     actions.clear(session_id)
+    store().delete("observations", session_id)
+    for insp in store().where("inspections", "session_id", session_id):
+        store().delete("inspections", insp["inspection_id"])
     effects.set_scenario(session_id, scenario)
     limiter.reset(session_id, keep=COST_BUCKETS)
     s = State.new(session_id, scenario)

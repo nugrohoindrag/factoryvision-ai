@@ -25,10 +25,19 @@ def delivery_rates(o: Overrides) -> dict[str, Any]:
     rates = planning.machine_rates()
     normal = normal_cycle_factor(rates)
     factor = {mid: (normal if mid in o.maintenance else r["cycle_factor"]) for mid, r in rates.items()}
+    placed = dict(molds)
+    for sku, dst in o.mold_moves.items():
+        src = placed.get(sku)
+        if src is None or src == dst:
+            continue
+        back = next((k for k, mid in placed.items() if mid == dst), None)
+        placed[sku] = dst
+        if back:
+            placed[back] = src  # the displaced mold swaps onto the source machine, as commands.move_mold does
     out = {}
     for sku, src in molds.items():
-        dst = o.mold_moves.get(sku, src)
-        if dst in factor and (dst != src or src in o.maintenance):
+        dst = placed[sku]
+        if dst in factor and (dst != src or dst in o.maintenance):
             out[sku] = delivery.output_rate(src) * rates[src]["cycle_factor"] / factor[dst]
     return out
 
