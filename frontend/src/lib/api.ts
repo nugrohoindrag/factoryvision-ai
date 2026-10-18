@@ -47,6 +47,13 @@ export async function get<T>(path: string): Promise<T> {
   return parse<T>(await fetch(path, { headers: headers() }));
 }
 
+/** A file the API serves per session (it needs the session header, so a plain link cannot fetch it). */
+export async function getBlob(path: string): Promise<Blob> {
+  const r = await fetch(path, { headers: headers() });
+  if (!r.ok) await parse(r);
+  return r.blob();
+}
+
 export async function post<T>(path: string, body?: unknown): Promise<T> {
   return parse<T>(await fetch(path, { method: "POST", headers: headers({ "Content-Type": "application/json" }), body: body === undefined ? undefined : JSON.stringify(body) }));
 }

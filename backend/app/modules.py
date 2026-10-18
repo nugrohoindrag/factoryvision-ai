@@ -4,13 +4,17 @@ import json
 from functools import lru_cache
 from typing import Any
 
+from app import plant
 from app.effects import Overrides, normal_cycle_factor
 from app.errors import FVError
-from app.tools import delivery, forecast, material, mes, planning, purchasing, quality
+from app.tools import delivery, forecast, material, mes, orders, planning, purchasing, quality
 
 UNKNOWN_MODULE = "FV-REQ-002"
+UNKNOWN_ENTITY = "FV-DATA-001"
 
 MODULES = ("forecast", "planning", "mes", "material", "purchasing", "quality", "delivery")
+# Pages with a summary; Customer Orders (module 0) has no agent of its own.
+PAGES = ("orders", *MODULES)
 
 
 def _maintenance_cycle(o: Overrides) -> dict[str, Any]:
@@ -42,9 +46,46 @@ def delivery_rates(o: Overrides) -> dict[str, Any]:
     return out
 
 
+@lru_cache(maxsize=64)
+def _order_view(key: str) -> str:
+    o = Overrides(**json.loads(key))
+    view = orders.order_view(rates=delivery_rates(o) or None, new_orders=o.new_orders, cancelled=o.cancelled_orders, mold_moves=o.mold_moves)
+    return json.dumps(view, default=str)
+
+
+def order_view(o: Overrides) -> dict[str, Any]:
+    """Customer orders with lines, derived status, at-risk and work-order pegging; cached per session state."""
+    keep = ("maintenance", "mold_moves", "new_orders", "cancelled_orders")
+    key = json.dumps({k: v for k, v in o.as_dict().items() if k in keep}, sort_keys=True, default=str)
+    result: dict[str, Any] = json.loads(_order_view(key))
+    return result
+
+
+def _orders(o: Overrides) -> dict[str, Any]:
+    return {"book": orders.order_book(order_view(o)), "customer_pos": o.customer_pos, "customer_po_change_pct": o.demand_change_pct}
+
+
 def _forecast(o: Overrides) -> dict[str, Any]:
     main = forecast.bq_forecast("FB-ARKA")
-    return {"skus": forecast.forecast_all(), "focus": main, "customer_po_change_pct": o.demand_change_pct}
+    return {
+        "skus": forecast.forecast_all(),
+        "focus": main,
+        "vs_orders": forecast.forecast_vs_orders("FB-ARKA", o.demand_change_pct or None),
+        "customer_po_change_pct": o.demand_change_pct,
+    }
+
+
+@lru_cache(maxsize=64)
+def _forecast_detail(sku: str, demand_key: str) -> str:
+    demand = json.loads(demand_key) or None
+    return json.dumps({"focus": forecast.bq_forecast(sku), "vs_orders": forecast.forecast_vs_orders(sku, demand)}, default=str)
+
+
+def forecast_detail(sku: str, o: Overrides) -> dict[str, Any]:
+    if sku not in plant.PRODUCT_BY_SKU:
+        raise FVError(UNKNOWN_ENTITY, f"unknown sku {sku}", {"valid_skus": plant.SKUS})
+    result: dict[str, Any] = json.loads(_forecast_detail(sku, json.dumps(o.demand_change_pct, sort_keys=True)))
+    return result
 
 
 def _planning(o: Overrides) -> dict[str, Any]:
@@ -93,8 +134,10 @@ def _quality(o: Overrides) -> dict[str, Any]:
 
 def _delivery(o: Overrides) -> dict[str, Any]:
     rates = delivery_rates(o)
-    risk = delivery.orders_at_risk(rate_override=rates or None)
-    base = delivery.orders_at_risk() if rates else risk
+    extra = orders.session_lines(o.new_orders)
+    gone = [ln["order_id"] for h in order_view(o)["orders"] if h["order_number"] in o.cancelled_orders for ln in h["lines"]]
+    risk = delivery.orders_at_risk(rate_override=rates or None, extra_orders=extra, cancelled=gone)
+    base = delivery.orders_at_risk(extra_orders=extra, cancelled=gone) if rates else risk
     for r in risk["orders_at_risk"]:
         r["revised_ship_date"] = o.ship_dates.get(r["order_id"])
     return {
@@ -117,6 +160,7 @@ def what_if(o: Overrides) -> dict[str, Any]:
 
 
 _BUILDERS = {
+    "orders": _orders,
     "forecast": _forecast,
     "planning": _planning,
     "mes": _mes,
@@ -136,7 +180,7 @@ def _cached(module: str, key: str) -> str:
 
 def summary(module: str, o: Overrides | None = None) -> dict[str, Any]:
     if module not in _BUILDERS:
-        raise FVError(UNKNOWN_MODULE, detail={"module": module, "valid": list(MODULES)})
+        raise FVError(UNKNOWN_MODULE, detail={"module": module, "valid": list(PAGES)})
     o = o or Overrides()
     key = json.dumps({**o.as_dict(), "applied": []}, sort_keys=True, default=str)
     return {"module": module, "scenario": o.scenario, "applied_actions": o.applied, **json.loads(_cached(module, key))}

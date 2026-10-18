@@ -24,6 +24,7 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-ACT-001` | 404 | Action not found | The proposal ID does not exist in this session. | Refresh the Action Center. |
 | `FV-ACT-002` | 409 | Action already decided | Approve or reject was sent for a proposal that is no longer pending. | No retry needed; the first decision stands. |
 | `FV-ACT-003` | 500 | Action execution failed | The proposal was approved but its command failed in the simulator. | The action is marked failed with the reason; approve again after a reset. |
+| `FV-ORD-001` | 409 | Order cannot be cancelled | The customer order is shipped, completed, already cancelled, or a work order for it is in production. | Leave the order as it is, or revise its ship date in Delivery. |
 | `FV-TWIN-001` | 404 | Plant session not found | No simulator state exists for the session. | Call POST /api/demo/reset to create it. |
 | `FV-TWIN-002` | 400 | Unknown command | An agent-commands message names an unknown command. | Check the command list in app/simulation/commands.py. |
 | `FV-VIS-001` | 429 | Vision call limit reached | The session used all its Twin Vision Analyzer calls. | Cached observations stay visible; reset to start over. |

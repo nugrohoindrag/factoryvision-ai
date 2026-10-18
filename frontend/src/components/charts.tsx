@@ -21,11 +21,11 @@ export function Bars({ items, unit = "", max, threshold }: { items: { label: str
   );
 }
 
-export function Line({ history, forecast = [], height = 180, label }: { history: { x: string; y: number }[]; forecast?: { x: string; y: number }[]; height?: number; label: string }) {
+export function Line({ history, forecast = [], height = 260, label }: { history: { x: string; y: number }[]; forecast?: { x: string; y: number }[]; height?: number; label: string }) {
   const all = [...history, ...forecast];
   if (!all.length) return null;
-  const w = 600;
-  const pad = 28;
+  const w = 1000;
+  const pad = 34;
   const ymax = Math.max(...all.map((p) => p.y)) * 1.1 || 1;
   const x = (i: number) => pad + (i * (w - 2 * pad)) / Math.max(1, all.length - 1);
   const y = (v: number) => height - pad - (v / ymax) * (height - 2 * pad);

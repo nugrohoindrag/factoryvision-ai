@@ -517,6 +517,7 @@ class Generator:
         feb_days = sum(1 for k in range(28) if plant.is_working_day(date(2027, 2, 1) + timedelta(days=k)))
         for sku, per_day in FEB_PLAN_PER_DAY.items():
             t["fact_monthly_plan"].append({"plan_month": date(2027, 2, 1), "sku": sku, "plan_qty": per_day * feb_days, "source": "OEM forecast"})
+        add_headers(t["fact_customer_order"])
 
     def stock_snapshot(self) -> None:
         t = self.t
@@ -622,6 +623,29 @@ class Generator:
                 for row in self.t[name]:
                     w.writerow({k: fmt(round(row[k]) if k in ints and isinstance(row.get(k), float) else row.get(k)) for k in names})
         (out / "_schema.json").write_text(json.dumps({n: [{"name": c, "type": ty} for c, ty in cols] for n, cols in TABLES.items()}, indent=1))
+
+
+def add_headers(rows: list[dict[str, Any]]) -> None:
+    """Group order lines into one order per customer and delivery date, the way a call-off or PO arrives.
+
+    Deterministic (no RNG), so adding the header does not shift any planted story.
+    """
+    customers = {c["customer_id"]: c for c in plant.CUSTOMERS}
+    lines: defaultdict[str, int] = defaultdict(int)
+    for r in sorted(rows, key=lambda r: (r["requested_delivery_date"], r["customer_id"], plant.SKUS.index(r["sku"]))):
+        c, d = customers[r["customer_id"]], r["requested_delivery_date"]
+        channel, ref = plant.CUSTOMER_ORDER_SOURCE[r["customer_id"]]
+        number = f"CO-{d:%y%m%d}-{r['customer_id'].removeprefix('CUS-')}"
+        lines[number] += 1
+        r.update(
+            order_number=number,
+            line_no=lines[number],
+            po_number=d.strftime(ref),
+            order_channel=channel,
+            customer_pic=c["pic_name"],
+            delivery_address=c["delivery_address"],
+            dock_number=c["dock_number"],
+        )
 
 
 def order_sort_key(o: dict[str, Any]) -> tuple[date, int, str]:

@@ -12,7 +12,8 @@ gcloud config set project "$PROJECT"
 gcloud config set run/region "$REGION"
 
 echo "== APIs"
-gcloud services enable aiplatform.googleapis.com run.googleapis.com cloudbuild.googleapis.com \
+# compute: no VM is created, but Cloud Build in new projects builds as the Compute Engine default service account.
+gcloud services enable compute.googleapis.com aiplatform.googleapis.com run.googleapis.com cloudbuild.googleapis.com \
   artifactregistry.googleapis.com bigquery.googleapis.com firestore.googleapis.com pubsub.googleapis.com \
   storage.googleapis.com secretmanager.googleapis.com logging.googleapis.com cloudtrace.googleapis.com
 
@@ -24,12 +25,17 @@ for role in roles/aiplatform.user roles/bigquery.dataViewer roles/bigquery.jobUs
   gcloud projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$SA" --role "$role" --condition=None >/dev/null
 done
 
+# New projects no longer grant the Compute Engine default account (which Cloud Build uses) any role.
+BUILD_SA="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')-compute@developer.gserviceaccount.com"
+gcloud projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$BUILD_SA" --role roles/cloudbuild.builds.builder --condition=None >/dev/null
+
 echo "== Artifact Registry"
 gcloud artifacts repositories describe fv --location "$REGION" >/dev/null 2>&1 || \
   gcloud artifacts repositories create fv --repository-format docker --location "$REGION"
 
 echo "== Firestore (native mode)"
-gcloud firestore databases describe --database="(default)" >/dev/null 2>&1 || \n  gcloud firestore databases create --location "$REGION" --type firestore-native
+gcloud firestore databases describe --database="(default)" >/dev/null 2>&1 || \
+  gcloud firestore databases create --location "$REGION" --type firestore-native
 
 echo "== Cloud Storage"
 for b in docs qc-photos twin-assets frames; do

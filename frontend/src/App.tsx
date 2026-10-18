@@ -5,29 +5,23 @@ import { AppProvider, useApp } from "./lib/store";
 import ActionCenter from "./pages/ActionCenter";
 import BriefingPage from "./pages/Briefing";
 import { DeliveryPage, ForecastPage, MaterialPage, PlanningPage, PurchasingPage } from "./pages/Modules";
+import OrdersPage from "./pages/Orders";
 import QualityPage from "./pages/Quality";
 
 // The 3D twin (three.js) loads only when the MES page opens.
 const MesPage = lazy(() => import("./pages/Mes"));
 
-const NAV = [
-  ["/", "Plant Briefing"],
-  ["/forecast", "1 Demand Forecast"],
-  ["/planning", "2 Production Planning"],
-  ["/mes", "3 MES / Shop Floor"],
-  ["/material", "4 Material Supply"],
-  ["/purchasing", "5 Purchasing"],
-  ["/quality", "6 Quality Control"],
-  ["/delivery", "7 Delivery"],
-] as const;
+const NAV: { group: string; links: [string, string][] }[] = [
+  { group: "Overview", links: [["/", "Plant Briefing"], ["/actions", "Action Center"]] },
+  { group: "Plan", links: [["/orders", "0 Customer Orders"], ["/forecast", "1 Demand Forecast"], ["/planning", "2 Production Planning"]] },
+  { group: "Make", links: [["/mes", "3 MES / Shop Floor"], ["/material", "4 Material Supply"], ["/purchasing", "5 Purchasing"], ["/quality", "6 Quality Control"]] },
+  { group: "Deliver", links: [["/delivery", "7 Delivery"]] },
+];
 
 function TopBar() {
   const { live, setLive, mode, reset, pending, run, setPanelOpen } = useApp();
   return (
     <header className="topbar">
-      <div className="brand">
-        <span className="logo" aria-hidden>◆</span> Factory Vision AI
-      </div>
       <div className="row">
         <div className="toggle" role="group" aria-label="Mode">
           <button className={!live ? "on" : ""} onClick={() => setLive(false)}>Replay</button>
@@ -50,16 +44,24 @@ export function Shell() {
     <div className="app">
       <TopBar />
       <nav className="sidenav" aria-label="Modules">
-        {NAV.map(([to, label]) => (
-          <NavLink key={to} to={to} end={to === "/"}>
-            {label}
-          </NavLink>
+        <div className="brand">
+          <span className="logo" aria-hidden>◆</span> Factory Vision AI
+        </div>
+        {NAV.map(({ group, links }) => (
+          <div key={group} className="nav-section">
+            <div className="nav-group">{group}</div>
+            {links.map(([to, label]) => (
+              <NavLink key={to} to={to} end={to === "/"}>
+                {label}
+              </NavLink>
+            ))}
+          </div>
         ))}
-        <NavLink to="/actions">Action Center</NavLink>
       </nav>
       <main className="content">
         <Routes>
           <Route path="/" element={<BriefingPage />} />
+          <Route path="/orders" element={<OrdersPage />} />
           <Route path="/forecast" element={<ForecastPage />} />
           <Route path="/planning" element={<PlanningPage />} />
           <Route path="/mes" element={<Suspense fallback={<p className="muted">Loading the digital twin…</p>}><MesPage /></Suspense>} />

@@ -187,13 +187,68 @@ ROUTING = [
 ]
 
 
-CUSTOMERS = [
-    {"customer_id": "CUS-OEMA", "customer_name": "Nusantara Motor (OEM-A)", "customer_type": "OEM", "penalty_idr_per_day": 85_000_000},
-    {"customer_id": "CUS-OEMB", "customer_name": "Garuda Auto (OEM-B)", "customer_type": "OEM", "penalty_idr_per_day": 60_000_000},
-    {"customer_id": "CUS-TIER1", "customer_name": "Sinar Komponen Tier-1", "customer_type": "Tier-1", "penalty_idr_per_day": 15_000_000},
-    {"customer_id": "CUS-AFTM", "customer_name": "Bengawan Aftermarket", "customer_type": "Distributor", "penalty_idr_per_day": 5_000_000},
-    {"customer_id": "CUS-EXP", "customer_name": "Selat Export Trading", "customer_type": "Export", "penalty_idr_per_day": 10_000_000},
+CUSTOMERS: list[dict[str, Any]] = [
+    {
+        "customer_id": "CUS-OEMA",
+        "customer_name": "Nusantara Motor (OEM-A)",
+        "customer_type": "OEM",
+        "penalty_idr_per_day": 85_000_000,
+        "pic_name": "Supplier call-off desk",
+        "pic_contact": "calloff@nusantara-motor.example",
+        "delivery_address": "Nusantara Motor Plant 2, Karawang",
+        "dock_number": "D-07",
+    },
+    {
+        "customer_id": "CUS-OEMB",
+        "customer_name": "Garuda Auto (OEM-B)",
+        "customer_type": "OEM",
+        "penalty_idr_per_day": 60_000_000,
+        "pic_name": "Inbound logistics",
+        "pic_contact": "inbound@garuda-auto.example",
+        "delivery_address": "Garuda Auto Assembly, Cikarang",
+        "dock_number": "B-03",
+    },
+    {
+        "customer_id": "CUS-TIER1",
+        "customer_name": "Sinar Komponen Tier-1",
+        "customer_type": "Tier-1",
+        "penalty_idr_per_day": 15_000_000,
+        "pic_name": "Purchasing",
+        "pic_contact": "purchasing@sinar-komponen.example",
+        "delivery_address": "Sinar Komponen, Bekasi",
+        "dock_number": "R-1",
+    },
+    {
+        "customer_id": "CUS-AFTM",
+        "customer_name": "Bengawan Aftermarket",
+        "customer_type": "Distributor",
+        "penalty_idr_per_day": 5_000_000,
+        "pic_name": "Order admin",
+        "pic_contact": "order@bengawan-parts.example",
+        "delivery_address": "Bengawan central warehouse, Solo",
+        "dock_number": None,
+    },
+    {
+        "customer_id": "CUS-EXP",
+        "customer_name": "Selat Export Trading",
+        "customer_type": "Export",
+        "penalty_idr_per_day": 10_000_000,
+        "pic_name": "Export desk",
+        "pic_contact": "export@selat-trading.example",
+        "delivery_address": "Container yard, Tanjung Priok",
+        "dock_number": None,
+    },
 ]
+
+# How each customer sends orders, and the reference it puts on them (strftime on the delivery date).
+ORDER_CHANNELS = ("PO_DOCUMENT", "KANBAN_CARD", "EMAIL", "MANUAL")
+CUSTOMER_ORDER_SOURCE = {
+    "CUS-OEMA": ("KANBAN_CARD", "KB-OEMA-%y%m%d"),
+    "CUS-OEMB": ("KANBAN_CARD", "KB-OEMB-%y%m%d"),
+    "CUS-TIER1": ("PO_DOCUMENT", "SK-PO-%y%m%d"),
+    "CUS-AFTM": ("EMAIL", "BA-EM-%y%m%d"),
+    "CUS-EXP": ("PO_DOCUMENT", "SET-PO-%y%m%d"),
+}
 
 CUSTOMER_MIX = {
     "ARKA": [("CUS-OEMA", 0.80), ("CUS-TIER1", 0.12), ("CUS-AFTM", 0.08)],

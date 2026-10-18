@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from app import plant, warehouse
 from app.tools.common import TODAY, to_date, working_days_between
+
+if TYPE_CHECKING:
+    from collections.abc import Collection
 
 ATP_RULE_SUMMARY = "Ship what is needed, and delay what is not: any exception must be confirmed by the planner before the cutoff."
 
@@ -48,11 +51,19 @@ def _stock() -> dict[str, dict[str, Any]]:
     return out
 
 
-def atp_check(sku: str | None = None, rate_override: dict[str, float] | None = None, extra_stock: dict[str, float] | None = None) -> dict[str, Any]:
+def atp_check(
+    sku: str | None = None,
+    rate_override: dict[str, float] | None = None,
+    extra_stock: dict[str, float] | None = None,
+    extra_orders: list[dict[str, Any]] | None = None,
+    cancelled: Collection[str] = (),
+) -> dict[str, Any]:
+    """extra_orders are order lines entered in this session; cancelled lists order line IDs to leave out."""
     molds = {r["sku"]: r["current_machine_id"] for r in warehouse.query("SELECT sku, current_machine_id FROM fv.dim_mold")}
     orders = warehouse.query(
         "SELECT order_id, customer_id, sku, order_qty, requested_delivery_date FROM fv.fact_customer_order WHERE order_status IN ('Received', 'Planned')"
     )
+    orders = [o for o in orders + list(extra_orders or []) if o["order_id"] not in cancelled]
     stock = _stock()
     result: list[dict[str, Any]] = []
     for s in [sku] if sku else plant.SKUS:
@@ -104,8 +115,13 @@ def atp_check(sku: str | None = None, rate_override: dict[str, float] | None = N
     }
 
 
-def orders_at_risk(rate_override: dict[str, float] | None = None, extra_stock: dict[str, float] | None = None) -> dict[str, Any]:
-    atp = atp_check(rate_override=rate_override, extra_stock=extra_stock)
+def orders_at_risk(
+    rate_override: dict[str, float] | None = None,
+    extra_stock: dict[str, float] | None = None,
+    extra_orders: list[dict[str, Any]] | None = None,
+    cancelled: Collection[str] = (),
+) -> dict[str, Any]:
+    atp = atp_check(rate_override=rate_override, extra_stock=extra_stock, extra_orders=extra_orders, cancelled=cancelled)
     customers = {c["customer_id"]: c for c in plant.CUSTOMERS}
     risk: list[dict[str, Any]] = []
     low: list[dict[str, Any]] = []

@@ -21,7 +21,13 @@ function ActionCard({ a, onDecide, busy }: { a: Action; onDecide: (id: string, a
         <Badge tone={TONE[a.status]}>{a.status}</Badge>
       </header>
       <p className="muted small">
-        Proposed by the {moduleLabel(a.origin_agent)} agent
+        {a.origin_agent === "customer_order_intake" ? (
+          "From Customer Order intake (PO read and checked against the schedule on file)"
+        ) : a.origin_agent === "manual_entry" ? (
+          "Entered by a person on the Customer Orders page"
+        ) : (
+          <>Proposed by the {moduleLabel(a.origin_agent)} agent</>
+        )}
         {a.decided_by && <> · {a.status} by {a.decided_by} at {a.decided_at?.slice(11, 16)} UTC</>}
       </p>
       {notice ? <pre className="notice">{notice}</pre> : <p>{a.rationale}</p>}

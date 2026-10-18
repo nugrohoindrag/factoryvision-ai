@@ -92,6 +92,17 @@ def demo_po_line() -> dict[str, Any]:
     return {**r, "change_pct": round(100 * (r["qty"] / r["previous_qty"] - 1), 1)}
 
 
+def demo_po_facts() -> dict[str, Any]:
+    """What the extractor reads from customer-po-oem-a.pdf; Replay shows this without a Gemini call."""
+    return {
+        "customer_name": "Nusantara Motor (OEM-A)",
+        "po_number": "NM-PO-2027-0142 (revision 2)",
+        "issue_date": "2027-01-31",
+        "lines": [{**r, "change_pct": round(100 * (r["qty"] / r["previous_qty"] - 1), 1)} for r in schedule_lines()],
+        "notes": "MPV ARKA facelift launch and Lebaran sales program. Confirm capacity within 2 working days.",
+    }
+
+
 DOCUMENTS = {
     "customer-po-oem-a.pdf": ("application/pdf", lambda: pdf(po_text())),
     "vendor-email-andalas.txt": ("text/plain", lambda: VENDOR_EMAIL.encode()),

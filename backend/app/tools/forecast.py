@@ -9,7 +9,8 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import plant, warehouse
 from app.errors import FVError
-from app.tools.common import TODAY, pct
+from app.tools import orders
+from app.tools.common import TODAY, pct, working_days_in_month
 
 log = logging.getLogger("fv")
 
@@ -106,6 +107,59 @@ def bq_forecast(sku: str = "FB-ARKA", horizon_weeks: int = 6) -> dict[str, Any]:
             "Rainy season Nov-Mar",
         ],
         "source": "fv.fact_customer_order (Completed/Shipped history, Cancelled excluded)",
+    }
+
+
+FIRM_SQL = """
+SELECT requested_delivery_date AS d, SUM(order_qty) AS qty
+FROM fv.fact_customer_order
+WHERE sku = :sku AND order_status NOT IN ('Cancelled', 'Completed') AND requested_delivery_date >= :today
+GROUP BY d
+"""
+
+
+def forecast_vs_orders(sku: str = "FB-ARKA", demand_change_pct: dict[str, float] | None = None, horizon_weeks: int = 6) -> dict[str, Any]:
+    """Per forecast week: statistical forecast vs firm orders vs the customer's monthly schedule (revised by an approved PO)."""
+    f = bq_forecast(sku, horizon_weeks)
+    if "error" in f:
+        return f
+    firm = {r["d"]: float(r["qty"]) for r in warehouse.query(FIRM_SQL, {"sku": sku, "today": TODAY})}
+    change = (demand_change_pct or {}).get(sku, 0.0)
+    plans: dict[date, int] = {}
+    weeks: list[dict[str, Any]] = []
+    for w in f["weekly_forecast"]:
+        start = date.fromisoformat(w["week_start"])
+        days = [start + timedelta(days=k) for k in range(7)]
+        sched = 0.0
+        for d in days:
+            m = d.replace(day=1)
+            if m not in plans:
+                plans[m] = orders.monthly_schedule(m).get(sku, 0)
+            if plant.is_working_day(d) and plans[m]:
+                sched += plans[m] / working_days_in_month(m)
+        has_sched = all(plans[d.replace(day=1)] for d in days if plant.is_working_day(d))
+        firm_qty: int = round(sum(firm.get(d, 0.0) for d in days))
+        weeks.append(
+            {
+                "week": w["week"],
+                "week_start": w["week_start"],
+                "forecast_qty": w["total_qty"],
+                "firm_qty": firm_qty,
+                "schedule_qty": round(sched) if has_sched else None,
+                "revised_schedule_qty": round(sched * (1 + change / 100)) if has_sched else None,
+                "uncovered_qty": max(0, w["total_qty"] - firm_qty),
+                "firm_coverage_pct": pct(firm_qty / w["total_qty"]) if w["total_qty"] else None,
+            }
+        )
+    return {
+        "sku": sku,
+        "engine": f["engine"],
+        "customer_po_change_pct": change or None,
+        "weeks": weeks,
+        "forecast_total": sum(int(w["forecast_qty"]) for w in weeks),
+        "firm_total": sum(int(w["firm_qty"]) for w in weeks),
+        "note": "Firm = open customer orders (Received to Ready to Ship). Schedule = OEM monthly plan spread over working days; blank where no plan is on file yet.",
+        "source": "BQML forecast; fv.fact_customer_order; fv.fact_monthly_plan",
     }
 
 
