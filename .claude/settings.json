@@ -6,6 +6,7 @@
       "Bash(uv run:*)",
       "Bash(npm:*)",
       "Edit(backend/tests/**)",
+      "Edit(backend/migrations/**)",
       "Edit(frontend/e2e/**)",
       "Edit(docs/**)"
     ],

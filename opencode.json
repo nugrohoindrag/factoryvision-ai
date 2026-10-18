@@ -19,6 +19,7 @@
       "backend/app/**": "allow",
       "backend/simulator/**": "allow",
       "backend/tests/**": "ask",
+      "backend/migrations/**": "deny",
       "frontend/src/**": "allow",
       "frontend/e2e/**": "ask",
       "evals/**": "allow",
