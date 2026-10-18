@@ -1,7 +1,7 @@
 /** MES page face: the 3D twin, live camera feeds, AI observations, event feed, conveyor inspection. */
 
 import { OrbitControls } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge, Card } from "../components/ui";
 import { VERDICT_TONE } from "../pages/Quality";
@@ -11,11 +11,27 @@ import type { Observation } from "../lib/types";
 import { CAMERAS, CameraRig, frameDiff, signature, toJpeg, type CameraId, type Capture } from "./cameras";
 import PlantScene, { ANDON_HEX } from "./Scene";
 import { useTwin } from "./useTwin";
+import type { PerspectiveCamera } from "three";
 
 const MES_CAMS: CameraId[] = ["CAM-Molding", "CAM-WIP", "CAM-Warehouse"];
 const DIFF_THRESHOLD = 0.004;
 const DEBOUNCE_MS = 30_000;
 const LIVE_INSPECTION_S = 60;
+
+const OVERVIEW = { pos: [0, 20, 24] as [number, number, number], look: [0, 0, -2] as [number, number, number], fov: 50 };
+
+/** Moves the 3D camera to a feed's viewpoint, or back to the overview when no feed is selected. */
+function FocusCamera({ cam }: { cam: CameraId | null }) {
+  const camera = useThree((s) => s.camera) as PerspectiveCamera;
+  useEffect(() => {
+    const v = cam ? CAMERAS[cam] : OVERVIEW;
+    camera.position.set(...v.pos);
+    camera.lookAt(...v.look);
+    camera.fov = v.fov;
+    camera.updateProjectionMatrix();
+  }, [camera, cam]);
+  return null;
+}
 
 type CamResult = { observations: Observation[]; cached: boolean; calls_left?: number; score?: { precision: number | null; missed: string[] } };
 
@@ -32,6 +48,7 @@ export default function ShopFloor() {
   const [results, setResults] = useState<Record<string, CamResult>>({});
   const [visionErr, setVisionErr] = useState<string | null>(null);
   const [photos, setPhotos] = useState<Record<string, string>>({});
+  const [focus, setFocus] = useState<CameraId | null>(null);
   const snapRef = useRef(snap);
   snapRef.current = snap;
 
@@ -109,7 +126,8 @@ export default function ShopFloor() {
             {snap && (
               <Canvas camera={{ position: [0, 20, 24], fov: 50 }} dpr={[1, 1.5]} gl={{ preserveDrawingBuffer: true, antialias: true }}>
                 <PlantScene snap={snap} photos={photos} />
-                <OrbitControls target={[0, 0, -2]} maxPolarAngle={Math.PI / 2.1} />
+                <FocusCamera cam={focus} />
+                <OrbitControls key={focus ?? "overview"} target={focus ? CAMERAS[focus].look : OVERVIEW.look} maxPolarAngle={Math.PI / 2.1} />
                 <CameraRig onReady={onReady} />
               </Canvas>
             )}
@@ -117,15 +135,32 @@ export default function ShopFloor() {
           <div className="feeds">
             {MES_CAMS.map((cam) => (
               <figure key={cam} className={`feed ${looking[cam] ? "looking" : ""}`}>
-                <canvas ref={(el) => void (feeds.current[cam] = el)} width={320} height={180} aria-label={`${cam} live feed`} />
+                <canvas
+                  ref={(el) => void (feeds.current[cam] = el)}
+                  width={320}
+                  height={180}
+                  role="button"
+                  tabIndex={0}
+                  title={`View ${cam} in the 3D scene`}
+                  aria-label={`${cam} live feed, click to view in 3D`}
+                  style={{ cursor: "pointer", outline: focus === cam ? "2px solid #60a5fa" : undefined }}
+                  onClick={() => setFocus(cam)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setFocus(cam);
+                  }}
+                />
                 <figcaption>
                   <span>{cam}</span>
+                  <button className="ghost small" onClick={() => setFocus(cam)} aria-pressed={focus === cam}>View in 3D</button>
                   <button className="ghost small" disabled={!ai || looking[cam]} onClick={() => analyze(cam, true)} title={ai ? "Send this frame to the Twin Vision Analyzer" : "Live mode only"}>
                     Ask AI to look
                   </button>
                 </figcaption>
               </figure>
             ))}
+            {focus && (
+              <button className="ghost small" onClick={() => setFocus(null)}>Back to overview</button>
+            )}
           </div>
         </div>
         <div className="legend small">

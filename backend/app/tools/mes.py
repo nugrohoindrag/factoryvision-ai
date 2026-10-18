@@ -9,7 +9,7 @@ from app.tools.common import TODAY, idr, linear_fit, pct, to_date
 
 OEE_SQL = """
 SELECT machine_id, shift_id,
-  SUM(planned_minutes) AS planned, SUM(run_minutes) AS run_min,
+  SUM(planned_minutes) AS planned, SUM(run_minutes) AS run_min, SUM(downtime_minutes) AS down_min,
   SUM(ideal_cycle_s * total_quantity) AS ideal_s, SUM(total_quantity) AS total,
   SUM(output_quantity) AS good, SUM(scrap_quantity) AS scrap, SUM(reject_quantity) AS reject
 FROM fv.fact_production
@@ -26,12 +26,14 @@ def last_production_date() -> date:
 def _oee(rows: list[dict[str, Any]]) -> dict[str, Any]:
     planned = sum(r["planned"] for r in rows)
     run = sum(r["run_min"] for r in rows)
+    down = sum(r["down_min"] for r in rows)
     ideal = sum(r["ideal_s"] for r in rows)
     total = sum(r["total"] for r in rows)
     good = sum(r["good"] for r in rows)
     a = run / planned if planned else 0
     p = ideal / (run * 60) if run else 0
     q = good / total if total else 0
+    factors = {"AVAILABILITY": pct(1 - a), "PERFORMANCE": pct(1 - p), "QUALITY": pct(1 - q)}
     return {
         "availability_pct": pct(a),
         "performance_pct": pct(p),
@@ -39,8 +41,11 @@ def _oee(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "oee_pct": pct(a * p * q),
         "planned_minutes": round(planned),
         "run_minutes": round(run),
+        "downtime_minutes": round(down),
+        "unexplained_minutes": round(planned - run - down),
         "total_quantity": int(total),
         "output_quantity": int(good),
+        "losses": sorted(({"factor": k, "loss_pct": v} for k, v in factors.items()), key=lambda x: -x["loss_pct"]),
     }
 
 
@@ -64,6 +69,7 @@ def get_oee(day: str | None = None, days: int = 1, machine_id: str | None = None
         "worst_machine": min(by_machine, key=lambda m: by_machine[m]["oee_pct"]) if by_machine else None,
         "source": "fv.fact_production",
         "formula": "A = run/planned; P = ideal_cycle x total / run; Q = output/total",
+        "unexplained_note": "planned - run - downtime is not zero in the data; it is reported, not hidden",
     }
 
 
@@ -105,6 +111,12 @@ def downtime_pareto(days: int = 30, top: int = 5, machine_id: str | None = None)
         a["loss_idr"] += r["minutes"] / 60 * LINE_STOP_IDR_PER_HOUR[r["area"]]
     items = sorted(agg.values(), key=lambda x: -x["loss_idr"])
     total = sum(x["loss_idr"] for x in items) or 1
+    by_category: dict[str, dict[str, Any]] = {}
+    for x in items:
+        c = by_category.setdefault(x["loss_category"], {"loss_category": x["loss_category"], "hours": 0.0, "loss_idr": 0.0, "events": 0})
+        c["hours"] += x["hours"]
+        c["loss_idr"] += x["loss_idr"]
+        c["events"] += x["events"]
     cum = 0
     for x in items:
         cum += x["loss_idr"]
@@ -114,6 +126,9 @@ def downtime_pareto(days: int = 30, top: int = 5, machine_id: str | None = None)
     return {
         "window": [d0.isoformat(), d1.isoformat()],
         "top": items[:top],
+        "by_loss_category": [
+            {**c, "hours": round(c["hours"], 1), "loss_idr": idr(c["loss_idr"])} for c in sorted(by_category.values(), key=lambda c: -c["loss_idr"])
+        ],
         "total_hours": round(sum(x["hours"] for x in items), 1),
         "total_loss_idr": idr(total),
         "rates_idr_per_hour": LINE_STOP_IDR_PER_HOUR,

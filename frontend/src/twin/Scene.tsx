@@ -1,13 +1,15 @@
 /** Low-poly Vidad plant (TW-1..TW-3): 16 machines with andon lights and ID boards, WIP racks, warehouse, INS-01 conveyor.
 
-Built from primitives and canvas-texture labels (no downloaded fonts or models), and laid out so the
-virtual cameras see large andons, readable IDs and countable racks.
+Built from primitives and canvas-texture labels, plus one product image for the injection molding machines
+(the dryer, hopper, IMM and robot cell line), and laid out so the virtual cameras see large andons, readable
+IDs and countable racks.
 */
 
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { ConveyorItem, Machine, Snapshot } from "../lib/types";
+import { LINE_TOP, LineAsset } from "./LineAsset";
 
 export const ANDON_HEX: Record<string, string> = { green: "#22c55e", yellow: "#facc15", red: "#ef4444", blue: "#3b82f6", grey: "#9ca3af" };
 const COLOR_HEX: Record<string, string> = {
@@ -82,23 +84,30 @@ function MachineMesh({ m }: { m: Machine }) {
   const [x, , z] = l.pos;
   const [w, h, d] = l.size;
   const imm = m.machine_id.startsWith("IMM");
+  // The andon, mast and ID board sit on the top of the machine (for an IMM, the top of the robot arm).
+  const top = imm ? LINE_TOP * h : h;
+  const modelled = imm || m.machine_id === "DRY-01";
   const andon = ANDON_HEX[m.andon];
   const perf = m.performance_pct != null ? `${Math.round(m.performance_pct)}%` : m.status.toUpperCase();
   return (
     <group position={[x, 0, z]}>
-      <mesh position={[0, h / 2, 0]} castShadow>
-        <boxGeometry args={[w, h, d]} />
-        <meshStandardMaterial color={imm ? "#5f7d95" : "#7b8794"} metalness={0.2} roughness={0.7} />
-      </mesh>
-      <mesh position={[w / 2 - 0.3, h + 0.6, 0]}>
+      {modelled ? (
+        <LineAsset kind={imm ? "imm" : "dryer"} w={w} h={h} d={d} />
+      ) : (
+        <mesh position={[0, h / 2, 0]} castShadow>
+          <boxGeometry args={[w, h, d]} />
+          <meshStandardMaterial color="#7b8794" metalness={0.2} roughness={0.7} />
+        </mesh>
+      )}
+      <mesh position={[w / 2 - 0.3, top + 0.6, 0]}>
         <cylinderGeometry args={[0.06, 0.06, 1.2]} />
         <meshStandardMaterial color="#333" />
       </mesh>
-      <mesh position={[w / 2 - 0.3, h + 1.35, 0]}>
+      <mesh position={[w / 2 - 0.3, top + 1.35, 0]}>
         <sphereGeometry args={[imm ? 0.5 : 0.38, 20, 16]} />
         <meshStandardMaterial color={andon} emissive={andon} emissiveIntensity={1.6} toneMapped={false} />
       </mesh>
-      <Board lines={imm ? [m.machine_id, perf] : [m.machine_id]} position={[-0.2, h + 0.75, d / 2 + 0.02]} width={imm ? 2.6 : 2} height={imm ? 1.2 : 0.8} />
+      <Board lines={imm ? [m.machine_id, perf] : [m.machine_id]} position={[-0.2, top + 0.75, d / 2 + 0.02]} width={imm ? 2.6 : 2} height={imm ? 1.2 : 0.8} />
     </group>
   );
 }
