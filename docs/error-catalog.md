@@ -10,6 +10,7 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-REQ-001` | 400 | Invalid request | The body or query parameters fail validation. | Fix the request; `detail` lists the invalid fields. |
 | `FV-REQ-002` | 404 | Unknown module | `/api/agents/{module}` names a module that does not exist. | Use one of forecast, planning, mes, material, purchasing, quality, delivery. |
 | `FV-REQ-003` | 404 | Unknown scenario | A disruption or replay scenario is not defined. | Use a scenario listed by the simulator. |
+| `FV-REQ-004` | 404 | Resource not found | The request targets a path that does not exist. | Check the URL; `/api/health` is the only endpoint today. |
 | `FV-AUTH-001` | 401 | Not signed in | Auth is required and the Firebase ID token is missing or invalid. | Sign in with the demo account and retry. |
 | `FV-SES-001` | 400 | Missing session | The `X-Session-Id` header is missing or malformed. | The web app creates one per tab; API clients must send a UUID. |
 | `FV-RATE-001` | 429 | Live run limit reached | The session used all its live AI runs. | Switch to Replay or reset the demo session. |

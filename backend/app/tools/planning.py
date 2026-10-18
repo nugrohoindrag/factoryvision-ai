@@ -25,6 +25,8 @@ WHERE machine_id LIKE 'IMM-%' AND production_date > :d0
 GROUP BY machine_id
 """
 
+HEATER_BAND_AND_RING_REPAIR_IDR = 18_000_000
+
 
 def _month(month: str | None) -> date:
     return to_date(month).replace(day=1) if month else TODAY.replace(day=1)
@@ -205,6 +207,6 @@ def what_if(scenarios: list[str] | None = None, demand_change_pct: dict | None =
 def _scenario_cost(opts: dict) -> int:
     cost = 0
     for mid in opts.get("maintenance", []):
-        cost += 2 * P.DOWNTIME_IDR_PER_HOUR_IMM + 18_000_000  # 2 h stop + heater band and check ring
+        cost += 2 * P.DOWNTIME_IDR_PER_HOUR_IMM + HEATER_BAND_AND_RING_REPAIR_IDR
     cost += sum(opts.get("extra_shifts", {}).values()) * 3 * P.OVERTIME_IDR_PER_SHIFT
     return cost

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import timedelta
+from typing import Any
 
 from app import warehouse
 from app.tools.common import TODAY, to_date, working_days_in_month
@@ -13,6 +15,12 @@ USE_SQL = """
 SELECT production_date AS d, SUM(resin_kg) AS kg, SUM(output_quantity) AS good
 FROM fv.fact_production WHERE resin_kg > 0 GROUP BY d ORDER BY d
 """
+
+
+def ratio(numerator: float, denominator: float | Sequence[Any]) -> float | None:
+    if not denominator:
+        return None
+    return numerator / denominator if isinstance(denominator, (int, float)) else numerator / len(denominator)
 
 
 def _on_hand(material_id: str) -> float:
@@ -62,7 +70,7 @@ def stock_projection(material_id: str = "PP-EPDM-T20", demand_change_pct: dict |
         return {"material_id": material_id, "note": "consumption history is tracked for resin only in this prototype"}
     use = warehouse.query(USE_SQL)
     last14 = use[-14:]
-    actual_rate = sum(r["kg"] for r in last14) / len(last14)
+    actual_rate = ratio(sum(r["kg"] for r in last14), last14)
     plan = monthly_plan(TODAY.replace(day=1), demand_change_pct)
     base_plan = monthly_plan(TODAY.replace(day=1))
     bom = {r["sku"]: r["qty_per_unit"] for r in warehouse.query("SELECT sku, qty_per_unit FROM fv.bom WHERE material_id = :m", {"m": material_id})}
@@ -71,11 +79,12 @@ def stock_projection(material_id: str = "PP-EPDM-T20", demand_change_pct: dict |
     base_bom_rate = sum(base_plan[s] * bom[s] for s in base_plan) / wd
     per_unit = warehouse.query(
         "SELECT sku, SUM(resin_kg) AS kg, SUM(output_quantity) AS good FROM fv.fact_production WHERE resin_kg > 0 AND production_date >= :d0 GROUP BY sku",
-        {"d0": to_date(last14[0]["d"])})
+        {"d0": to_date(last14[0]["d"])}) if last14 else []
     actual_kg = sum(r["kg"] for r in per_unit)
     bom_kg = sum(r["good"] * bom[r["sku"]] for r in per_unit)
-    # Scale the actual rate by the plan change (same overconsumption ratio).
-    actual_rate_adj = actual_rate * bom_rate / base_bom_rate
+    overconsumption = ratio(actual_kg, bom_kg)
+    scaled = ratio(actual_rate * bom_rate, base_bom_rate) if actual_rate is not None else None
+    actual_rate_adj = scaled if scaled is not None else bom_rate
     on_hand = _on_hand(material_id)
     delays = {r["vendor_id"]: r["delay"] for r in warehouse.query(
         "SELECT vendor_id, AVG(DATE_DIFF(received_date, promised_date, DAY)) AS delay FROM fv.fact_purchase_order WHERE received_date IS NOT NULL GROUP BY vendor_id")} if warehouse.is_bigquery() else _delays_local()
@@ -105,7 +114,7 @@ def stock_projection(material_id: str = "PP-EPDM-T20", demand_change_pct: dict |
     return {
         "material_id": material_id, "as_of": TODAY.isoformat(), "on_hand_qty": round(on_hand), "unit": "kg",
         "actual_rate_per_workday": round(actual_rate_adj), "bom_rate_per_workday": round(bom_rate),
-        "overconsumption_vs_bom_pct": round(100 * (actual_kg / bom_kg - 1), 1),
+        "overconsumption_vs_bom_pct": round(100 * (overconsumption - 1), 1) if overconsumption is not None else None,
         "stockout_date": stockout.isoformat() if stockout else None,
         "days_to_stockout": (stockout - TODAY).days if stockout else None,
         "days_to_stockout_bom_basis": (stockout_bom - TODAY).days if stockout_bom else None,

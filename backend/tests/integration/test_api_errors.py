@@ -32,10 +32,10 @@ def test_fv_error_uses_catalog_status_and_body():
     assert r.json()["error"]["code"] == "FV-ACT-002"
 
 
-def test_unknown_route_is_catalogued():
+def test_unknown_route_is_resource_not_found():
     r = client.get("/api/nope")
     assert r.status_code == 404
-    assert r.json()["error"]["code"] == "FV-REQ-002"
+    assert r.json()["error"]["code"] == "FV-REQ-004"
 
 
 def test_unexpected_error_hides_internals():

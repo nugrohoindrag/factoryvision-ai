@@ -3,20 +3,30 @@ trend + weekday model over the same series (dev only)."""
 
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 
 import numpy as np
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import warehouse
 from app.errors import FVError
 from app.tools.common import TODAY, pct
 from simulator import plant as P
 
+log = logging.getLogger("fv")
+
 HISTORY_SQL = """
 SELECT requested_delivery_date AS d, SUM(order_qty) AS qty
 FROM fv.fact_customer_order
 WHERE sku = :sku AND order_status != 'Cancelled' AND requested_delivery_date < :today
 GROUP BY d ORDER BY d
+"""
+
+BQML_SQL = """
+SELECT DATE(forecast_timestamp) AS d, forecast_value AS q
+FROM ML.FORECAST(MODEL `fv.demand_arima`, STRUCT(CAST(:horizon AS INT64) AS horizon))
+WHERE sku = :sku ORDER BY d
 """
 
 
@@ -51,12 +61,9 @@ def _local_forecast(hist: list[tuple], horizon: int, fit_days: int = 42) -> list
 
 def _bqml_forecast(sku: str, horizon: int) -> list[tuple] | None:
     try:
-        rows = warehouse.raw(
-            f"SELECT DATE(forecast_timestamp) AS d, forecast_value AS q "
-            f"FROM ML.FORECAST(MODEL `fv.demand_arima`, STRUCT({int(horizon)} AS horizon)) "
-            f"WHERE sku = '{sku}' ORDER BY d"
-        )
-    except Exception:  # model not trained yet
+        rows = warehouse.raw(BQML_SQL, {"sku": sku, "horizon": horizon})
+    except SQLAlchemyError as e:
+        log.warning("BQML forecast unavailable (%s: %s); falling back to the local model. sql: %s", type(e).__name__, str(e)[:300], BQML_SQL.strip())
         return None
     return [(r["d"], max(0.0, float(r["q"])) if P.is_working_day(r["d"]) else 0.0) for r in rows]
 

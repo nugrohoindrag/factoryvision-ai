@@ -1,9 +1,6 @@
 """Delivery tools: ATP check, orders at risk, stock in hours of customer use.
 
-ATP rule (shared with the seed generator): supply available on date d = stock on hand
-(WIP + Mezzanine + SGL) + output rate x working days from today up to and including d, where the output rate is the
-average daily output of the machine that holds the SKU's mold over its last 7 production days.
-An order is at risk when cumulative open demand up to and including it exceeds that supply.
+The ATP rule and the supply formula it is computed from are ATP_RULE_SUMMARY and ATP_RULE_FORMULA.
 """
 
 from __future__ import annotations
@@ -13,6 +10,19 @@ from datetime import timedelta
 from app import warehouse
 from app.tools.common import TODAY, to_date, working_days_between
 from simulator import plant as P
+
+ATP_RULE_SUMMARY = (
+    "Ship what is needed, and delay what is not: any exception must be confirmed "
+    "by the planner before the cutoff."
+)
+
+ATP_RULE_FORMULA = (
+    "Supply available on date d = stock on hand (WIP + Mezzanine + SGL) "
+    "+ output rate x working days from today up to and including d, where the "
+    "output rate is the average daily output of the machine that holds the "
+    "SKU's mold over its last 7 production days. An order is at risk when "
+    "cumulative open demand up to and including it exceeds that supply."
+)
 
 PRIORITY = {"CUS-OEMA": 0, "CUS-OEMB": 0, "CUS-TIER1": 1, "CUS-EXP": 2, "CUS-AFTM": 3}
 
@@ -68,7 +78,7 @@ def atp_check(sku: str | None = None, rate_override: dict | None = None, extra_s
                          "estimated_completion": est.isoformat(), "at_risk": short > 0, "shortfall_qty": max(0, round(short)), "days_late": (est - req).days})
         result.append({"sku": s, "machine_id": mid, "output_rate_per_day": round(rate, 1), "stock_on_hand": on_hand, "orders": rows,
                        "stock_by_color": stock.get(s, {}).get("colors", [])})
-    return {"as_of": TODAY.isoformat(), "skus": result, "rule": __doc__.split("ATP rule")[1].strip().split("\n\n")[0] if __doc__ else "",
+    return {"as_of": TODAY.isoformat(), "skus": result, "rule": ATP_RULE_SUMMARY,
             "source": "fv.fact_customer_order, fv.fact_stock_snapshot, fv.fact_production, fv.dim_mold"}
 
 

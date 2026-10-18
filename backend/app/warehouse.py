@@ -55,9 +55,9 @@ def query(sql: str, params: dict | None = None) -> list[dict]:
     return _run(check_sql(sql), params)
 
 
-def raw(sql: str) -> list[dict]:
+def raw(sql: str, params: dict | None = None) -> list[dict]:
     """Unchecked query for trusted server code (BQML forecast); never exposed to agents."""
-    return _run(sql, None)
+    return _run(sql, params)
 
 
 def is_bigquery() -> bool:
