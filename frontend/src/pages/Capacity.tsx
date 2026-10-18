@@ -81,6 +81,20 @@ export default function CapacityPage() {
   const draftNum = Number(draft);
   const utilInvalid = draft.trim() === "" || !Number.isFinite(draftNum) || draftNum <= 0 || draftNum > 100;
 
+  const toggleStrict = async (value: boolean) => {
+    setBusy(true);
+    setNotice(null);
+    try {
+      await put<Any>("/api/capacity/settings", { strict_process_sequence: value });
+      setNotice({ text: `Strict process sequence ${value ? "on" : "off"}.`, bad: false });
+      bump();
+    } catch (x) {
+      setNotice({ text: errorText(x), bad: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const saveUtil = async () => {
     setBusy(true);
     setNotice(null);
@@ -164,6 +178,16 @@ export default function CapacityPage() {
           <div className="row filters-actions">
             <button className="secondary" onClick={saveUtil} disabled={busy || utilInvalid || draftNum === savedUtil}>Save utilization</button>
           </div>
+          <label className="row">
+            <input
+              type="checkbox"
+              aria-label="Strict process sequence"
+              checked={!!settings.data?.strict_process_sequence}
+              disabled={busy || !settings.data}
+              onChange={(x) => toggleStrict(x.target.checked)}
+            />
+            Strict process sequence: a work order cannot start until the earlier process is completed
+          </label>
         </div>
         {notice && <div className={`notice-box ${notice.bad ? "bad" : "good"}`} role={notice.bad ? "alert" : "status"}>{notice.text}</div>}
       </Card>

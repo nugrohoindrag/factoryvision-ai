@@ -4,7 +4,7 @@ import math
 from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from app import plant
+from app import effects, plant
 from app.effects import normal_cycle_factor
 from app.errors import FVError
 from app.store import store
@@ -21,10 +21,10 @@ INVALID_ASSESSMENT = "FV-CAP-004"
 
 WITHIN, ADDITIONAL, UP = "Within Plan", "Additional Demand", "Capacity Up Required"
 STATUS_RANK = {WITHIN: 0, ADDITIONAL: 1, UP: 2}
-DEFAULT_UTILIZATION_PCT = 80.0
+DEFAULT_UTILIZATION_PCT = effects.DEFAULT_PLANNING_UTILIZATION_PCT
 MAINTENANCE_DOWNTIME_MIN = 120  # the heater band and check ring job the maintenance action books (see planning.run_scheduler)
 SNAPSHOTS = "capacity_snapshots"
-SETTINGS = "planning_settings"
+SETTINGS = effects.PLANNING_SETTINGS
 
 FORMULAS = {
     "total": "Total = sum over compatible machines of (effective minutes x share / cycle time); "
@@ -182,9 +182,15 @@ def utilization_pct(sid: str) -> float:
     return float(doc["planning_utilization_pct"]) if doc else DEFAULT_UTILIZATION_PCT
 
 
-def set_utilization_pct(sid: str, value: float) -> dict[str, Any]:
-    check_utilization(value)
-    store().set(SETTINGS, sid, {"session_id": sid, "planning_utilization_pct": float(value)})
+def update_settings(sid: str, utilization: float | None = None, *, strict: bool | None = None) -> dict[str, Any]:
+    if utilization is not None:
+        check_utilization(utilization)
+    doc = {**effects.planning_setting(sid), "session_id": sid}
+    if utilization is not None:
+        doc["planning_utilization_pct"] = float(utilization)
+    if strict is not None:
+        doc["strict_process_sequence"] = bool(strict)
+    store().set(SETTINGS, sid, doc)
     return settings(sid)
 
 
@@ -198,7 +204,11 @@ def check_utilization(value: float) -> None:
 
 
 def settings(sid: str) -> dict[str, Any]:
-    return {"planning_utilization_pct": utilization_pct(sid), "default_planning_utilization_pct": DEFAULT_UTILIZATION_PCT}
+    return {
+        "planning_utilization_pct": utilization_pct(sid),
+        "default_planning_utilization_pct": DEFAULT_UTILIZATION_PCT,
+        "strict_process_sequence": bool(effects.planning_setting(sid).get("strict_process_sequence", False)),
+    }
 
 
 def parse_period(start: str | None, end: str | None, code: str = INVALID_PERIOD) -> tuple[date, date]:
@@ -260,8 +270,9 @@ def _skey(sid: str, cap_id: str) -> str:
     return f"{sid}/{cap_id}"
 
 
-def snapshots(sid: str) -> list[dict[str, Any]]:
-    return sorted(store().where(SNAPSHOTS, "session_id", sid), key=lambda d: (str(d["computed_at"]), d["cap_id"]), reverse=True)
+def snapshots(sid: str, status: str | None = None) -> list[dict[str, Any]]:
+    docs = [d for d in store().where(SNAPSHOTS, "session_id", sid) if status is None or d["status"] == status]
+    return sorted(docs, key=lambda d: (str(d["computed_at"]), d["cap_id"]), reverse=True)
 
 
 def get_snapshot(sid: str, cap_id: str) -> dict[str, Any]:

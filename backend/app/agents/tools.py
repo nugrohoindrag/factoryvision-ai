@@ -161,7 +161,9 @@ def get_capacity(*, apply_customer_po: bool, tool_context: ToolContext) -> ToolR
     o = _ov(tool_context)
     cyc = {m: effects.normal_cycle_factor(planning.machine_rates()) for m in o.maintenance}
     demand = _demand(tool_context, apply_customer_po=apply_customer_po)
-    return planning.get_capacity(demand_change_pct=demand, cycle_override=cyc or None, extra_days=o.extra_shifts or None)
+    return planning.get_capacity(
+        demand_change_pct=demand, cycle_override=cyc or None, extra_days=o.extra_shifts or None, utilization_pct=o.planning_utilization_pct
+    )
 
 
 def run_scheduler(*, apply_customer_po: bool, allow_mold_moves: bool, maintain_imm04: bool, tool_context: ToolContext) -> ToolResult:

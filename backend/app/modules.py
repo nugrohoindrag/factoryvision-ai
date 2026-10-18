@@ -91,8 +91,11 @@ def forecast_detail(sku: str, o: Overrides) -> dict[str, Any]:
 
 def _planning(o: Overrides) -> dict[str, Any]:
     cyc = _maintenance_cycle(o)
-    base = planning.get_capacity()
-    now = planning.get_capacity(demand_change_pct=o.demand_change_pct or None, cycle_override=cyc or None, extra_days=o.extra_shifts or None)
+    util = o.planning_utilization_pct
+    base = planning.get_capacity(utilization_pct=util)
+    now = planning.get_capacity(
+        demand_change_pct=o.demand_change_pct or None, cycle_override=cyc or None, extra_days=o.extra_shifts or None, utilization_pct=util
+    )
     return {"baseline": base, "current": now, "mold_moves": o.mold_moves, "what_if_options": list(planning.WHAT_IF)}
 
 
