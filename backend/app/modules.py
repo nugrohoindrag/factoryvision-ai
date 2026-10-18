@@ -118,7 +118,17 @@ def _material(o: Overrides) -> dict[str, Any]:
     return {
         "requirements": material.material_requirements(demand_change_pct=o.demand_change_pct or None),
         "resin": material.stock_projection(demand_change_pct=o.demand_change_pct or None, extra_receipts=receipts or None),
+        "readiness": _readiness(o),
     }
+
+
+def _readiness(o: Overrides) -> dict[str, Any]:
+    from app import readiness
+
+    try:
+        return readiness.oem_summary(o)
+    except FVError as e:
+        return {"status": "NOT_CHECKED", "error": e.body()["error"]}
 
 
 def _purchasing(o: Overrides) -> dict[str, Any]:
