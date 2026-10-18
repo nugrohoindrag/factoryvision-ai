@@ -261,5 +261,4 @@ def test_session_po_replaces_approved_po_incoming(sid: str) -> None:
     srcs = [(i["source"], i["po_id"]) for i in materials.incoming(sid, "PP-EPDM-T20")]
     assert ("approved_po", a["action_id"]) not in srcs
     assert [p for s_, p in srcs if s_ == "session_po"] == [out["session_po_id"]]
-    srcs = [i["source"] for i in materials.incoming(sid, "PP-EPDM-T20")]
-    assert srcs.count("session_po") == 1
+    assert sum(1 for s_, _ in srcs if s_ == "session_po") == 1
