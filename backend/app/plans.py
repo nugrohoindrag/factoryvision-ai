@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime
 from itertools import pairwise
 from typing import Any
 
-from app import capacity, effects, forecasts, modules, plant
+from app import actions, capacity, effects, forecasts, modules, plant
 from app.errors import FVError
 from app.store import store
 from app.tools import planning
@@ -1338,6 +1338,11 @@ def capacity_page(sid: str, period_start: str | None, period_end: str | None, ut
     o = effects.overrides(sid)
     demand, planned = period_demand(sid, start, end)
     rows = capacity.rows_for(demand, planned, start, end, util, o.maintenance, o.mold_moves)
+    pending = [a for a in actions.list_actions(sid, "pending") if a["kind"] == "mold_move"]
+    for r in rows:
+        r["proposals"] = [
+            {"action_id": a["action_id"], "title": a["title"], "status": a["status"]} for a in pending if a["command"]["args"].get("sku") == r["sku"]
+        ]
     return {
         "period_start": start.isoformat(),
         "period_end": end.isoformat(),
@@ -1386,7 +1391,12 @@ def recalculate_capacity(
         if cur and plan_references(sid, cur["cap_id"]):
             utilization = float(cur["planning_utilization_pct"])
     result = capacity_page(sid, period_start, period_end, utilization)
-    keep = {k: result[k] for k in ("rows", "kpis", "formulas", "working_days")}
+    keep = {
+        "rows": [{k: v for k, v in r.items() if k != "proposals"} for r in result["rows"]],
+        "kpis": result["kpis"],
+        "formulas": result["formulas"],
+        "working_days": result["working_days"],
+    }
     doc = capacity.save_snapshot(sid, to_date(result["period_start"]), to_date(result["period_end"]), float(result["planning_utilization_pct"]), keep, user)
     for g in doc["gap_events"]:
         _event(sid, "CapacityGapDetected", {"plan_id": None, "plan_number": None}, {**g, "snapshot_id": doc["cap_id"], "period_start": doc["period_start"]})
