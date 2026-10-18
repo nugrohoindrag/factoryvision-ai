@@ -11,7 +11,9 @@ import { DeliveryPage, PurchasingPage } from "./pages/Modules";
 import OrdersPage from "./pages/Orders";
 import PlanWizard from "./pages/PlanWizard";
 import { PlanningPage } from "./pages/Planning";
+import ProductionBoardPage from "./pages/ProductionBoard";
 import QualityPage from "./pages/Quality";
+import WorkOrdersPage from "./pages/WorkOrders";
 
 // The 3D twin (three.js) loads only when the MES page opens.
 const MesPage = lazy(() => import("./pages/Mes"));
@@ -19,7 +21,7 @@ const MesPage = lazy(() => import("./pages/Mes"));
 const NAV: { group: string; links: [string, string][] }[] = [
   { group: "Overview", links: [["/", "Plant Briefing"], ["/actions", "Action Center"]] },
   { group: "Plan", links: [["/orders", "0 Customer Orders"], ["/forecast", "1 Demand Forecast"], ["/planning", "2 Production Planning"], ["/capacity", "Capacity Plan"]] },
-  { group: "Make", links: [["/mes", "3 MES / Shop Floor"], ["/material", "4 Material Supply"], ["/purchasing", "5 Purchasing"], ["/quality", "6 Quality Control"]] },
+  { group: "Make", links: [["/mes", "3 MES / Shop Floor"], ["/production-board", "Production Board"], ["/work-orders", "Work Orders"], ["/material", "4 Material Supply"], ["/purchasing", "5 Purchasing"], ["/quality", "6 Quality Control"]] },
   { group: "Deliver", links: [["/delivery", "7 Delivery"]] },
 ];
 
@@ -71,6 +73,8 @@ export function Shell() {
           <Route path="/planning" element={<PlanningPage />} />
           <Route path="/planning/:planId" element={<PlanWizard />} />
           <Route path="/capacity" element={<CapacityPage />} />
+          <Route path="/production-board" element={<ProductionBoardPage />} />
+          <Route path="/work-orders" element={<WorkOrdersPage />} />
           <Route path="/mes" element={<Suspense fallback={<p className="muted">Loading the digital twin…</p>}><MesPage /></Suspense>} />
           <Route path="/material" element={<MaterialPage />} />
           <Route path="/purchasing" element={<PurchasingPage />} />

@@ -178,8 +178,8 @@ def sku_capacity(
 
 
 def utilization_pct(sid: str) -> float:
-    doc = store().get(SETTINGS, sid)
-    return float(doc["planning_utilization_pct"]) if doc else DEFAULT_UTILIZATION_PCT
+    doc = store().get(SETTINGS, sid) or {}
+    return float(doc.get("planning_utilization_pct", DEFAULT_UTILIZATION_PCT))  # a session may have set only the strict flag
 
 
 def update_settings(sid: str, utilization: float | None = None, *, strict: bool | None = None) -> dict[str, Any]:

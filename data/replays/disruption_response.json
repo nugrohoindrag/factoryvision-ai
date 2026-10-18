@@ -2,7 +2,7 @@
  "scenario": "disruption_response",
  "recorded_with": "scripted playbook (deterministic tools, templated narrative, no Gemini)",
  "scripted": true,
- "recorded_at": "2026-10-18T13:31:25+00:00",
+ "recorded_at": "2026-10-18T13:34:02+00:00",
  "prompt": "Disruption: OEM-A sent a revised delivery schedule (customer-po-oem-a.pdf) raising FB-ARKA; the resin vendor for PP-EPDM-T20 emailed about a late delivery (vendor-email-andalas.txt); IMM-04 is slowing down. Trace the impact across all modules and produce one action plan.",
  "timeline": [
   {
@@ -63,7 +63,7 @@
    "kind": "tool_result",
    "agent": "demand_forecast_agent",
    "tool": "get_latest_forecast_snapshot",
-   "summary": "forecast_id=FC-2027-02-001, status=Generated, superseded_by=None, engine=local trend+weekday (dev), generated_at=2026-10-18T13:31:24+00:00",
+   "summary": "forecast_id=FC-2027-02-001, status=Generated, superseded_by=None, engine=local trend+weekday (dev), generated_at=2026-10-18T13:34:01+00:00",
    "error": false
   },
   {
@@ -141,7 +141,7 @@
    "kind": "tool_result",
    "agent": "production_planning_agent",
    "tool": "run_scheduler",
-   "summary": "status=OPTIMAL, solve_seconds=0.04, month=2027-02-01, plan_qty={'FB-ARKA': 33432, 'RB-ARKA': 19200, 'F…, unmet_qty={'FB-ARKA': 10000, 'RB-ARKA': 0, 'FB-BR…",
+   "summary": "status=OPTIMAL, solve_seconds=0.06, month=2027-02-01, plan_qty={'FB-ARKA': 33432, 'RB-ARKA': 19200, 'F…, unmet_qty={'FB-ARKA': 10000, 'RB-ARKA': 0, 'FB-BR…",
    "error": false
   },
   {
@@ -158,7 +158,7 @@
    "kind": "tool_result",
    "agent": "production_planning_agent",
    "tool": "propose_replan",
-   "summary": "action_id=ACT-c4c7bdf81b, status=pending (needs human approval), impact={'rupiah_idr': 0, 'scrap_kg': 0, 'kwh':…, impact_breakdown={}, reasons=['No production plan uses the latest fo…",
+   "summary": "action_id=ACT-36c9b992aa, status=pending (needs human approval), impact={'rupiah_idr': 0, 'scrap_kg': 0, 'kwh':…, impact_breakdown={}, reasons=['No production plan uses the latest fo…",
    "error": false
   },
   {
@@ -177,7 +177,7 @@
    "kind": "tool_result",
    "agent": "production_planning_agent",
    "tool": "propose_mold_move",
-   "summary": "action_id=ACT-2fd6e0e2d2, status=pending (needs human approval), impact={'rupiah_idr': 571358000, 'scrap_kg': 0…, impact_breakdown={'extra_units_contribution_idr': 591758…",
+   "summary": "action_id=ACT-d68e07a57e, status=pending (needs human approval), impact={'rupiah_idr': 571358000, 'scrap_kg': 0…, impact_breakdown={'extra_units_contribution_idr': 591758…",
    "error": false
   },
   {
@@ -238,7 +238,7 @@
    "kind": "tool_result",
    "agent": "material_supply_agent",
    "tool": "get_latest_mrp",
-   "summary": "run_id=MRP-2027-02-001, horizon_start=2027-02-01, horizon_end=2027-03-03, plan_ids=['OEM-2027-02'], created_at=2026-10-18T13:31:24.786097+00:00",
+   "summary": "run_id=MRP-2027-02-001, horizon_start=2027-02-01, horizon_end=2027-03-03, plan_ids=['OEM-2027-02'], created_at=2026-10-18T13:34:01.907708+00:00",
    "error": false
   },
   {
@@ -322,7 +322,7 @@
    "kind": "tool_result",
    "agent": "purchasing_agent",
    "tool": "draft_po",
-   "summary": "action_id=ACT-64b98f1119, status=pending (needs human approval), impact={'rupiah_idr': 2213943000, 'scrap_kg': …, impact_breakdown={'avoided_line_stop_idr': 2517943000, '…",
+   "summary": "action_id=ACT-8298dfad64, status=pending (needs human approval), impact={'rupiah_idr': 2213943000, 'scrap_kg': …, impact_breakdown={'avoided_line_stop_idr': 2517943000, '…",
    "error": false
   },
   {
@@ -339,7 +339,7 @@
    "kind": "tool_result",
    "agent": "purchasing_agent",
    "tool": "propose_po_from_shortage",
-   "summary": "action_id=ACT-4b697f7312, title=PO SNS-HLD 88,070 pcs from CV Baja Klip…, args={'vendor_id': 'VEN-BAJA', 'material_id'…, impact={'rupiah_idr': 0, 'scrap_kg': 0, 'kwh':…, mrp_run_id=MRP-2027-02-001",
+   "summary": "action_id=ACT-41816d0600, title=PO SNS-HLD 88,070 pcs from CV Baja Klip…, args={'vendor_id': 'VEN-BAJA', 'material_id'…, impact={'rupiah_idr': 0, 'scrap_kg': 0, 'kwh':…, mrp_run_id=MRP-2027-02-001",
    "error": false
   },
   {
@@ -399,7 +399,7 @@
    "kind": "tool_result",
    "agent": "mes_agent",
    "tool": "propose_maintenance",
-   "summary": "action_id=ACT-293638cfad, status=pending (needs human approval), impact={'rupiah_idr': 937629000, 'scrap_kg': 1…, impact_breakdown={'avoided_breakdown_idr': 114240000, 's…",
+   "summary": "action_id=ACT-b79ac29e46, status=pending (needs human approval), impact={'rupiah_idr': 937629000, 'scrap_kg': 1…, impact_breakdown={'avoided_breakdown_idr': 114240000, 's…",
    "error": false
   },
   {
@@ -444,7 +444,7 @@
    "kind": "tool_result",
    "agent": "quality_control_agent",
    "tool": "propose_hold",
-   "summary": "action_id=ACT-d221aa59e1, status=pending (needs human approval), impact={'rupiah_idr': 37911000, 'scrap_kg': 0,…, impact_breakdown={'avoided_customer_claims_idr': 3791100…",
+   "summary": "action_id=ACT-129bc1ad2d, status=pending (needs human approval), impact={'rupiah_idr': 37911000, 'scrap_kg': 0,…, impact_breakdown={'avoided_customer_claims_idr': 3791100…",
    "error": false
   },
   {
@@ -488,7 +488,7 @@
    "kind": "tool_result",
    "agent": "delivery_agent",
    "tool": "propose_ship_date",
-   "summary": "action_id=ACT-037df6272e, status=pending (needs human approval), impact={'rupiah_idr': 2500000, 'scrap_kg': 0, …, impact_breakdown={'penalty_reduction_idr': 2500000}",
+   "summary": "action_id=ACT-2a8f41d836, status=pending (needs human approval), impact={'rupiah_idr': 2500000, 'scrap_kg': 0, …, impact_breakdown={'penalty_reduction_idr': 2500000}",
    "error": false
   },
   {
@@ -507,7 +507,7 @@
    "kind": "tool_result",
    "agent": "delivery_agent",
    "tool": "propose_ship_date",
-   "summary": "action_id=ACT-8a79478c45, status=pending (needs human approval), impact={'rupiah_idr': 7500000, 'scrap_kg': 0, …, impact_breakdown={'penalty_reduction_idr': 7500000}",
+   "summary": "action_id=ACT-99b665e08c, status=pending (needs human approval), impact={'rupiah_idr': 7500000, 'scrap_kg': 0, …, impact_breakdown={'penalty_reduction_idr': 7500000}",
    "error": false
   },
   {
@@ -526,7 +526,7 @@
    "kind": "tool_result",
    "agent": "delivery_agent",
    "tool": "propose_ship_date",
-   "summary": "action_id=ACT-5027ae0366, status=pending (needs human approval), impact={'rupiah_idr': 85000000, 'scrap_kg': 0,…, impact_breakdown={'penalty_reduction_idr': 85000000}",
+   "summary": "action_id=ACT-98bc1fb0b8, status=pending (needs human approval), impact={'rupiah_idr': 85000000, 'scrap_kg': 0,…, impact_breakdown={'penalty_reduction_idr': 85000000}",
    "error": false
   },
   {
@@ -544,7 +544,7 @@
    "kind": "tool_result",
    "agent": "delivery_agent",
    "tool": "draft_customer_notice",
-   "summary": "action_id=ACT-4f1f3b8865, status=pending (needs human approval), impact={'rupiah_idr': 0, 'scrap_kg': 0, 'kwh':…, impact_breakdown={}",
+   "summary": "action_id=ACT-4a04f3e346, status=pending (needs human approval), impact={'rupiah_idr': 0, 'scrap_kg': 0, 'kwh':…, impact_breakdown={}",
    "error": false
   },
   {
@@ -564,7 +564,7 @@
    "kind": "tool_result",
    "agent": "orchestrator",
    "tool": "plan_summary",
-   "summary": "plan_id=PLAN-acf36dd8, proposals=[{'action_id': 'ACT-c4c7bdf81b', 'kind'…, total={'rupiah_idr': 3855841000, 'scrap_kg': …",
+   "summary": "plan_id=PLAN-0aa26666, proposals=[{'action_id': 'ACT-36c9b992aa', 'kind'…, total={'rupiah_idr': 3855841000, 'scrap_kg': …",
    "error": false
   },
   {
