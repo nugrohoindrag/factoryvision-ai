@@ -73,7 +73,8 @@ def place_po(s: State, a: dict[str, Any]) -> dict[str, Any]:
     from app.simulation.engine import RECEIPT_LEAD_MIN
 
     if a.get("material_id", "PP-EPDM-T20") != "PP-EPDM-T20":
-        return {"logged": True}
+        po_id = a.get("po_id") or a.get("_action_id")
+        return {"po_id": po_id, "material_id": a.get("material_id"), "qty": float(a.get("qty", 0)), "expected_date": a.get("expected_date"), "logged": True}
     lot = f"LOT-PPT20-{s.next_lot:04d}"
     s.next_lot += 1
     at = s.minute + int(a.get("lead_minutes", RECEIPT_LEAD_MIN))
@@ -119,7 +120,7 @@ def logged(_s: State, _a: dict[str, Any]) -> dict[str, Any]:
     return {"logged": True}
 
 
-_NEEDS_APPROVAL_META = {"create_replan", "create_draft_plan"}
+_NEEDS_APPROVAL_META = {"create_replan", "create_draft_plan", "place_po", "expedite_po"}
 
 _COMMANDS = {
     "start_maintenance": start_maintenance,

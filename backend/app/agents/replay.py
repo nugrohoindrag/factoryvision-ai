@@ -141,6 +141,8 @@ def scripted(session_id: str, plan_id: str) -> dict[str, Any]:
 
     agent("material_supply_agent")
     sp = call("material_supply_agent", agent_tools.get_stock_projection, material_id="PP-EPDM-T20", apply_customer_po=True)
+    mr = call("material_supply_agent", agent_tools.get_material_readiness, date_from="", date_to="")
+    run = call("material_supply_agent", agent_tools.get_latest_mrp)
     end("material_supply_agent")
 
     agent("purchasing_agent")
@@ -179,6 +181,9 @@ def scripted(session_id: str, plan_id: str) -> dict[str, Any]:
         f"{andalas['on_time_pct']}% with {andalas['avg_delay_days']} days average delay and announced another delay; "
         f"{best['vendor_name']} arrives {best['expected_arrival']}.",
     )
+    other = next((r for r in run.get("shortages", []) if r["material_id"] != "PP-EPDM-T20" and r.get("default_vendor_id")), None)
+    if other:
+        call("purchasing_agent", agent_tools.propose_po_from_shortage, material_id=other["material_id"])
     end("purchasing_agent")
 
     agent("mes_agent")
@@ -232,7 +237,7 @@ def scripted(session_id: str, plan_id: str) -> dict[str, Any]:
     summary = call("orchestrator", agent_tools.plan_summary)
     end("orchestrator")
     tot = summary["total"]
-    text = _narrative(po, fc, snap, trig, cap, sched, sp, cmp_, mh, dc, risk, tot)
+    text = _narrative(po, fc, snap, trig, cap, sched, sp, cmp_, mh, dc, risk, tot, {**mr.get("kpis", {}), **run})
     return {"timeline": timeline, "text": text}
 
 
@@ -240,7 +245,19 @@ Facts = dict[str, Any]
 
 
 def _narrative(
-    po: Facts, fc: Facts, snap: Facts, trig: Facts, cap: Facts, sched: Facts, sp: Facts, cmp_: Facts, mh: Facts, dc: Facts, risk: Facts, tot: Facts
+    po: Facts,
+    fc: Facts,
+    snap: Facts,
+    trig: Facts,
+    cap: Facts,
+    sched: Facts,
+    sp: Facts,
+    cmp_: Facts,
+    mh: Facts,
+    dc: Facts,
+    risk: Facts,
+    tot: Facts,
+    mat: Facts,
 ) -> str:
     g = cap["groups"][0]
     arka = snap["skus"]["FB-ARKA"]
@@ -249,6 +266,7 @@ def _narrative(
 - OEM-A raised FB-ARKA by {po["change_pct"]}% for February; forecast snapshot {snap["forecast_id"]} ({snap["engine"]}) already shows FB-ARKA week 6 at {arka["weekly_forecast"][-1]["forecast_qty"]:,} units, {arka["change_final_week_vs_last_history_week_pct"]}% above the last history week (live forecast: {fc["change_by_final_week_pct"]}% in six weeks, Lebaran ramp).
 - The 3,500 t group (IMM-04/05, the only machines that fit the ARKA molds) is short by {g["capacity_gap_pct"]}%; IMM-04 is the bottleneck at {cap["bottleneck_load_pct"]}% load and its cycle time is {mh["current_cycle_s"]} s vs {mh["ideal_cycle_s"]} s ideal (breakdown risk {mh["breakdown_risk"]}, alarm in {mh["days_to_alarm"]} days).
 - Resin PP-EPDM-T20 runs out on {sp["stockout_date"]} ({sp["days_to_stockout"]} days); the usual vendor is late. Lot {dc["suspect_lot"]} shows a gas mark and bubble lift. {risk["count"]} orders are at risk (penalty exposure Rp{risk["total_penalty_idr"]:,}).
+- Material readiness: {mat.get("plans_short")} of {mat.get("plans_monitored")} plans short; MRP run {mat.get("run_id")} lists {mat.get("shortage_materials")} material(s) to order{_short_list(mat)}.
 
 **Actions (priority order)**
 1. Preventive maintenance on IMM-04 (2 h stop) — restores the cycle time and removes the breakdown risk.
@@ -263,6 +281,12 @@ def _narrative(
 **If nothing is done:** IMM-04 is likely to fail within about a week, molding stops for lack of resin around {sp["stockout_date"]}, and the {risk["count"]} late orders cost Rp{risk["total_penalty_idr"]:,} in penalties.
 
 All actions are pending your approval in the Action Center."""
+
+
+def _short_list(mat: Facts) -> str:
+    rows = mat.get("shortages") or []
+    items = [f"{r['material_id']}{' ' + r['color'] if r.get('color') else ''} {r['net_qty']:,} {r['unit']} by {r['required_date']}" for r in rows[:3]]
+    return f" ({'; '.join(items)})" if items else ""
 
 
 def record(scenario: str, *, use_scripted: bool) -> Path:
