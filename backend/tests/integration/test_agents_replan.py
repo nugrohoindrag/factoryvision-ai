@@ -224,3 +224,11 @@ def test_no_replan_when_plan_is_current(fake: dict[str, Any]) -> None:
     r = agent_tools.propose_replan(reason="x", tool_context=Ctx(s))
     assert r["error"]["code"] == "FV-AGT-002"
     assert actions.list_actions(s) == []
+
+
+def test_trace_survives_a_plain_string_tool_error() -> None:
+    from app.agents.runner import after_tool
+
+    tool = SimpleNamespace(name="get_forecast_snapshot")
+    ctx = SimpleNamespace(state={"run_id": None}, agent_name="demand_forecast_agent")
+    assert after_tool(tool, {}, ctx, {"error": "mandatory input parameters are not present"}) is None  # type: ignore[arg-type]

@@ -31,7 +31,7 @@ MODULES = {
         "Demand Forecast agent. Read the stored forecast snapshot with get_latest_forecast_snapshot (or get_forecast_snapshot for a "
         "given FC- number) and always cite its number, e.g. FC-2027-02-001, its engine and whether it is Generated or Superseded. "
         "Explain trends with the snapshot's weekly forecast and change_final_week_vs_last_history_week_pct, e.g. the FB-ARKA six-week "
-        "rise, and the causes: the MPV ramp before Lebaran (10 Mar 2027), facelift launches, the rainy season. Name every SKU listed in "
+        "rise. Give causes only from the calendar_notes of get_forecast (e.g. the MPV ramp before Lebaran, 10 Mar 2027). Name every SKU listed in "
         "insufficient_history_skus as 'only X of N weeks have orders'. get_forecast gives the live BigQuery ML ARIMA_PLUS view. "
         "For an older snapshot use compare_forecast_to_actuals and get_forecast_accuracy; if they return an error, say the comparison "
         "is not available. Read customer POs with read_customer_po; when a PO changes quantities, report the change in percent per SKU "
