@@ -5,7 +5,7 @@ from app.actions import IMPACT_KEYS
 from app.effects import Overrides
 from app.errors import FVError
 from app.modules import delivery_rates
-from app.tools import impact, planning
+from app.tools import impact, material, planning
 from app.tools.impact import impact_calculator, plan_total
 
 CASES: list[tuple[str, dict[str, Any]]] = [
@@ -49,7 +49,7 @@ def test_maintenance_on_a_non_imm_is_a_tool_error_not_a_crash() -> None:
 
 def test_po_against_a_stockout_today_counts_the_avoided_line_stop(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = iter([{"days_to_stockout": 0}, {"days_to_stockout": None}])
-    monkeypatch.setattr(impact.material, "stock_projection", lambda *_a, **_k: next(calls))
+    monkeypatch.setattr(material, "stock_projection", lambda *_a, **_k: next(calls))
     r = impact_calculator("purchase_order", {"vendor_id": "VEN-MERAPI", "qty": 160000, "expected_date": "2027-02-06"})
     assert r["assumptions"]["stockout_days_avoided"] == impact.SPOT_BUY_DAYS
     assert r["breakdown"]["avoided_line_stop_idr"] > 0
