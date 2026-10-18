@@ -22,14 +22,35 @@ GROUP BY d ORDER BY d
 """
 
 
+HISTORY_BY_CUSTOMER_SQL = """
+SELECT requested_delivery_date AS d, customer_id, SUM(order_qty) AS qty
+FROM fv.fact_customer_order
+WHERE sku = :sku AND order_status != 'Cancelled' AND requested_delivery_date < :today AND requested_delivery_date >= :start
+GROUP BY d, customer_id ORDER BY d
+"""
+FIT_DAYS = 42
+LOCAL_ENGINE = "local trend+weekday (dev)"
+BQML_ENGINE = "BigQuery ML ARIMA_PLUS (fv.demand_arima)"
+
+
+def _days(start: date, n: int, by_day: dict[date, float]) -> list[tuple[date, float]]:
+    return [(start + timedelta(days=k), by_day.get(start + timedelta(days=k), 0.0)) for k in range(n)]
+
+
 def demand_history(sku: str) -> list[tuple[date, float]]:
     rows = warehouse.query(HISTORY_SQL, {"sku": sku, "today": TODAY})
-    by_day = {r["d"]: float(r["qty"]) for r in rows}
-    start = TODAY - timedelta(days=plant.HISTORY_DAYS)
-    return [(start + timedelta(days=k), by_day.get(start + timedelta(days=k), 0.0)) for k in range(plant.HISTORY_DAYS)]
+    return _days(TODAY - timedelta(days=plant.HISTORY_DAYS), plant.HISTORY_DAYS, {r["d"]: float(r["qty"]) for r in rows})
 
 
-def _local_forecast(hist: list[tuple[date, float]], horizon: int, fit_days: int = 42) -> list[tuple[date, float]]:
+def demand_history_by_customer(sku: str, days: int = plant.HISTORY_DAYS) -> dict[str, list[tuple[date, float]]]:
+    start = TODAY - timedelta(days=days)
+    by: dict[str, dict[date, float]] = {}
+    for r in warehouse.query(HISTORY_BY_CUSTOMER_SQL, {"sku": sku, "today": TODAY, "start": start}):
+        by.setdefault(str(r["customer_id"]), {})[r["d"]] = float(r["qty"])
+    return {c: _days(start, days, d) for c, d in sorted(by.items())}
+
+
+def _local_forecast(hist: list[tuple[date, float]], horizon: int, fit_days: int = FIT_DAYS, origin: date = TODAY) -> list[tuple[date, float]]:
     window = hist[-fit_days:]
     rows, ys = [], []
     for k, (d, q) in enumerate(window):
@@ -41,7 +62,7 @@ def _local_forecast(hist: list[tuple[date, float]], horizon: int, fit_days: int 
     coef, *_ = np.linalg.lstsq(np.asarray(rows), np.asarray(ys), rcond=None)
     out = []
     for h in range(1, horizon + 1):
-        d = TODAY + timedelta(days=h - 1)
+        d = origin + timedelta(days=h - 1)
         if not plant.is_working_day(d):
             out.append((d, 0.0))
             continue
@@ -61,17 +82,25 @@ def _bqml_forecast(sku: str, horizon: int) -> list[tuple[date, float]] | None:
     return [(r["d"], max(0.0, float(r["q"])) if plant.is_working_day(r["d"]) else 0.0) for r in rows]
 
 
+def daily_forecast(sku: str, hist: list[tuple[date, float]], horizon: int, fit_days: int = FIT_DAYS) -> tuple[list[tuple[date, float]], str]:
+    fc = _bqml_forecast(sku, horizon) if warehouse.is_bigquery() else None
+    if fc:
+        return fc, BQML_ENGINE
+    return _local_forecast(hist, horizon, fit_days), LOCAL_ENGINE
+
+
+CALENDAR_NOTES = [
+    f"Lebaran (Eid al-Fitr) expected {plant.LEBARAN.isoformat()}; MPV call-offs historically ramp in the 6-8 weeks before",
+    "Rainy season Nov-Mar",
+]
+
+
 def bq_forecast(sku: str = "FB-ARKA", horizon_weeks: int = 6) -> dict[str, Any]:
     if sku not in plant.PRODUCT_BY_SKU:
         return FVError("FV-DATA-001", f"unknown sku {sku}", {"valid_skus": plant.SKUS}).tool_result()
     horizon = horizon_weeks * 7
     hist = demand_history(sku)
-    fc, engine = None, "local trend+weekday (dev)"
-    if warehouse.is_bigquery():
-        fc = _bqml_forecast(sku, horizon)
-        engine = "BigQuery ML ARIMA_PLUS (fv.demand_arima)" if fc else engine
-    if not fc:
-        fc = _local_forecast(hist, horizon)
+    fc, engine = daily_forecast(sku, hist, horizon)
     last7 = sum(q for _, q in hist[-7:]) / 7
     weeks: list[dict[str, Any]] = []
     for w in range(horizon_weeks):
@@ -102,10 +131,7 @@ def bq_forecast(sku: str = "FB-ARKA", horizon_weeks: int = 6) -> dict[str, Any]:
         "peak_change_pct": peak["change_vs_last7_pct"],
         "weekly_forecast": weeks,
         "weekly_history": hist_weekly[-8:],
-        "calendar_notes": [
-            f"Lebaran (Eid al-Fitr) expected {plant.LEBARAN.isoformat()}; MPV call-offs historically ramp in the 6-8 weeks before",
-            "Rainy season Nov-Mar",
-        ],
+        "calendar_notes": CALENDAR_NOTES,
         "source": "fv.fact_customer_order (Completed/Shipped history, Cancelled excluded)",
     }
 
@@ -118,9 +144,16 @@ GROUP BY d
 """
 
 
-def forecast_vs_orders(sku: str = "FB-ARKA", demand_change_pct: dict[str, float] | None = None, horizon_weeks: int = 6) -> dict[str, Any]:
+def forecast_vs_orders(
+    sku: str = "FB-ARKA",
+    demand_change_pct: dict[str, float] | None = None,
+    horizon_weeks: int = 6,
+    weekly: list[dict[str, Any]] | None = None,
+    engine: str | None = None,
+) -> dict[str, Any]:
     """Per forecast week: statistical forecast vs firm orders vs the customer's monthly schedule (revised by an approved PO)."""
-    f = bq_forecast(sku, horizon_weeks)
+    # `weekly` ([{week, week_start, total_qty}]) takes the forecast from a stored snapshot instead of computing it again.
+    f: dict[str, Any] = {"weekly_forecast": weekly, "engine": engine} if weekly is not None else bq_forecast(sku, horizon_weeks)
     if "error" in f:
         return f
     firm = {r["d"]: float(r["qty"]) for r in warehouse.query(FIRM_SQL, {"sku": sku, "today": TODAY})}
@@ -169,3 +202,43 @@ def forecast_all(horizon_weeks: int = 6) -> list[dict[str, Any]]:
         f = bq_forecast(sku, horizon_weeks)
         out.append({k: f[k] for k in ("sku", "last7_daily_mean", "change_by_final_week_pct", "peak_week", "engine")})
     return out
+
+
+BACKTEST_WEEKS = 4
+UNKNOWN_ENTITY = "FV-DATA-001"
+
+
+def backtest(sku: str, weeks: int = BACKTEST_WEEKS) -> dict[str, Any]:
+    # Fit the local model on history up to `weeks` before today, forecast those weeks, compare with what was ordered.
+    if sku not in plant.PRODUCT_BY_SKU:
+        raise FVError(UNKNOWN_ENTITY, f"unknown sku {sku}", {"valid_skus": plant.SKUS})
+    hist = demand_history(sku)
+    days = weeks * 7
+    origin = TODAY - timedelta(days=days)
+    fc = _local_forecast(hist[:-days], days, FIT_DAYS, origin=origin)
+    actual = hist[-days:]
+    rows: list[dict[str, Any]] = []
+    for w in range(weeks):
+        f_qty = round(sum(q for _, q in fc[w * 7 : (w + 1) * 7]))
+        a_qty = round(sum(q for _, q in actual[w * 7 : (w + 1) * 7]))
+        rows.append(
+            {
+                "week": w + 1,
+                "week_start": actual[w * 7][0].isoformat(),
+                "forecast_qty": f_qty,
+                "actual_qty": a_qty,
+                "error_qty": f_qty - a_qty,
+                "abs_pct_error": pct(abs(f_qty - a_qty) / a_qty) if a_qty else None,
+            }
+        )
+    scored = [r["abs_pct_error"] for r in rows if r["abs_pct_error"] is not None]
+    f_tot, a_tot = sum(r["forecast_qty"] for r in rows), sum(r["actual_qty"] for r in rows)
+    return {
+        "sku": sku,
+        "cutoff": origin.isoformat(),
+        "weeks": rows,
+        "mape_pct": round(sum(scored) / len(scored), 1) if scored else None,
+        "bias_pct": pct(f_tot / a_tot - 1) if a_tot else None,
+        "forecast_total": f_tot,
+        "actual_total": a_tot,
+    }

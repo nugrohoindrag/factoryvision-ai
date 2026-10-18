@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from math import ceil
 from typing import Any
 
 from ortools.sat.python import cp_model
@@ -240,3 +241,151 @@ def _scenario_cost(opts: dict[str, Any]) -> int:
         cost += 2 * plant.DOWNTIME_IDR_PER_HOUR_IMM + HEATER_BAND_AND_RING_REPAIR_IDR
     cost += sum(opts.get("extra_shifts", {}).values()) * 3 * plant.OVERTIME_IDR_PER_SHIFT
     return int(cost)
+
+
+PAINT_LINE = "PNT-01"  # primer booth heads the PNT-01 -> PNT-02 -> OVN-01 conveyor, so the line is one resource
+PAINT_TAKT_S = 18.0
+ASSEMBLY_CELLS = ("ASM-01", "ASM-02", "ASM-03")
+ASSEMBLY_TAKT_S = 55.0
+FLOW_LAG_MIN = 60  # the first racks reach the next process an hour after it starts
+SHIFT_PLANNED_MIN = 450
+SHIFT_SPAN_MIN = 480
+SHIFT_A_START_HOUR = 7
+
+
+def clock(day: date, minute: int) -> datetime:
+    shift, offset = divmod(minute, SHIFT_PLANNED_MIN)
+    return datetime(day.year, day.month, day.day, SHIFT_A_START_HOUR, tzinfo=plant.WIB) + timedelta(minutes=shift * SHIFT_SPAN_MIN + offset)
+
+
+def _timeline_days(start: date, n: int) -> list[date]:
+    days: list[date] = []
+    d = start
+    while len(days) < n:
+        if plant.is_working_day(d):
+            days.append(d)
+        d += timedelta(days=1)
+    return days
+
+
+def _duration(qty: int, takt_s: float) -> int:
+    return max(1, ceil(qty * takt_s / 60 / AVAILABLE_FACTOR))
+
+
+def schedule_work_orders(
+    jobs: list[dict[str, Any]],
+    start: date,
+    cycle_s: dict[tuple[str, str], float],
+    home: dict[str, str],
+    *,
+    blocked: dict[str, int] | None = None,
+    time_limit_s: float = 10.0,
+) -> dict[str, Any]:
+    t0 = time.time()
+    blocked = blocked or {}
+    model = cp_model.CpModel()
+    options: dict[str, list[tuple[str, int]]] = {}
+    for j in jobs:
+        if j["process"] == "Molding":
+            opts = []
+            for mid in plant.MOLD_COMPAT[j["sku"]]:
+                if (j["sku"], mid) in cycle_s:
+                    setup = 0 if home.get(j["sku"]) == mid else plant.CHANGEOVER_MINUTES
+                    opts.append((mid, _duration(j["qty"], cycle_s[j["sku"], mid]) + setup))
+            options[j["wo_id"]] = opts
+        elif j["process"] == "Painting":
+            options[j["wo_id"]] = [(PAINT_LINE, _duration(j["qty"], PAINT_TAKT_S))]
+        else:
+            options[j["wo_id"]] = [(c, _duration(j["qty"], ASSEMBLY_TAKT_S)) for c in ASSEMBLY_CELLS]
+    if any(not o for o in options.values()):
+        return FVError(
+            "FV-PP-028", "A molding work order has no compatible machine with a cycle time.", {"work_orders": [k for k, o in options.items() if not o]}
+        ).tool_result()
+    horizon = sum(max(d for _, d in o) for o in options.values()) + max(blocked.values(), default=0) + 2 * FLOW_LAG_MIN * len(jobs) + MINUTES_PER_WORKDAY
+    days = _timeline_days(start, horizon // MINUTES_PER_WORKDAY + 2)
+    s_var: dict[str, cp_model.IntVar] = {}
+    e_var: dict[str, cp_model.IntVar] = {}
+    pick: dict[tuple[str, str], cp_model.IntVar] = {}
+    per_res: dict[str, list[cp_model.IntervalVar]] = {}
+    for mid, minutes in blocked.items():
+        per_res.setdefault(mid, []).append(model.new_fixed_size_interval_var(0, minutes, f"blocked_{mid}"))
+    moves = []
+    for j in jobs:
+        w = j["wo_id"]
+        s_var[w] = model.new_int_var(0, horizon, f"s_{w}")
+        e_var[w] = model.new_int_var(0, horizon, f"e_{w}")
+        lits = []
+        for mid, dur in options[w]:
+            lit = model.new_bool_var(f"on_{w}_{mid}")
+            per_res.setdefault(mid, []).append(model.new_optional_interval_var(s_var[w], dur, e_var[w], lit, f"iv_{w}_{mid}"))
+            pick[w, mid] = lit
+            lits.append(lit)
+            if j["process"] == "Molding" and home.get(j["sku"]) != mid:
+                moves.append(lit)
+        model.add_exactly_one(lits)
+    for ivs in per_res.values():
+        model.add_no_overlap(ivs)
+    by_id = {j["wo_id"]: j for j in jobs}
+    for j in jobs:
+        p = j.get("predecessor_wo_id")
+        if isinstance(p, str) and p in by_id:
+            model.add(s_var[j["wo_id"]] >= s_var[p] + FLOW_LAG_MIN)
+            model.add(e_var[j["wo_id"]] >= e_var[p] + FLOW_LAG_MIN // 2)
+    successors = {j.get("predecessor_wo_id") for j in jobs}
+    tardy = []
+    for j in jobs:
+        if j["wo_id"] in successors:
+            continue
+        due_idx = sum(1 for d in days if d <= j["due"])
+        late = model.new_int_var(0, horizon, f"late_{j['wo_id']}")
+        model.add(late >= e_var[j["wo_id"]] - due_idx * MINUTES_PER_WORKDAY)
+        tardy.append(late * (6 - int(j.get("priority", 3))))
+    makespan = model.new_int_var(0, horizon, "makespan")
+    model.add_max_equality(makespan, list(e_var.values()))
+    model.minimize(10 * sum(tardy) + 500 * sum(moves) + makespan)
+    solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = time_limit_s
+    solver.parameters.num_workers = 8
+    status = solver.solve(model)
+    if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        return FVError("FV-PP-028", detail={"solver_status": solver.status_name(status)}).tool_result()
+    out: list[dict[str, Any]] = []
+    for j in jobs:
+        w = j["wo_id"]
+        mid = next(m for m, _ in options[w] if solver.value(pick[w, m]))
+        s, e = solver.value(s_var[w]), solver.value(e_var[w])
+        d0, m0 = divmod(s, MINUTES_PER_WORKDAY)
+        d1, m1 = divmod(e, MINUTES_PER_WORKDAY)
+        begin, finish = clock(days[d0], m0), clock(days[d1], m1)
+        due_end = sum(1 for d in days if d <= j["due"]) * MINUTES_PER_WORKDAY
+        out.append(
+            {
+                "wo_id": w,
+                "machine_id": mid,
+                "mold_id": plant.MOLD_ID[j["sku"]] if j["process"] == "Molding" else None,
+                "start_minute": s,
+                "end_minute": e,
+                "planned_start": begin.isoformat(),
+                "planned_end": finish.isoformat(),
+                "shift": plant.shift_of(begin),
+                "mold_moved": j["process"] == "Molding" and home.get(j["sku"]) != mid,
+                "late_minutes": max(0, e - due_end) if w not in successors else 0,
+            }
+        )
+    for mid in {r["machine_id"] for r in out}:
+        for k, r in enumerate(sorted((r for r in out if r["machine_id"] == mid), key=lambda r: r["start_minute"]), 1):
+            r["sequence"] = k
+    return {
+        "status": solver.status_name(status),
+        "solve_seconds": round(time.time() - t0, 2),
+        "engine": "OR-Tools CP-SAT",
+        "assignments": out,
+        "late_work_orders": [r["wo_id"] for r in out if r["late_minutes"] > 0],
+        "assumptions": {
+            "timeline": f"{MINUTES_PER_WORKDAY} planned minutes per working day (3 shifts x {SHIFT_PLANNED_MIN}), Sundays off",
+            "molding": "qty x cycle time / 0.88 availability, + 90 min changeover when the mold moves off its mounted machine",
+            "painting": f"one line {PAINT_LINE}->PNT-02->OVN-01 at {PAINT_TAKT_S:g} s/unit",
+            "assembly": f"{len(ASSEMBLY_CELLS)} cells at {ASSEMBLY_TAKT_S:g} s/unit",
+            "flow": f"a process starts {FLOW_LAG_MIN} min after its predecessor starts and ends {FLOW_LAG_MIN // 2} min after it ends",
+        },
+    }

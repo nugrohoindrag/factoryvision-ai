@@ -112,12 +112,23 @@ def scripted(session_id: str, plan_id: str) -> dict[str, Any]:
         }
     )
     fc = call("demand_forecast_agent", agent_tools.get_forecast, sku="FB-ARKA")
+    snap = call("demand_forecast_agent", agent_tools.get_latest_forecast_snapshot, sku="FB-ARKA")
     end("demand_forecast_agent")
 
     agent("production_planning_agent")
+    call("production_planning_agent", agent_tools.list_production_plans, status="")
+    trig = call("production_planning_agent", agent_tools.check_replan_trigger)
     cap = call("production_planning_agent", agent_tools.get_capacity, apply_customer_po=True)
     g = cap["groups"][0]
     sched = call("production_planning_agent", agent_tools.run_scheduler, apply_customer_po=True, allow_mold_moves=True, maintain_imm04=True)
+    d = trig["molding_capacity_delta"]
+    call(
+        "production_planning_agent",
+        agent_tools.propose_replan,
+        reason=f"{' '.join(trig['reasons'])} With forecast {trig['latest_forecast_id']} and FB-ARKA +{po['change_pct']}% the {d['group'].split(' ')[0]} "
+        f"molding gap moves from {d['before_gap_pct']:+.1f}% to {d['after_gap_pct']:+.1f}% ({d['after_status']}); "
+        f"{d['bottleneck_machine']} is the bottleneck at {d['bottleneck_load_pct']}% load.",
+    )
     call(
         "production_planning_agent",
         agent_tools.propose_mold_move,
@@ -221,26 +232,31 @@ def scripted(session_id: str, plan_id: str) -> dict[str, Any]:
     summary = call("orchestrator", agent_tools.plan_summary)
     end("orchestrator")
     tot = summary["total"]
-    text = _narrative(po, fc, cap, sched, sp, cmp_, mh, dc, risk, tot)
+    text = _narrative(po, fc, snap, trig, cap, sched, sp, cmp_, mh, dc, risk, tot)
     return {"timeline": timeline, "text": text}
 
 
 Facts = dict[str, Any]
 
 
-def _narrative(po: Facts, fc: Facts, cap: Facts, sched: Facts, sp: Facts, cmp_: Facts, mh: Facts, dc: Facts, risk: Facts, tot: Facts) -> str:
+def _narrative(
+    po: Facts, fc: Facts, snap: Facts, trig: Facts, cap: Facts, sched: Facts, sp: Facts, cmp_: Facts, mh: Facts, dc: Facts, risk: Facts, tot: Facts
+) -> str:
     g = cap["groups"][0]
+    arka = snap["skus"]["FB-ARKA"]
+    d = trig["molding_capacity_delta"]
     return f"""**Situation**
-- OEM-A raised FB-ARKA by {po["change_pct"]}% for February; the forecast already shows {fc["change_by_final_week_pct"]}% more FB-ARKA demand in six weeks (Lebaran ramp).
+- OEM-A raised FB-ARKA by {po["change_pct"]}% for February; forecast snapshot {snap["forecast_id"]} ({snap["engine"]}) already shows FB-ARKA week 6 at {arka["weekly_forecast"][-1]["forecast_qty"]:,} units, {arka["change_final_week_vs_last_history_week_pct"]}% above the last history week (live forecast: {fc["change_by_final_week_pct"]}% in six weeks, Lebaran ramp).
 - The 3,500 t group (IMM-04/05, the only machines that fit the ARKA molds) is short by {g["capacity_gap_pct"]}%; IMM-04 is the bottleneck at {cap["bottleneck_load_pct"]}% load and its cycle time is {mh["current_cycle_s"]} s vs {mh["ideal_cycle_s"]} s ideal (breakdown risk {mh["breakdown_risk"]}, alarm in {mh["days_to_alarm"]} days).
 - Resin PP-EPDM-T20 runs out on {sp["stockout_date"]} ({sp["days_to_stockout"]} days); the usual vendor is late. Lot {dc["suspect_lot"]} shows a gas mark and bubble lift. {risk["count"]} orders are at risk (penalty exposure Rp{risk["total_penalty_idr"]:,}).
 
 **Actions (priority order)**
 1. Preventive maintenance on IMM-04 (2 h stop) — restores the cycle time and removes the breakdown risk.
-2. Move the FB-ARKA mold to IMM-05 (swap with RB-ARKA, 90 min changeover) — CP-SAT fill rate with maintenance and mold moves: {sched.get("fill_rate_pct")}%.
-3. PO 160,000 kg PP-EPDM-T20 from {cmp_["recommended_vendor"]} (arrives before the stockout).
-4. Quality hold on resin lot {dc["suspect_lot"]}.
-5. Revise the ship dates of {risk["count"]} orders and send the drafted customer notice.
+2. Re-plan production from {trig["latest_forecast_id"]} with the PO change — the 3,500 t molding gap moves from {d["before_gap_pct"]:+.1f}% to {d["after_gap_pct"]:+.1f}% ({d["after_status"]}); a new Draft plan is built only after approval.
+3. Move the FB-ARKA mold to IMM-05 (swap with RB-ARKA, 90 min changeover) — CP-SAT fill rate with maintenance and mold moves: {sched.get("fill_rate_pct")}%.
+4. PO 160,000 kg PP-EPDM-T20 from {cmp_["recommended_vendor"]} (arrives before the stockout).
+5. Quality hold on resin lot {dc["suspect_lot"]}.
+6. Revise the ship dates of {risk["count"]} orders and send the drafted customer notice.
 
 **Plan total (impact_calculator):** Rp{tot["rupiah_idr"]:,} saved or avoided, {tot["scrap_kg"]:,} kg scrap avoided, {tot["kwh"]:,} kWh and {tot["co2e_kg"]:,} kg CO2e saved per month.
 

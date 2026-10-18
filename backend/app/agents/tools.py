@@ -1,7 +1,8 @@
 from collections.abc import Callable
 from typing import Any, Protocol
 
-from app import actions, effects, photos, plant
+from app import actions, effects, forecasts, photos, plans, plant
+from app.agents import facts
 from app.ai import extract, vision
 from app.documents import DOCUMENTS
 from app.errors import FVError
@@ -10,6 +11,8 @@ from app.tools.impact import impact_calculator as _impact
 from app.tools.impact import plan_total
 
 UNKNOWN_ENTITY = "FV-DATA-001"
+FORECAST_FEATURE_UNAVAILABLE = "FV-AGT-001"
+REPLAN_NOT_NEEDED = "FV-AGT-002"
 
 ToolResult = dict[str, Any]
 
@@ -52,6 +55,89 @@ def read_customer_po(*, document_name: str) -> ToolResult:
     if document_name not in DOCUMENTS:
         return _unknown(f"unknown document {document_name}", {"valid": list(DOCUMENTS)})
     return _guard(extract.read_customer_po, DOCUMENTS[document_name][1]())
+
+
+def _snapshot(sid: str, forecast_id: str, sku: str) -> ToolResult:
+    snap = forecasts.get_snapshot(sid, forecast_id) if forecast_id else forecasts.get_snapshot(sid, forecasts.latest(sid)["forecast_id"])
+    if sku and sku not in plant.PRODUCT_BY_SKU:
+        return _unknown(f"unknown sku {sku}", {"valid_skus": plant.SKUS})
+    return facts.snapshot_view(snap, sku or None)
+
+
+def get_latest_forecast_snapshot(*, sku: str, tool_context: ToolContext) -> ToolResult:
+    return _guard(_snapshot, _sid(tool_context), "", sku)
+
+
+def get_forecast_snapshot(*, forecast_id: str, sku: str, tool_context: ToolContext) -> ToolResult:
+    return _guard(_snapshot, _sid(tool_context), forecast_id, sku)
+
+
+def _optional_forecast_api(name: str) -> Callable[..., ToolResult] | None:
+    fn = getattr(forecasts, name, None)
+    return fn if callable(fn) else None
+
+
+def compare_forecast_to_actuals(*, forecast_id: str, tool_context: ToolContext) -> ToolResult:
+    fn = _optional_forecast_api("comparison")
+    if fn is None:
+        return FVError(FORECAST_FEATURE_UNAVAILABLE, "forecast vs actual comparison is not available in this build").tool_result()
+    return _guard(fn, _sid(tool_context), forecast_id)
+
+
+def get_forecast_accuracy(*, sku: str, tool_context: ToolContext) -> ToolResult:
+    fn = _optional_forecast_api("accuracy")
+    if fn is None:
+        return FVError(FORECAST_FEATURE_UNAVAILABLE, "forecast accuracy (MAPE / backtest) is not available in this build").tool_result()
+    return _guard(fn, _sid(tool_context), sku or None)
+
+
+def list_production_plans(*, status: str, tool_context: ToolContext) -> ToolResult:
+    def run() -> ToolResult:
+        rows = plans.list_plans(_sid(tool_context), status or None)
+        keys = (*facts.PLAN_KEYS, "line_count", "total_planned")
+        out = [{**{k: p.get(k) for k in keys}, "capacity_status": p.get("capacity_status") or facts.worst_status(p.get("lines", []))} for p in rows]
+        return {"plans": out[:10], "count": len(out), "source": "production plans (session state)"}
+
+    return _guard(run)
+
+
+def get_production_plan(*, plan_id: str, tool_context: ToolContext) -> ToolResult:
+    def run() -> ToolResult:
+        sid = _sid(tool_context)
+        if plan_id:
+            return facts.plan_view(plans.get_plan(sid, plan_id))
+        cur = facts.current_plan(sid)
+        if cur is None:
+            return {"plan": None, "note": "no production plan in this session yet; check_replan_trigger tells whether one should be proposed"}
+        return facts.plan_view(plans.get_plan(sid, cur["plan_id"]))
+
+    return _guard(run)
+
+
+def check_replan_trigger(*, tool_context: ToolContext) -> ToolResult:
+    return _guard(facts.replan_trigger, _sid(tool_context))
+
+
+def propose_replan(*, reason: str, tool_context: ToolContext) -> ToolResult:
+    try:
+        t = facts.replan_trigger(_sid(tool_context))
+    except FVError as e:
+        return e.tool_result()
+    if t["pending_replan_action_id"]:
+        return {"action_id": t["pending_replan_action_id"], "status": "pending", "note": "a re-plan is already waiting for approval"}
+    if not t["replan_needed"]:
+        return FVError(REPLAN_NOT_NEEDED, detail={"latest_forecast_id": t["latest_forecast_id"], "current_plan": t["current_plan"]}).tool_result()
+    d = t["molding_capacity_delta"]
+    change = ", ".join(f"{k} {v:+g}%" for k, v in sorted(t["demand_change_pct"].items()))
+    args = {"reason": reason, "forecast_id": t["latest_forecast_id"], "demand_change_pct": t["demand_change_pct"]}
+    title = f"Re-plan production from forecast {t['latest_forecast_id']}" + (f" and PO change {change}" if change else "")
+    delta = (
+        f"Molding capacity delta (planning.get_capacity): {d['group']} gap {d['before_gap_pct']:+.1f}% -> {d['after_gap_pct']:+.1f}% "
+        f"({d['gap_change_pts']:+.1f} pts, {d['before_status']} -> {d['after_status']}); bottleneck {d['bottleneck_machine']} at {d['bottleneck_load_pct']}% load"
+    )
+    evidence = [{"source": r} for r in t["reasons"]] + [{"source": delta, "capacity_delta": d}]
+    r = _propose(tool_context, "replan", title, reason, args, "planning", extra_evidence=evidence)
+    return {**r, "reasons": t["reasons"], "molding_capacity_delta": d, "note": "a new Draft plan is created only after a manager approves"}
 
 
 def get_capacity(*, apply_customer_po: bool, tool_context: ToolContext) -> ToolResult:
@@ -152,7 +238,14 @@ def get_atp(*, sku: str) -> ToolResult:
 
 
 def _propose(
-    tc: ToolContext, kind: str, title: str, rationale: str, args: dict[str, Any], origin: str, impact_args: dict[str, Any] | None = None
+    tc: ToolContext,
+    kind: str,
+    title: str,
+    rationale: str,
+    args: dict[str, Any],
+    origin: str,
+    impact_args: dict[str, Any] | None = None,
+    extra_evidence: list[dict[str, Any]] | None = None,
 ) -> ToolResult:
     sid, plan = _sid(tc), tc.state.get("plan_id")
     for a in actions.list_actions(sid, "pending"):
@@ -162,7 +255,7 @@ def _propose(
         impact = _impact(kind, impact_args or args)
     except FVError as e:
         return e.tool_result()
-    evidence = [{"source": s} for s in tc.state.get("sources", [])][-6:]
+    evidence = [{"source": s} for s in tc.state.get("sources", [])][-6:] + (extra_evidence or [])
     doc = actions.propose(sid, kind, title, origin, rationale, args, evidence, impact, plan)
     return {"action_id": doc["action_id"], "status": "pending (needs human approval)", "impact": doc["impact"], "impact_breakdown": impact["breakdown"]}
 
@@ -236,6 +329,51 @@ TOOL_DOCS: dict[str, str] = {
         "\n"
         "Args:\n"
         "    document_name: name of the received document, e.g. customer-po-oem-a.pdf."
+    ),
+    "get_latest_forecast_snapshot": (
+        "Newest Generated forecast snapshot (number FC-..., engine, window, horizon, plans that use it) with the weekly forecast per SKU, "
+        "the six-week trend in percent and the insufficient-history flags. The numbers are stored in the snapshot and never change.\n"
+        "\n"
+        "Args:\n"
+        "    sku: product SKU, e.g. FB-ARKA, or empty for every SKU in the snapshot."
+    ),
+    "get_forecast_snapshot": (
+        "One forecast snapshot by its number, same fields as get_latest_forecast_snapshot (also works for Superseded snapshots).\n"
+        "\n"
+        "Args:\n"
+        "    forecast_id: snapshot number, e.g. FC-2027-02-001.\n"
+        "    sku: product SKU, or empty for every SKU."
+    ),
+    "compare_forecast_to_actuals": (
+        "Forecast vs the orders that actually came in for an older snapshot, per week, with the variance.\n"
+        "\n"
+        "Args:\n"
+        "    forecast_id: snapshot number, e.g. FC-2027-02-001."
+    ),
+    "get_forecast_accuracy": ("Forecast accuracy (MAPE from ML.EVALUATE or a 4-week backtest).\n\nArgs:\n    sku: product SKU, or empty for all."),
+    "list_production_plans": (
+        "Production plans of this session, newest first: number, period, status, forecast snapshot used, worst capacity status.\n"
+        "\n"
+        "Args:\n"
+        "    status: Draft, Planning, Ready, Confirmed, In Execution, Completed, Cancelled, or empty for all."
+    ),
+    "get_production_plan": (
+        "One production plan with per-line capacity: demand, forecast, planned qty and the capacity status "
+        "(Within Plan, Additional Demand, Capacity Up Required) with total, planning, buffer, gap and the machines that count.\n"
+        "\n"
+        "Args:\n"
+        "    plan_id: plan id, or empty for the current (newest not cancelled) plan."
+    ),
+    "check_replan_trigger": (
+        "Deterministic re-plan trigger: is there a newer forecast snapshot or a customer PO change that the current plan does not cover? "
+        "Returns the reasons and the molding capacity delta of the 3,500 t group before and after the change."
+    ),
+    "propose_replan": (
+        "Propose a re-plan: after a manager approves, a new Draft production plan is built from the latest forecast snapshot and the "
+        "current customer PO demand. Creates a pending proposal only; the forecast and PO change are filled in from the trigger.\n"
+        "\n"
+        "Args:\n"
+        "    reason: one or two sentences citing the trigger and the capacity delta numbers."
     ),
     "get_capacity": (
         "Molding capacity check for this month: load per IMM and per tonnage group, bottleneck and capacity gap.\n"
@@ -375,8 +513,17 @@ TOOL_DOCS: dict[str, str] = {
 Tool = Callable[..., ToolResult]
 
 MODULE_TOOLS: dict[str, list[Tool]] = {
-    "forecast": [get_forecast, read_customer_po],
-    "planning": [get_capacity, run_scheduler, compare_capacity_options, propose_mold_move],
+    "forecast": [get_forecast, get_latest_forecast_snapshot, get_forecast_snapshot, compare_forecast_to_actuals, get_forecast_accuracy, read_customer_po],
+    "planning": [
+        list_production_plans,
+        get_production_plan,
+        check_replan_trigger,
+        get_capacity,
+        run_scheduler,
+        compare_capacity_options,
+        propose_replan,
+        propose_mold_move,
+    ],
     "mes": [get_oee, get_downtime_pareto, get_machine_health, twin_observations, propose_maintenance],
     "material": [get_material_requirements, get_stock_projection],
     "purchasing": [get_vendor_scorecard, read_vendor_email, compare_vendors_for_po, draft_po],

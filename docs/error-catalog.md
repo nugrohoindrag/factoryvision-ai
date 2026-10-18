@@ -20,7 +20,44 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-SQL-001` | 403 | Query rejected | An agent SQL query is not a single read-only SELECT. | Guardrail; agents may only read. |
 | `FV-SQL-002` | 403 | Table not allowlisted | An agent SQL query reads a table outside the allowlist. | Guardrail; extend the allowlist only through a code change. |
 | `FV-PLAN-001` | 422 | No feasible plan | CP-SAT found no feasible molding plan within the time limit. | Relax the scenario (allow mold moves, extra shifts) and retry. |
+| `FV-PP-001` | 404 | Production plan not found | The plan ID does not exist in this session. | Refresh the plan list; a reset clears the session's plans. |
+| `FV-PP-002` | 400 | Invalid plan period | The period start or end is missing, not a date, or the end is before the start. | Send ISO dates with period_end on or after period_start. |
+| `FV-PP-003` | 409 | Production plan locked | The plan is Confirmed, In Execution, Completed or Cancelled; a confirmed plan is a production commitment. | Leave it as it is, or create a new plan for the change. |
+| `FV-PP-004` | 404 | Order line not found | The customer order line named for the plan demand does not exist. | Pick a line from GET /api/plans/{plan_id}/demand-candidates. |
+| `FV-PP-005` | 409 | Cancelled order | A line of a cancelled customer order was added to a plan. | Cancelled orders cannot enter a production plan. |
+| `FV-PP-006` | 400 | Invalid demand quantity | The demand quantity is zero or negative. | Send a quantity above zero, or leave it out to take the remaining quantity. |
+| `FV-PP-007` | 409 | Order line already fully planned | Every unit of the order line is already in a production plan. | Nothing is left to plan; release demand from another plan first. |
+| `FV-PP-008` | 400 | Demand exceeds remaining quantity | The demand is more than ordered minus already planned on the order line. | Lower the quantity to the remaining quantity. |
+| `FV-PP-009` | 409 | Order line already in the plan | The same customer order line was added to one plan twice. | Change the plan line's planned quantity instead. |
+| `FV-PP-010` | 404 | Plan demand not found | The order line to release is not demand of this plan. | Refresh the plan's demand list. |
+| `FV-PP-011` | 404 | Plan line not found | The plan line ID does not exist on this plan. | Refresh the plan. |
+| `FV-PP-012` | 400 | Invalid plan line values | The planned quantity is negative or the priority is outside 1 to 5. | Fix the fields listed in `detail`. |
+| `FV-PP-013` | 409 | Wizard step locked | A later wizard step was opened before its prerequisite exists. | Complete the step named in the message; going back is always allowed. |
+| `FV-PP-014` | 400 | Invalid wizard step | The wizard step is not 1 to 6. | Send a step from 1 (Demand) to 6 (Confirmation). |
+| `FV-PP-015` | 409 | Nothing to generate | The plan has no plan lines, or no line has a planned quantity above zero. | Add demand and set planned quantities before generating work orders. |
+| `FV-PP-016` | 422 | Invalid routing | A product routing failed validation, so no work order was created at all. | Fix the routing listed in `detail`, then generate again. |
+| `FV-PP-017` | 404 | Work order not found | The work order ID does not belong to this plan. | Refresh the plan's work orders. |
+| `FV-PP-018` | 400 | Invalid work order resource or schedule | The machine or mold cannot run the product, or the schedule fields are invalid. | Choose a compatible machine and mold; planned end must follow planned start. |
+| `FV-PP-019` | 409 | Work order transition not allowed | The work order status change skips back, or the plan is not confirmed yet. | Move work orders forward only, after the plan is confirmed. |
+| `FV-PP-020` | 409 | Work orders not ready to confirm | A work order lacks quantity, schedule, machine, mold or shift, or overlaps another on its machine. | Complete the checklist in `detail`; no work order was confirmed. |
+| `FV-PP-021` | 409 | Plan has no lines | Confirmation was asked for a plan without plan lines. | Add demand first. |
+| `FV-PP-022` | 409 | Capacity Up Required | A plan line's planned quantity is above total capacity. | Request more capacity or lower the planned quantity of the SKUs named. |
+| `FV-PP-023` | 409 | No work orders | The plan has no generated work orders yet. | Generate work orders in Step 3. |
+| `FV-PP-024` | 409 | Work orders not confirmed | Some of the plan's work orders are not confirmed. | Confirm every work order before confirming the plan. |
+| `FV-PP-025` | 409 | Plan cannot be confirmed | The plan is already confirmed, or it is cancelled or completed. | No retry needed. |
+| `FV-PP-026` | 400 | Cancellation reason required | The cancel request has no reason of at least 3 characters. | Give the reason. |
+| `FV-PP-027` | 409 | Plan cannot be cancelled | The plan is already cancelled, or some of its work orders are in production or completed. | Leave the plan; stop the running work orders first. |
+| `FV-PP-028` | 422 | No feasible schedule | CP-SAT found no schedule for the plan's work orders within the time limit. | Lower planned quantities or widen the period, then schedule again. |
+| `FV-PP-029` | 400 | Invalid forecast demand | The SKU is unknown, no forecast snapshot exists, or the quantity is above the unordered forecast. | Use a SKU in the snapshot and at most the unordered forecast quantity. |
+| `FV-CAP-001` | 400 | Invalid capacity period | The capacity period start or end is not a date, or the end is before the start. | Send ISO dates with period_end on or after period_start. |
+| `FV-CAP-002` | 404 | Capacity snapshot not found | The CAP snapshot to recalculate does not exist in this session. | List snapshots with GET /api/capacity/snapshots. |
+| `FV-CAP-003` | 400 | Invalid planning utilization | The planning utilization is not above 0 and at most 100 percent. | Send a percentage in (0, 100]. |
 | `FV-FCST-001` | 503 | Forecast model missing | The BQML model fv.demand_arima is not trained. | Run infra/bq_forecast.sql; the tool falls back to the local model meanwhile. |
+| `FV-FC-001` | 400 | Invalid forecast parameters | Generate was sent a window, horizon, SKU filter or per-customer flag outside the allowed values. | Fix the fields listed in `detail.fields`: window 30/60/90 days, horizon 4/6/8 weeks, a non-empty SKU list or none. |
+| `FV-FC-002` | 404 | Forecast snapshot not found | The forecast ID does not exist in this session. | Pick a snapshot from GET /api/forecasts. |
+| `FV-FC-003` | 400 | Invalid snapshot status filter | `GET /api/forecasts?status=` names a status other than Generated or Superseded. | Use Generated, Superseded, or leave the filter out. |
+| `FV-FC-004` | 409 | Forecast snapshot is read-only | A request tried to change or delete a stored forecast snapshot. | Generate a new snapshot; the old one is superseded and keeps its numbers. |
+| `FV-FC-005` | 404 | SKU not in snapshot | The snapshot was generated for a SKU filter that leaves this SKU out. | Pick a SKU the snapshot covers. |
 | `FV-ACT-001` | 404 | Action not found | The proposal ID does not exist in this session. | Refresh the Action Center. |
 | `FV-ACT-002` | 409 | Action already decided | Approve or reject was sent for a proposal that is no longer pending. | No retry needed; the first decision stands. |
 | `FV-ACT-003` | 500 | Action execution failed | The proposal was approved but its command failed in the simulator. | The action is marked failed with the reason; approve again after a reset. |
@@ -35,6 +72,8 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-AI-001` | 503 | Model unavailable | Vertex AI returned an error or the model is not served in this location. | Retry later; check FV_MODEL_LOCATION. |
 | `FV-AI-002` | 502 | Invalid model output | Gemini output did not match the expected JSON schema. | Retry once; the request is logged with the raw output. |
 | `FV-AI-003` | 504 | Agent timeout | An agent run exceeded its time budget. | Retry or use Replay. |
+| `FV-AGT-001` | 503 | Forecast feature unavailable | An agent asked for forecast vs actual or forecast accuracy and this build has no such function. | Answer from the forecast snapshot instead; the feature ships with the Forecast module. |
+| `FV-AGT-002` | 409 | Re-plan not needed | An agent proposed a re-plan but the current plan already uses the latest forecast snapshot and customer PO demand. | No action; propose a re-plan only when check_replan_trigger reports a reason. |
 | `FV-PUB-001` | 400 | Invalid push message | A Pub/Sub push request is malformed. | Pub/Sub retries; check the publisher. |
 | `FV-PUB-002` | 403 | Push not authorised | The push request's OIDC token is missing or invalid. | Check the subscription's service account. |
 | `FV-SYS-001` | 500 | Internal error | Unexpected server error. | Report the `request_id` from the response headers. |
