@@ -194,8 +194,8 @@ _SPECS = [
         "FV-PP-019",
         409,
         "Work order transition not allowed",
-        "The work order status change skips back, or the plan is not confirmed yet.",
-        "Move work orders forward only, after the plan is confirmed.",
+        "The status change is not a step of the work order lifecycle, a guard fails (schedule, machine, previous process, output), or the plan is not confirmed yet.",
+        "Fix every reason in `detail.reasons`; work orders move on the floor only after the plan is confirmed.",
     ),
     ErrorSpec(
         "FV-PP-020",
@@ -266,6 +266,27 @@ _SPECS = [
         "Invalid forecast demand",
         "The SKU is unknown, no forecast snapshot exists, or the quantity is above the unordered forecast.",
         "Use a SKU in the snapshot and at most the unordered forecast quantity.",
+    ),
+    ErrorSpec(
+        "FV-WO-001",
+        409,
+        "Schedule clash",
+        "A reschedule or machine change would double-book the machine or run into its approved maintenance.",
+        "Pick another time or machine; the message names the work order already booked there.",
+    ),
+    ErrorSpec(
+        "FV-WO-002",
+        409,
+        "Work order cannot be split",
+        "The work order is not Confirmed, Released or In Production, was already split or is a part, has reported output, or its plan is not confirmed.",
+        "Split a confirmed work order before it reports output.",
+    ),
+    ErrorSpec(
+        "FV-WO-003",
+        409,
+        "Work order not dispatchable here",
+        "The work order's plan is still being planned (use the wizard) or is final, the work order was split (act on its parts), or it is completed or cancelled.",
+        "Change an open plan in its wizard; dispatch the parts of a split work order.",
     ),
     ErrorSpec(
         "FV-CAP-001",

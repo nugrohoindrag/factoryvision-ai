@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from app import actions, capacity, plans
+from app.routes import work_orders
 from app.session import SessionId, user_label
 from app.tools.common import TODAY
 
@@ -162,7 +163,7 @@ def update_work_order(plan_id: str, wo_id: str, body: WorkOrderIn, sid: SessionI
 
 @router.post("/plans/{plan_id}/work-orders/{wo_id}/status")
 def advance_work_order(plan_id: str, wo_id: str, body: WorkOrderStatusIn, sid: SessionId) -> dict[str, Any]:
-    return plans.advance_work_order(sid, plan_id, wo_id, body.status)
+    return plans.advance_work_order(sid, plan_id, wo_id, body.status, work_orders.floor(sid))
 
 
 @router.post("/plans/{plan_id}/confirm")

@@ -222,7 +222,7 @@ def assert_step(step: int, r: dict[str, Any]) -> None:
 def derived_status(p: dict[str, Any], wos: list[dict[str, Any]]) -> str:
     if p["status"] in LOCKED:
         if p["status"] in ("Confirmed", "In Execution") and wos:
-            if all(w["status"] == "Completed" for w in wos):
+            if all(w["status"] in ("Completed", "Cancelled") for w in wos) and any(w["status"] == "Completed" for w in wos):
                 return "Completed"
             if any(w["status"] in WO_RUNNING for w in wos):
                 return "In Execution"
@@ -927,27 +927,22 @@ def confirm_work_orders(sid: str, plan_id: str) -> dict[str, Any]:
     return detail(sid, _refresh(sid, p))
 
 
-def advance_work_order(sid: str, plan_id: str, wo_id: str, status: str) -> dict[str, Any]:
-    p = _doc(sid, plan_id)
-    w = _wo(sid, plan_id, wo_id)
-    if p["status"] not in ("Confirmed", "In Execution"):
-        raise FVError(WO_TRANSITION, "Work orders move to production only after the plan is confirmed.", {"plan_status": p["status"]})
-    if status not in WO_STATUSES or WO_STATUSES.index(status) <= WO_STATUSES.index(w["status"]):
-        raise FVError(WO_TRANSITION, f"Work order {wo_id} cannot move from {w['status']} to {status}.", {"valid": list(WO_STATUSES)})
-    if status == "In Production" and effects.overrides(sid).strict_process_sequence:
-        earlier = [o for o in _wos(sid, plan_id) if o["line_id"] == w["line_id"] and o["routing_step"] < w["routing_step"] and o["status"] != "Completed"]
-        if earlier:
-            ids = [o["wo_id"] for o in earlier]
-            raise FVError(
-                WO_TRANSITION,
-                f"Work order {wo_id} cannot start: the earlier process ({', '.join(ids)}) is not completed. Strict process sequence is on.",
-                {"blocked_by": ids},
-            )
-    w["status"] = status
-    _save_wo(sid, w)
-    p["status"] = derived_status(p, _wos(sid, plan_id))
-    _save(p)
-    return detail(sid, p)
+def advance_work_order(sid: str, plan_id: str, wo_id: str, status: str, floor: Any = None) -> dict[str, Any]:
+    """Move one work order through the shop-floor lifecycle; the guards are the ones in app.work_orders."""
+    from app import work_orders
+
+    _wo(sid, plan_id, wo_id)
+    work_orders.transition(sid, wo_id, status, user="You", floor=floor or work_orders.Floor.of(effects.overrides(sid)))
+    return detail(sid, _doc(sid, plan_id))
+
+
+# The shop floor (app.work_orders) runs the work orders once the plan is confirmed, through these.
+load_plan = _doc
+save_plan = _save
+plan_work_orders = _wos
+save_work_order = _save_wo
+parse_dt = _dt
+now_iso = _now
 
 
 # --- step 6: confirm, cancel ----------------------------------------------------------------------------------------
