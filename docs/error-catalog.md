@@ -56,6 +56,18 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-CAP-002` | 404 | Capacity snapshot not found | The CAP snapshot to recalculate does not exist in this session. | List snapshots with GET /api/capacity/snapshots. |
 | `FV-CAP-003` | 400 | Invalid planning utilization | The planning utilization is not above 0 and at most 100 percent. | Send a percentage in (0, 100]. |
 | `FV-CAP-004` | 400 | Invalid capacity assessment | The SKU is not a product in the plant, or the quantity is not a whole number of at least 0. | Send a SKU from the product list and a quantity of 0 or more. |
+| `FV-MR-001` | 404 | Plan not found for material readiness | The production plan does not exist in this session, or an OEM-YYYY-MM id names a month with no OEM monthly plan. | Pick a plan from GET /api/materials/readiness. |
+| `FV-MR-002` | 404 | Work order not found | The work order is not part of the production plan, or does not exist in this session. | Generate work orders in the plan wizard, then use an id from the plan detail. |
+| `FV-MR-003` | 400 | Invalid readiness range | `from` or `to` is not an ISO date, or `to` is before `from`. | Send ISO dates with `to` on or after `from`, or leave them out for today to +30 days. |
+| `FV-MR-004` | 409 | Plan is cancelled | A material check or reservation was asked for a cancelled production plan. | Cancelled plans have no material requirement; check another plan. |
+| `FV-MR-005` | 422 | BOM uses an unknown material | An active BOM item points at a material that is not in the material master, so readiness cannot be computed. | Fix the BOM or the material master; readiness is never counted as zero silently. |
+| `FV-MR-006` | 404 | Reservation not found | The reservation id does not exist in this session. | List reservations with GET /api/materials/reservations. |
+| `FV-MR-007` | 400 | Invalid reservation status filter | `GET /api/materials/reservations?status=` names a status other than Active or Released. | Use Active, Released, or leave the filter out. |
+| `FV-MRP-001` | 400 | Invalid MRP horizon | The end of the MRP horizon is before its start. | Send horizon_end on or after horizon_start, or leave both out for today to +30 days. |
+| `FV-MRP-002` | 400 | Invalid MRP date | horizon_start or horizon_end is not an ISO date. | Send dates as YYYY-MM-DD. |
+| `FV-MRP-003` | 404 | MRP plan not found | A plan id in plan_ids does not exist in this session. | Use plan ids from GET /api/plans or OEM-YYYY-MM for the OEM monthly plan. |
+| `FV-MRP-004` | 409 | MRP plan is cancelled | A plan id in plan_ids belongs to a cancelled plan. | Leave cancelled plans out of the run. |
+| `FV-MRP-005` | 404 | MRP run not found | The MRP run id does not exist in this session. | List runs with GET /api/mrp/runs. |
 | `FV-FCST-001` | 503 | Forecast model missing | The BQML model fv.demand_arima is not trained. | Run infra/bq_forecast.sql; the tool falls back to the local model meanwhile. |
 | `FV-FC-001` | 400 | Invalid forecast parameters | Generate was sent a window, horizon, SKU filter or per-customer flag outside the allowed values. | Fix the fields listed in `detail.fields`: window 30/60/90 days, horizon 4/6/8 weeks, a non-empty SKU list or none. |
 | `FV-FC-002` | 404 | Forecast snapshot not found | The forecast ID does not exist in this session. | Pick a snapshot from GET /api/forecasts. |
@@ -78,6 +90,18 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-AI-003` | 504 | Agent timeout | An agent run exceeded its time budget. | Retry or use Replay. |
 | `FV-AGT-001` | 503 | Forecast feature unavailable | An agent asked for forecast vs actual or forecast accuracy and this build has no such function. | Answer from the forecast snapshot instead; the feature ships with the Forecast module. |
 | `FV-AGT-002` | 409 | Re-plan not needed | An agent proposed a re-plan but the current plan already uses the latest forecast snapshot and customer PO demand. | No action; propose a re-plan only when check_replan_trigger reports a reason. |
+| `FV-AGT-010` | 404 | Material not in MRP run | A draft PO was asked for a material that has no result row in the MRP run. | Pick a material from the run's results, or run MRP again. |
+| `FV-AGT-011` | 409 | Nothing to order | A draft PO was asked for a material whose MRP net requirement is zero. | No PO is needed; the material is covered by stock and dated incoming. |
+| `FV-AGT-012` | 422 | No default vendor | The material has no known default vendor, so a draft PO cannot be built. | Set the material's default vendor in the material master. |
 | `FV-PUB-001` | 400 | Invalid push message | A Pub/Sub push request is malformed. | Pub/Sub retries; check the publisher. |
 | `FV-PUB-002` | 403 | Push not authorised | The push request's OIDC token is missing or invalid. | Check the subscription's service account. |
 | `FV-SYS-001` | 500 | Internal error | Unexpected server error. | Report the `request_id` from the response headers. |
+| `FV-MAT-001` | 404 | No active BOM | The product has no Active bill of materials in date, so its material need cannot be computed. | Activate a BOM for the SKU in master data; readiness is never computed as zero. |
+| `FV-MAT-002` | 404 | Unknown material | The material id is not in the material master. | Use an id from GET /api/master/materials. |
+| `FV-MAT-003` | 400 | Colour not made for this product | The colour is not one of the colours of the SKU's model. | Pick a colour from GET /api/master/colors for that SKU. |
+| `FV-MAT-004` | 404 | Unknown warehouse | The warehouse id is not in the warehouse master. | Use WH-RM, WH-PNT or WH-CMP (GET /api/master/warehouses). |
+| `FV-MAT-005` | 404 | Unknown BOM | The BOM id is not in master data. | Use a bom_id from GET /api/master/boms. |
+| `FV-MAT-006` | 404 | Unknown product | The SKU is not in the product master. | Use a SKU from the product list. |
+| `FV-MAT-007` | 500 | BOM uses an unknown material | An item of the active BOM points at a material that is not in the material master. | Fix the BOM item in master data; the SKU and material are in the detail. |
+| `FV-MAT-008` | 400 | Unknown material group | The material group filter is not one of the material groups. | Use Resin, Masterbatch, Primer, Basecoat, Clear, Hardener, Thinner, Component or Packaging. |
+| `FV-MAT-009` | 400 | Unknown BOM status | The BOM status filter is not Draft, Active or Inactive. | Use Draft, Active or Inactive. |

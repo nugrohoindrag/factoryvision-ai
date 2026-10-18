@@ -501,6 +501,7 @@ def demand_candidates(sid: str, plan_id: str) -> list[dict[str, Any]]:
                     "customer_id": h["customer_id"],
                     "customer_name": h["customer_name"],
                     "sku": ln["sku"],
+                    "color": ln.get("color"),
                     "product_name": ln["product_name"],
                     "ordered_qty": ln["ordered_qty"],
                     "planned_qty": ln["planned_qty"],
@@ -580,6 +581,7 @@ def add_demand(sid: str, plan_id: str, order_id: str, qty: int | None = None) ->
             "customer_id": h["customer_id"],
             "customer_name": h["customer_name"],
             "sku": ol["sku"],
+            "color": ol.get("color"),
             "qty": q,
             "requested_delivery_date": rd,
             "line_id": line["line_id"],
@@ -641,7 +643,10 @@ def demand_breakdown(sid: str, plan_id: str) -> list[dict[str, Any]]:
             "required_date": ln["required_date"],
             "sources": sorted(
                 (
-                    {k: d[k] for k in ("order_id", "order_number", "line_no", "customer_id", "customer_name", "qty", "requested_delivery_date")}
+                    {
+                        **{k: d[k] for k in ("order_id", "order_number", "line_no", "customer_id", "customer_name", "qty", "requested_delivery_date")},
+                        "color": d.get("color"),
+                    }
                     for d in p["demand"]
                     if d["line_id"] == ln["line_id"]
                 ),
@@ -1077,7 +1082,14 @@ def draft(sid: str, period_start: str | None, period_end: str | None, *, include
             left = int(ln["ordered_qty"]) - int(ln["planned_qty"])
             if ln["status"] != "Cancelled" and left > 0 and lo <= ln["requested_delivery_date"] <= hi:
                 demands.append(
-                    {"order_id": ln["order_id"], "order_number": h["order_number"], "sku": ln["sku"], "qty": left, "date": ln["requested_delivery_date"]}
+                    {
+                        "order_id": ln["order_id"],
+                        "order_number": h["order_number"],
+                        "sku": ln["sku"],
+                        "color": ln.get("color"),
+                        "qty": left,
+                        "date": ln["requested_delivery_date"],
+                    }
                 )
     lines: dict[str, dict[str, Any]] = {}
     for d in demands:

@@ -49,8 +49,11 @@ def test_bom_covers_every_sku_with_resin() -> None:
 
 
 def test_models_cover_every_table() -> None:
-    assert len(TABLES) == 25
+    assert len(TABLES) == 28
     assert ("output_quantity", "INT64") in TABLES["fact_production"]
+    assert "dim_warehouse" in TABLES
+    assert "bom_header" in TABLES
+    assert "bom_item" in TABLES
 
 
 def test_shutdown_model_is_rejected_at_construction() -> None:

@@ -31,7 +31,7 @@ REFERENCE_REQUIRED = {"PO_DOCUMENT", "KANBAN_CARD", "EMAIL"}
 CUSTOMER_BY_ID = {c["customer_id"]: c for c in plant.CUSTOMERS}
 
 LINE_SQL = """
-SELECT order_id, order_number, line_no, customer_id, sku, order_qty, order_date, requested_delivery_date, order_status, shipped_qty,
+SELECT order_id, order_number, line_no, customer_id, sku, color, order_qty, order_date, requested_delivery_date, order_status, shipped_qty,
   po_number, order_channel, customer_pic, delivery_address, dock_number
 FROM fv.fact_customer_order ORDER BY requested_delivery_date, order_number, line_no
 """
@@ -53,7 +53,7 @@ def customers() -> list[dict[str, Any]]:
 
 
 def products() -> list[dict[str, Any]]:
-    return [{"sku": p.sku, "name": product_name(p.sku), "model": p.model, "unit": "pcs"} for p in plant.PRODUCTS]
+    return [{"sku": p.sku, "name": product_name(p.sku), "model": p.model, "unit": "pcs", "colors": list(p.colors)} for p in plant.PRODUCTS]
 
 
 def channels() -> list[dict[str, Any]]:
@@ -170,6 +170,7 @@ def _line(r: dict[str, Any], p: dict[str, Any], *, cancelled: bool, in_plans: in
         "order_id": r["order_id"],
         "line_no": int(r["line_no"]),
         "sku": r["sku"],
+        "color": r.get("color"),
         "product_name": product_name(r["sku"]),
         "ordered_qty": qty,
         "planned_qty": qty if done or stored == "Planned" or produced > 0 or released else min(qty, in_plans),
@@ -402,14 +403,17 @@ def validate_order(body: dict[str, Any], view: dict[str, Any]) -> tuple[list[dic
     lines = body.get("lines") or []
     if not lines:
         err("lines", "Add at least one product.")
-    seen: set[str] = set()
+    seen: set[tuple[str, str | None]] = set()
     for i, ln in enumerate(lines):
         sku = str(ln.get("sku") or "")
         if sku not in plant.PRODUCT_BY_SKU:
             err(f"lines.{i}.sku", "Choose a product.")
-        elif sku in seen:
-            err(f"lines.{i}.sku", "This product is already on the order. Change the quantity of the existing line.")
-        seen.add(sku)
+        color = ln.get("color") or None
+        if color is not None and sku in plant.PRODUCT_BY_SKU and color not in plant.sku_colors(sku):
+            err(f"lines.{i}.color", f"Colour {color} is not made for {sku}. Choose one of {', '.join(plant.sku_colors(sku))}.")
+        if (sku, color) in seen:
+            err(f"lines.{i}.sku", "This product and colour are already on the order. Change the quantity of the existing line.")
+        seen.add((sku, color))
         qty = ln.get("qty")
         if not isinstance(qty, int) or qty <= 0:
             err(f"lines.{i}.qty", "Quantity must be more than zero.")
@@ -420,6 +424,9 @@ def validate_order(body: dict[str, Any], view: dict[str, Any]) -> tuple[list[dic
         elif ld and ((od and ld < od) or ld < TODAY):
             err(f"lines.{i}.requested_delivery_date", "Delivery cannot be before the order date or today.")
     warnings: list[str] = []
+    uncoloured = [str(ln.get("sku")) for ln in lines if not ln.get("color")]
+    if uncoloured:
+        warnings.append(f"No colour on {', '.join(uncoloured)}: basecoat is split across colours by usage share until a colour is set.")
     if ref:
         dup = next((h for h in view["orders"] if h["status"] != "Cancelled" and str(h["po_number"] or "").strip().lower() == ref.lower()), None)
         if dup:
@@ -452,6 +459,7 @@ def new_order(body: dict[str, Any], user: str, created_at: str) -> dict[str, Any
                 "line_no": i + 1,
                 "customer_id": body["customer_id"],
                 "sku": ln["sku"],
+                "color": ln.get("color") or None,
                 "order_qty": int(ln["qty"]),
                 "requested_delivery_date": to_date(ln.get("requested_delivery_date") or rd).isoformat(),
             }

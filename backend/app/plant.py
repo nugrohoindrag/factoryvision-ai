@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
@@ -130,6 +130,26 @@ INITIAL_MOLDS: dict[str, str] = {
 }
 
 
+FEB_PLAN_PER_DAY = {"FB-ARKA": 995, "RB-ARKA": 800, "FB-BROMO": 520, "RB-BROMO": 500, "FB-CITRA": 600, "RB-CITRA": 590}
+
+
+@dataclass(frozen=True)
+class Warehouse:
+    warehouse_id: str
+    warehouse_name: str
+    warehouse_type: str
+
+
+WAREHOUSES: list[Warehouse] = [
+    Warehouse("WH-RM", "Resin silo and additive store", "Resin"),
+    Warehouse("WH-PNT", "Paint store and mixing room", "Paint"),
+    Warehouse("WH-CMP", "Components and packaging store", "Component"),
+]
+WAREHOUSE_BY_ID = {w.warehouse_id: w for w in WAREHOUSES}
+
+MATERIAL_GROUPS = ("Resin", "Masterbatch", "Primer", "Basecoat", "Clear", "Hardener", "Thinner", "Component", "Packaging")
+
+
 @dataclass(frozen=True)
 class Material:
     material_id: str
@@ -138,19 +158,71 @@ class Material:
     unit: str
     unit_cost_idr: int
     safety_stock: float = 0.0
+    material_group: str = "Resin"
+    color: str | None = None
+    reorder_point: float = 0.0
+    lead_time_days: int = 5
+    default_vendor_id: str = "VEN-ANDALAS"
+    default_warehouse_id: str = "WH-RM"
+
+
+MODEL_COLORS: dict[str, tuple[str, ...]] = {"ARKA": ARKA_COLORS, "BROMO": BROMO_COLORS, "CITRA": CITRA_COLORS}
+BASECOAT_COLORS: tuple[str, ...] = tuple(sorted({c for cs in MODEL_COLORS.values() for c in cs}))
+
+COLOR_FAMILY: dict[str, str] = {
+    "C01": "Solid",
+    "C02": "Metallic",
+    "C04": "Solid",
+    "C05": "Pearl",
+    "C06": "Metallic",
+    "C07": "Metallic",
+    "C08": "Solid",
+    "C09": "Pearl",
+    "C10": "Metallic",
+    "C11": "Pearl",
+    "C12": "Solid",
+    "C16": "Metallic",
+    "C17": "Solid",
+}
+FAMILY_THINNER = {"Solid": "T1", "Metallic": "T2", "Pearl": "T3"}
+CLEAR_THINNER = "T4"
+MODEL_PAINT_SYSTEM: dict[str, dict[str, str]] = {
+    "ARKA": {"primer": "P1", "clear": "K1", "hardener": "H1"},
+    "BROMO": {"primer": "P1", "clear": "K1", "hardener": "H1"},
+    "CITRA": {"primer": "P2", "clear": "K2", "hardener": "H2"},
+}
+
+
+def _mat(
+    mid: str, name: str, mtype: str, unit: str, cost: int, safety: float, group: str, rop: float, lead: int, vendor: str, wh: str, color: str | None = None
+) -> Material:
+    return Material(mid, name, mtype, unit, cost, safety, group, color, rop, lead, vendor, wh)
 
 
 MATERIALS: list[Material] = [
-    Material("PP-EPDM-T20", "Resin PP-EPDM talc 20%", "Resin", "kg", 31_500, 12_000),
-    Material("MB-BLK", "Black masterbatch", "Resin additive", "kg", 64_000, 400),
-    Material("P1", "Primer P1", "Paint", "kg", 118_000, 300),
-    Material("B-BASE", "Basecoat (per colour, see bom)", "Paint", "kg", 165_000, 300),
-    Material("K1", "Clear 2K K1", "Paint", "kg", 142_000, 300),
-    Material("H1", "Hardener H1", "Paint", "kg", 175_000, 80),
-    Material("T1", "Thinner T1", "Paint", "kg", 38_000, 400),
-    Material("BRK-SET", "Bracket and clip set", "Component", "set", 21_000, 2_000),
-    Material("SNS-HLD", "Parking-sensor holder", "Component", "pcs", 6_500, 3_000),
-    Material("PKG-RT", "Returnable rack slot", "Packaging", "slot", 0, 0),
+    _mat("PP-EPDM-T20", "Resin PP-EPDM talc 20%", "Resin", "kg", 31_500, 12_000, "Resin", 15_000, 7, "VEN-ANDALAS", "WH-RM"),
+    _mat("MB-BLK", "Black masterbatch", "Resin additive", "kg", 64_000, 400, "Masterbatch", 600, 5, "VEN-MERAPI", "WH-RM"),
+    _mat("P1", "Primer P1", "Paint", "kg", 118_000, 300, "Primer", 500, 6, "VEN-WARNA", "WH-PNT"),
+    _mat("P2", "Primer P2 (conductive)", "Paint", "kg", 126_000, 150, "Primer", 250, 6, "VEN-WARNA", "WH-PNT"),
+    *(
+        _mat(f"B-{c}", f"Basecoat {c} ({COLOR_FAMILY[c].lower()})", "Paint", "kg", 165_000, 60, "Basecoat", 100, 6, "VEN-WARNA", "WH-PNT", color=c)
+        for c in BASECOAT_COLORS
+    ),
+    _mat("K1", "Clear 2K K1", "Paint", "kg", 142_000, 300, "Clear", 450, 8, "VEN-KILAU", "WH-PNT"),
+    _mat("K2", "Clear 2K K2", "Paint", "kg", 149_000, 120, "Clear", 200, 8, "VEN-KILAU", "WH-PNT"),
+    _mat("H1", "Hardener H1 (for K1)", "Paint", "kg", 175_000, 80, "Hardener", 120, 8, "VEN-KILAU", "WH-PNT"),
+    _mat("H2", "Hardener H2 (for K2)", "Paint", "kg", 181_000, 30, "Hardener", 50, 8, "VEN-KILAU", "WH-PNT"),
+    _mat("T1", "Thinner T1 (solid basecoat)", "Paint", "kg", 38_000, 250, "Thinner", 400, 6, "VEN-WARNA", "WH-PNT"),
+    _mat("T2", "Thinner T2 (metallic basecoat)", "Paint", "kg", 41_000, 250, "Thinner", 400, 6, "VEN-WARNA", "WH-PNT"),
+    _mat("T3", "Thinner T3 (pearl basecoat)", "Paint", "kg", 44_000, 150, "Thinner", 250, 6, "VEN-WARNA", "WH-PNT"),
+    _mat("T4", "Thinner T4 (clearcoat)", "Paint", "kg", 39_000, 200, "Thinner", 300, 8, "VEN-KILAU", "WH-PNT"),
+    *(
+        _mat(f"BRK-{m}-{pos[0]}", f"Bracket and clip set {m} {pos.lower()}", "Component", "set", cost, 600, "Component", 1_200, 4, "VEN-BAJA", "WH-CMP")
+        for m, cost in (("ARKA", 21_000), ("BROMO", 23_500), ("CITRA", 18_500))
+        for pos in ("Front", "Rear")
+    ),
+    _mat("SNS-HLD", "Parking-sensor holder", "Component", "pcs", 6_500, 3_000, "Component", 4_500, 4, "VEN-BAJA", "WH-CMP"),
+    *(_mat(f"PKG-RT-{m}", f"Returnable rack slot {m}", "Packaging", "slot", 0, 0, "Packaging", 150, 3, "VEN-RAKIT", "WH-CMP") for m in MODEL_COLORS),
 ]
 MATERIAL_BY_ID = {m.material_id: m for m in MATERIALS}
 
@@ -159,18 +231,161 @@ PAINT_G_PER_UNIT = {
     "BROMO": {"P1": 380, "B-BASE": 340, "T1": 500, "K1": 300, "H1": 52},
     "CITRA": {"P1": 270, "B-BASE": 230, "T1": 380, "K1": 205, "H1": 36},
 }
+CLEAR_THINNER_SHARE = 0.4
+PAINT_SCRAP_PCT = 30.0
+MOLDING_SCRAP_PCT = 2.0
+BOM_PROCESSES = ("Molding", "Painting", "Assembly", "Packing")
+BOM_STATUSES = ("Draft", "Active", "Inactive")
+
+
+def model_colors() -> dict[str, list[str]]:
+    return {m: list(cs) for m, cs in MODEL_COLORS.items()}
+
+
+def sku_colors(sku: str) -> list[str]:
+    p = PRODUCT_BY_SKU.get(sku)
+    return list(p.colors) if p else []
+
+
+@dataclass(frozen=True)
+class BomHeaderSpec:
+    bom_id: str
+    sku: str
+    version: str
+    status: str
+    effective_date: date
+
+
+@dataclass(frozen=True)
+class BomItemSpec:
+    bom_id: str
+    line_no: int
+    material_id: str
+    qty_per_unit: float
+    unit: str
+    scrap_pct: float
+    process: str
+    color: str | None = None
+
+
+def _sku_items(p: Product, *, legacy_thinner: bool = False) -> list[tuple[str, float, str, float, str, str | None]]:
+    g = PAINT_G_PER_UNIT[p.model]
+    paint = MODEL_PAINT_SYSTEM[p.model]
+    rows: list[tuple[str, float, str, float, str, str | None]] = [
+        ("PP-EPDM-T20", round(p.shot_weight_kg * 0.97, 3), "kg", MOLDING_SCRAP_PCT, "Molding", None),
+        ("MB-BLK", round(p.shot_weight_kg * 0.03, 3), "kg", MOLDING_SCRAP_PCT, "Molding", None),
+        (paint["primer"], g["P1"] / 1000, "kg", PAINT_SCRAP_PCT, "Painting", None),
+    ]
+    for c in p.colors:
+        rows.append((f"B-{c}", g["B-BASE"] / 1000, "kg", PAINT_SCRAP_PCT, "Painting", c))
+        if not legacy_thinner:
+            rows.append((FAMILY_THINNER[COLOR_FAMILY[c]], g["T1"] / 1000, "kg", 0.0, "Painting", c))
+    rows += [
+        (paint["clear"], g["K1"] / 1000, "kg", PAINT_SCRAP_PCT, "Painting", None),
+        (paint["hardener"], g["H1"] / 1000, "kg", 0.0, "Painting", None),
+    ]
+    if not legacy_thinner:
+        rows.append((CLEAR_THINNER, round(g["K1"] * CLEAR_THINNER_SHARE) / 1000, "kg", 0.0, "Painting", None))
+    rows.append((f"BRK-{p.model}-{p.position[0]}", 1.0, "set", 0.0, "Assembly", None))
+    if p.position == "Rear":
+        rows.append(("SNS-HLD", 4.0, "pcs", 0.0, "Assembly", None))
+    rows.append((f"PKG-RT-{p.model}", 1.0, "slot", 0.0, "Packing", None))
+    return rows
+
+
+def _build_bom_specs() -> tuple[list[BomHeaderSpec], list[BomItemSpec]]:
+    headers: list[BomHeaderSpec] = []
+    items: list[BomItemSpec] = []
+
+    def add(p: Product, version: str, status: str, effective: date, *, legacy_thinner: bool = False) -> None:
+        bid = f"BOM-2027-{len(headers) + 1:03d}"
+        headers.append(BomHeaderSpec(bid, p.sku, version, status, effective))
+        for n, (mid, q, unit, scrap, proc, color) in enumerate(_sku_items(p, legacy_thinner=legacy_thinner), start=1):
+            items.append(BomItemSpec(bid, n, mid, q, unit, scrap, proc, color))
+
+    add(PRODUCT_BY_SKU["FB-ARKA"], "v1.0", "Inactive", date(2027, 1, 4), legacy_thinner=True)
+    for p in PRODUCTS:
+        add(p, "v2.0" if p.sku == "FB-ARKA" else "v1.0", "Active", date(2027, 1, 18))
+    return headers, items
+
+
+BOM_HEADERS, BOM_ITEMS = _build_bom_specs()
+
+
+def color_weights(sku: str) -> list[float]:
+    w = [1.0 / (k + 1.2) for k in range(len(PRODUCT_BY_SKU[sku].colors))]
+    return [x / sum(w) for x in w]
+
+
+def planned_daily_use() -> dict[str, float]:
+    active = {h.bom_id: h.sku for h in BOM_HEADERS if h.status == "Active"}
+    out: dict[str, float] = {}
+    for it in BOM_ITEMS:
+        sku = active.get(it.bom_id)
+        if sku is None:
+            continue
+        p = PRODUCT_BY_SKU[sku]
+        share = color_weights(sku)[p.colors.index(it.color)] if it.color else 1.0
+        out[it.material_id] = out.get(it.material_id, 0.0) + FEB_PLAN_PER_DAY[sku] * share * it.qty_per_unit * (1 + it.scrap_pct / 100)
+    return out
+
+
+SAFETY_DAYS = 2
+
+
+def _nice(x: float) -> float:
+    return float(max(10, round(x, -1)))
+
+
+def _with_thresholds(mats: list[Material]) -> list[Material]:
+    use = planned_daily_use()
+    out = []
+    for m in mats:
+        if m.material_id == "PP-EPDM-T20":
+            out.append(m)
+            continue
+        safety = _nice(use[m.material_id] * SAFETY_DAYS)
+        out.append(replace(m, safety_stock=safety, reorder_point=_nice(safety + use[m.material_id] * m.lead_time_days)))
+    return out
+
+
+MATERIALS[:] = _with_thresholds(MATERIALS)
+MATERIAL_BY_ID.update({m.material_id: m for m in MATERIALS})
+
+
+def bom_problems() -> list[str]:
+    out: list[str] = []
+    for p in PRODUCTS:
+        active = [h for h in BOM_HEADERS if h.sku == p.sku and h.status == "Active"]
+        if len(active) != 1:
+            out.append(f"{p.sku}: {len(active)} active BOMs")
+    headers = {h.bom_id for h in BOM_HEADERS}
+    for it in BOM_ITEMS:
+        if it.bom_id not in headers:
+            out.append(f"{it.bom_id}: item without header")
+        if it.material_id not in MATERIAL_BY_ID:
+            out.append(f"{it.bom_id}: unknown material {it.material_id}")
+        if it.qty_per_unit <= 0 or it.scrap_pct < 0 or it.process not in BOM_PROCESSES:
+            out.append(f"{it.bom_id} line {it.line_no}: invalid quantity, scrap or process")
+        if it.color is not None and it.color not in BASECOAT_COLORS:
+            out.append(f"{it.bom_id} line {it.line_no}: unknown colour {it.color}")
+    return out
 
 
 def bom_lines() -> list[dict[str, object]]:
-    rows = []
+    rows: list[dict[str, object]] = []
+    active = {h.bom_id: h.sku for h in BOM_HEADERS if h.status == "Active"}
     for p in PRODUCTS:
-        rows.append({"sku": p.sku, "material_id": "PP-EPDM-T20", "qty_per_unit": round(p.shot_weight_kg * 0.97, 3), "unit": "kg"})
-        rows.append({"sku": p.sku, "material_id": "MB-BLK", "qty_per_unit": round(p.shot_weight_kg * 0.03, 3), "unit": "kg"})
-        for mat, grams in PAINT_G_PER_UNIT[p.model].items():
-            rows.append({"sku": p.sku, "material_id": mat, "qty_per_unit": grams / 1000, "unit": "kg"})
-        rows.append({"sku": p.sku, "material_id": "BRK-SET", "qty_per_unit": 1, "unit": "set"})
-        if p.position == "Rear":
-            rows.append({"sku": p.sku, "material_id": "SNS-HLD", "qty_per_unit": 4, "unit": "pcs"})
+        per: dict[str, float] = {}
+        units: dict[str, str] = {}
+        for it in BOM_ITEMS:
+            if active.get(it.bom_id) != p.sku:
+                continue
+            share = 1 / len(p.colors) if it.color else 1.0
+            per[it.material_id] = per.get(it.material_id, 0.0) + it.qty_per_unit * share
+            units[it.material_id] = it.unit
+        for mid, q in per.items():
+            rows.append({"sku": p.sku, "material_id": mid, "qty_per_unit": round(q, 4) if MATERIAL_BY_ID[mid].unit == "kg" else q, "unit": units[mid]})
     return rows
 
 
@@ -279,17 +494,9 @@ VENDORS: list[dict[str, Any]] = [
     {"vendor_id": "VEN-RAKIT", "vendor_name": "PT Rakit Kemasan", "category": "Packaging", "lead_time_days": 3, "avg_delay_days": 0.3, "unit_price_idr": 0},
 ]
 VENDOR_BY_ID: dict[str, dict[str, Any]] = {v["vendor_id"]: v for v in VENDORS}
-MATERIAL_VENDORS = {
+MATERIAL_VENDORS: dict[str, list[str]] = {
     "PP-EPDM-T20": ["VEN-ANDALAS", "VEN-MERAPI"],
-    "MB-BLK": ["VEN-MERAPI"],
-    "P1": ["VEN-WARNA"],
-    "B-BASE": ["VEN-WARNA", "VEN-KILAU"],
-    "K1": ["VEN-KILAU"],
-    "H1": ["VEN-KILAU"],
-    "T1": ["VEN-WARNA"],
-    "BRK-SET": ["VEN-BAJA"],
-    "SNS-HLD": ["VEN-BAJA"],
-    "PKG-RT": ["VEN-RAKIT"],
+    **{m.material_id: [m.default_vendor_id] for m in MATERIALS if m.material_id != "PP-EPDM-T20"},
 }
 
 
@@ -372,5 +579,4 @@ class PlantSpec:
 
 
 DEFAULT_SEED = 20270201
-FEB_PLAN_PER_DAY = {"FB-ARKA": 995, "RB-ARKA": 800, "FB-BROMO": 520, "RB-BROMO": 500, "FB-CITRA": 600, "RB-CITRA": 590}
 BAD_LOT = "LOT-PPT20-0918"
