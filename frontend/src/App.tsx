@@ -4,9 +4,12 @@ import { RunPanel } from "./components/agents";
 import { AppProvider, useApp } from "./lib/store";
 import ActionCenter from "./pages/ActionCenter";
 import BriefingPage from "./pages/Briefing";
+import CapacityPage from "./pages/Capacity";
 import { ForecastPage } from "./pages/Forecast";
-import { DeliveryPage, MaterialPage, PlanningPage, PurchasingPage } from "./pages/Modules";
+import { DeliveryPage, MaterialPage, PurchasingPage } from "./pages/Modules";
 import OrdersPage from "./pages/Orders";
+import PlanWizard from "./pages/PlanWizard";
+import { PlanningPage } from "./pages/Planning";
 import QualityPage from "./pages/Quality";
 
 // The 3D twin (three.js) loads only when the MES page opens.
@@ -14,7 +17,7 @@ const MesPage = lazy(() => import("./pages/Mes"));
 
 const NAV: { group: string; links: [string, string][] }[] = [
   { group: "Overview", links: [["/", "Plant Briefing"], ["/actions", "Action Center"]] },
-  { group: "Plan", links: [["/orders", "0 Customer Orders"], ["/forecast", "1 Demand Forecast"], ["/planning", "2 Production Planning"]] },
+  { group: "Plan", links: [["/orders", "0 Customer Orders"], ["/forecast", "1 Demand Forecast"], ["/planning", "2 Production Planning"], ["/capacity", "Capacity Plan"]] },
   { group: "Make", links: [["/mes", "3 MES / Shop Floor"], ["/material", "4 Material Supply"], ["/purchasing", "5 Purchasing"], ["/quality", "6 Quality Control"]] },
   { group: "Deliver", links: [["/delivery", "7 Delivery"]] },
 ];
@@ -65,6 +68,8 @@ export function Shell() {
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/forecast" element={<ForecastPage />} />
           <Route path="/planning" element={<PlanningPage />} />
+          <Route path="/planning/:planId" element={<PlanWizard />} />
+          <Route path="/capacity" element={<CapacityPage />} />
           <Route path="/mes" element={<Suspense fallback={<p className="muted">Loading the digital twin…</p>}><MesPage /></Suspense>} />
           <Route path="/material" element={<MaterialPage />} />
           <Route path="/purchasing" element={<PurchasingPage />} />

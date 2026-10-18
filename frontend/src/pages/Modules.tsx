@@ -1,54 +1,13 @@
-/** Module pages with thin-to-medium depth: Planning, Material, Purchasing, Delivery. */
+/** Module pages with thin-to-medium depth: Material, Purchasing, Delivery. Forecast and Planning have their own files. */
 
-import { useState } from "react";
 import { AskAgent } from "../components/agents";
-import { Bars, Line } from "../components/charts";
+import { Line } from "../components/charts";
 import { Badge, Card, Kpi, Source, Status, Table, num, pct } from "../components/ui";
 import { formatIdr, formatIdrCompact } from "../lib/format";
 import { useData } from "../lib/store";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Any = any;
-
-export function PlanningPage() {
-  const { data, error, loading } = useData<Any>("/api/modules/planning/summary");
-  const [whatIf, setWhatIf] = useState(false);
-  const wi = useData<Any>(whatIf ? "/api/modules/planning/what-if" : null);
-  const cur = data?.current;
-  const g = cur?.groups?.[0];
-  return (
-    <>
-      <h1>Production Planning</h1>
-      <Status loading={loading} error={error} />
-      {data && (
-        <>
-          <div className="kpis">
-            <Kpi label="Bottleneck" value={cur.bottleneck_machine} sub={`load ${pct(cur.bottleneck_load_pct)}`} tone="bad" />
-            <Kpi label="3,500 t group gap" value={pct(g.capacity_gap_pct)} sub={g.status} tone={g.capacity_gap_pct > 0 ? "bad" : "good"} />
-            <Kpi label="Demand change applied" value={Object.keys(cur.demand_change_pct).length ? Object.entries(cur.demand_change_pct).map(([k, v]) => `${k} +${v}%`).join(", ") : "none"} />
-            <Kpi label="Working days (month)" value={cur.working_days} />
-          </div>
-          <Card title={`Molding load per machine, ${cur.month.slice(0, 7)}`}>
-            <Bars items={cur.machines.map((m: Any) => ({ label: `${m.machine_id} · ${m.skus.join(", ")}`, value: m.load_pct, tone: m.load_pct > 100 ? "bad" : m.load_pct > 90 ? "warn" : "good" }))} unit="%" threshold={100} />
-            <p className="muted small">ARKA molds fit only the 3,500 t machines IMM-04 and IMM-05. A mold move is a swap with a 90-minute changeover.</p>
-            <Source>{cur.source}</Source>
-          </Card>
-          <Card title="What-if (OR-Tools CP-SAT)" actions={!whatIf && <button onClick={() => setWhatIf(true)}>Compare options</button>}>
-            {!whatIf && <p className="muted">Compare maintenance, mold moves and Sunday shifts with the solver (takes a few seconds).</p>}
-            <Status loading={wi.loading} error={wi.error} />
-            {wi.data && (
-              <Table
-                cols={[{ key: "scenario", label: "Option" }, { key: "fill", label: "Fill rate", align: "right" }, { key: "unmet", label: "Unmet" }, { key: "co", label: "Changeovers", align: "right" }, { key: "cost", label: "Extra cost", align: "right" }]}
-                rows={wi.data.scenarios.map((s: Any) => ({ scenario: s.scenario.replaceAll("_", " "), fill: pct(s.fill_rate_pct), unmet: Object.entries(s.unmet_qty).map(([k, v]) => `${k} ${num(v as number)}`).join(", ") || "–", co: s.changeovers, cost: formatIdr(s.extra_cost_idr) }))}
-              />
-            )}
-          </Card>
-          <AskAgent module="planning" placeholder="Can we absorb FB-ARKA +40% next month? Compare the options." />
-        </>
-      )}
-    </>
-  );
-}
 
 export function MaterialPage() {
   const { data, error, loading } = useData<Any>("/api/modules/material/summary");
