@@ -67,7 +67,7 @@ const ORDER_A = {
   penalty_idr: 0,
   cancellable: false,
   cancel_block_reason: "Work order WO-270201-IMM-04-FB-ARKA is already in production for this order.",
-  lines: [line("FB-ARKA")],
+  lines: [line("FB-ARKA", { color: "C07" })],
 };
 const ORDER_B = {
   ...ORDER_A,
@@ -137,6 +137,7 @@ function mockApi() {
     calls.push({ url, method, body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined });
     let body: unknown = { pending: 0, actions: [] };
     if (url.includes("/api/orders/po/read")) body = READ;
+    else if (url.includes("/api/master/colors")) body = { ARKA: ["C02", "C04", "C05", "C07", "C08", "C09"], BROMO: ["C01", "C02", "C04"] };
     else if (url.includes("/api/modules/orders")) body = SUMMARY;
     else if (url.includes("/api/mode")) body = { ai_enabled: false };
     else if (url.endsWith("/api/orders/validate")) body = { errors: [], warnings: ["Reference SET-PO-1 is already on order CO-1."], preview: { at_risk: false } };
@@ -200,6 +201,8 @@ it("opens the detail with traceability, and blocks cancelling an order in produc
   fireEvent.click((await screen.findAllByRole("button", { name: "Detail" }))[0]);
   const dialog = await screen.findByRole("dialog", { name: "Order CO-270201-OEMA" });
   expect(within(dialog).getByText("PP-2027-02")).toBeInTheDocument();
+  expect(within(dialog).getByRole("columnheader", { name: "Colour" })).toBeInTheDocument();
+  expect(within(dialog).getByText("C07")).toBeInTheDocument();
   expect(within(dialog).getByText("WO-270201-IMM-04-FB-ARKA")).toBeInTheDocument();
   expect(within(dialog).getByText(/400 pcs from finished-goods stock/)).toBeInTheDocument();
   expect(within(dialog).getByRole("button", { name: "Cancel order" })).toBeDisabled();
@@ -225,8 +228,13 @@ it("walks the create wizard: checks each step, reviews with server warnings, cre
   fireEvent.change(within(dialog).getByLabelText("Product"), { target: { value: "FB-BROMO" } });
   fireEvent.change(within(dialog).getByLabelText("Quantity"), { target: { value: "300" } });
   fireEvent.click(within(dialog).getByRole("button", { name: "Add to order" }));
+  expect(within(dialog).getByText("Choose a colour.")).toBeInTheDocument();
+  expect(within(dialog).getAllByRole("option", { name: /^C0/ }).map((o) => o.textContent)).toEqual(["C01", "C02", "C04"]);
+  fireEvent.change(within(dialog).getByLabelText("Colour"), { target: { value: "C02" } });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Add to order" }));
   fireEvent.click(within(dialog).getByRole("button", { name: "+ Add product" }));
   fireEvent.change(within(dialog).getByLabelText("Product"), { target: { value: "FB-BROMO" } });
+  fireEvent.change(within(dialog).getByLabelText("Colour"), { target: { value: "C02" } });
   fireEvent.change(within(dialog).getByLabelText("Quantity"), { target: { value: "5" } });
   fireEvent.click(within(dialog).getByRole("button", { name: "Add to order" }));
   expect(within(dialog).getByText(/already on the order/)).toBeInTheDocument();
@@ -239,7 +247,7 @@ it("walks the create wizard: checks each step, reviews with server warnings, cre
   await waitFor(() => expect(calls.some((c) => c.url.endsWith("/api/orders") && c.method === "POST")).toBe(true));
   const sent = calls.find((c) => c.url.endsWith("/api/orders") && c.method === "POST")?.body as { lines: unknown[]; customer_id: string };
   expect(sent.customer_id).toBe("CUS-EXP");
-  expect(sent.lines).toEqual([{ sku: "FB-BROMO", qty: 300, requested_delivery_date: null }]);
+  expect(sent.lines).toEqual([{ sku: "FB-BROMO", color: "C02", qty: 300, requested_delivery_date: null }]);
 });
 
 it("reads the demo PO in Replay and offers the change for approval", async () => {

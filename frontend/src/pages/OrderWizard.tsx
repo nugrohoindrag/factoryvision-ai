@@ -9,15 +9,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, Field, Table, num } from "../components/ui";
 import { ApiError, errorText, post } from "../lib/api";
+import { colorsFor } from "../lib/colors";
 import { formatIdr } from "../lib/format";
-import { useApp } from "../lib/store";
+import { useApp, useData } from "../lib/store";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Any = any;
 
 type Step = 1 | 2 | 3;
 type FieldError = { field: string; message: string };
-type Line = { key: string; sku: string; qty: number; requested_delivery_date: string };
+type Line = { key: string; sku: string; color: string; qty: number; requested_delivery_date: string };
 export type OrderMeta = { as_of: string; customers: Any[]; products: Any[]; channels: Any[] };
 
 const STEPS: { id: Step; label: string }[] = [
@@ -62,6 +63,7 @@ function Input({ label, error, children }: { label: string; error?: string; chil
 
 export function OrderWizard({ open, meta, onClose, onView }: { open: boolean; meta: OrderMeta | null; onClose: () => void; onView: (orderNumber: string) => void }) {
   const { bump } = useApp();
+  const { data: colorData } = useData<Any>(open ? "/api/master/colors" : null);
   const asOf = meta?.as_of ?? "";
   const [step, setStep] = useState<Step>(1);
   const [reachable, setReachable] = useState<Step>(1);
@@ -139,7 +141,7 @@ export function OrderWizard({ open, meta, onClose, onView }: { open: boolean; me
     customer_pic: pic || null,
     delivery_address: address || null,
     dock_number: dock || null,
-    lines: lines.map((l) => ({ sku: l.sku, qty: l.qty, requested_delivery_date: l.requested_delivery_date || null })),
+    lines: lines.map((l) => ({ sku: l.sku, color: l.color || null, qty: l.qty, requested_delivery_date: l.requested_delivery_date || null })),
   });
 
   const validateDetails = () => {
@@ -195,11 +197,15 @@ export function OrderWizard({ open, meta, onClose, onView }: { open: boolean; me
     if (!panel) return;
     const e: FieldError[] = [];
     if (!panel.sku) e.push({ field: "sku", message: "Choose a product first." });
+    // MR-R04: the colour decides which basecoat the order needs, so it is asked whenever the model has colours.
+    const colors = colorsFor(colorData, panel.sku);
+    if (panel.sku && colors.length && !panel.color) e.push({ field: "color", message: "Choose a colour." });
+    else if (panel.color && colors.length && !colors.includes(panel.color)) e.push({ field: "color", message: `${panel.color} is not a colour of ${panel.sku}.` });
     if (!(panel.qty > 0)) e.push({ field: "qty", message: "Quantity must be more than zero." });
     if (panel.requested_delivery_date && orderDate && panel.requested_delivery_date < orderDate)
       e.push({ field: "requested_delivery_date", message: "Delivery cannot be before the order date." });
-    if (lines.some((l) => l.sku === panel.sku && l.key !== panel.key))
-      e.push({ field: "sku", message: "This product is already on the order. Change the quantity of the existing line." });
+    if (lines.some((l) => l.sku === panel.sku && (l.color || "") === (panel.color || "") && l.key !== panel.key))
+      e.push({ field: "sku", message: "This product and colour is already on the order. Change the quantity of the existing line." });
     setPanelErrors(e);
     if (e.length) return;
     setLines((cur) => (cur.some((l) => l.key === panel.key) ? cur.map((l) => (l.key === panel.key ? panel : l)) : [...cur, panel]));
@@ -306,6 +312,7 @@ export function OrderWizard({ open, meta, onClose, onView }: { open: boolean; me
                 <Table
                   cols={[
                     { key: "p", label: "Product" },
+                    { key: "c", label: "Colour" },
                     { key: "q", label: "Quantity", align: "right" },
                     { key: "d", label: "Delivery" },
                     { key: "a", label: "" },
@@ -315,6 +322,12 @@ export function OrderWizard({ open, meta, onClose, onView }: { open: boolean; me
                       <>
                         <strong>{l.sku}</strong> <span className="muted small">{productBySku[l.sku]?.name}</span>
                         {errorFor(`lines.${i}.sku`) && <div className="field-error">{errorFor(`lines.${i}.sku`)}</div>}
+                      </>
+                    ),
+                    c: (
+                      <>
+                        {l.color || <span className="muted">–</span>}
+                        {errorFor(`lines.${i}.color`) && <div className="field-error">{errorFor(`lines.${i}.color`)}</div>}
                       </>
                     ),
                     q: `${num(l.qty)} pcs`,
@@ -333,9 +346,15 @@ export function OrderWizard({ open, meta, onClose, onView }: { open: boolean; me
                 <div className="card">
                   <div className="form-grid">
                     <Input label="Product *" error={errorFor("sku", panelErrors)}>
-                      <select aria-label="Product" value={panel.sku} onChange={(e) => setPanel({ ...panel, sku: e.target.value })}>
+                      <select aria-label="Product" value={panel.sku} onChange={(e) => setPanel({ ...panel, sku: e.target.value, color: "" })}>
                         <option value="">Choose a product</option>
                         {meta.products.map((p: Any) => <option key={p.sku} value={p.sku}>{p.sku} — {p.name}</option>)}
+                      </select>
+                    </Input>
+                    <Input label={`Colour${colorsFor(colorData, panel.sku).length ? " *" : ""}`} error={errorFor("color", panelErrors)}>
+                      <select aria-label="Colour" value={panel.color} disabled={!panel.sku} onChange={(e) => setPanel({ ...panel, color: e.target.value })}>
+                        <option value="">{panel.sku ? (colorsFor(colorData, panel.sku).length ? "Choose a colour" : "No colour list for this model") : "Choose a product first"}</option>
+                        {colorsFor(colorData, panel.sku).map((c) => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </Input>
                     <Input label="Quantity (pcs) *" error={errorFor("qty", panelErrors)}>
@@ -352,7 +371,7 @@ export function OrderWizard({ open, meta, onClose, onView }: { open: boolean; me
                 </div>
               ) : (
                 <div className="row">
-                  <button onClick={() => (setPanelErrors([]), setPanel({ key: newKey(), sku: "", qty: 0, requested_delivery_date: "" }))}>+ Add product</button>
+                  <button onClick={() => (setPanelErrors([]), setPanel({ key: newKey(), sku: "", color: "", qty: 0, requested_delivery_date: "" }))}>+ Add product</button>
                   {lines.length > 0 && <span className="muted small">{lines.length} product(s) · {num(total)} pcs</span>}
                 </div>
               )}
@@ -374,10 +393,11 @@ export function OrderWizard({ open, meta, onClose, onView }: { open: boolean; me
               <Table
                 cols={[
                   { key: "p", label: "Product" },
+                  { key: "c", label: "Colour" },
                   { key: "q", label: "Quantity", align: "right" },
                   { key: "d", label: "Delivery" },
                 ]}
-                rows={lines.map((l) => ({ p: <><strong>{l.sku}</strong> <span className="muted small">{productBySku[l.sku]?.name}</span></>, q: num(l.qty), d: l.requested_delivery_date || delivery }))}
+                rows={lines.map((l) => ({ p: <><strong>{l.sku}</strong> <span className="muted small">{productBySku[l.sku]?.name}</span></>, c: l.color || "–", q: num(l.qty), d: l.requested_delivery_date || delivery }))}
               />
               <p className="small">Total: <strong>{num(total)} pcs</strong> in {lines.length} line(s).</p>
               {review.warnings.map((w) => <div key={w} className="notice-box warn">{w}</div>)}

@@ -369,3 +369,10 @@ table.compact { margin-top: 0.4rem; font-size: 0.85rem; }
   .line-grid { grid-template-columns: 1fr 1fr; }
   .kpis.kpis5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Material supply: readiness, MRP, inventory, BOM */
+.formula { margin: 0 0 0.6rem; }
+label.check { flex-direction: row; align-items: center; gap: 0.35rem; }
+.plan-picks { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.5rem 0.75rem; margin: 0 0 0.75rem; }
+.plan-picks legend { padding: 0 0.3rem; }
+tr.selected td { background: var(--accent-soft); }

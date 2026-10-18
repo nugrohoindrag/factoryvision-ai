@@ -11,9 +11,10 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Badge, Card, Dialog, Kpi, num, pct } from "../components/ui";
-import { del, errorText, patch, post } from "../lib/api";
+import { del, errorText, get, patch, post } from "../lib/api";
 import { useApp, useData } from "../lib/store";
-import type { DemandCandidate, PlanDetail, PlanLine, PlanWorkOrder } from "../lib/types";
+import type { DemandCandidate, MaterialCheck, PlanDetail, PlanLine, PlanWorkOrder } from "../lib/types";
+import { ReadinessBadge, qty } from "./Material";
 import { AgentBadge, CapacityBadge, FINAL_STATUSES, ForecastLink, PlanStatusBadge } from "./Planning";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -82,13 +83,13 @@ function DemandStep({ plan, readOnly, run }: { plan: PlanDetail; readOnly: boole
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>Customer</th><th>Order</th><th>Product</th><th className="right">Demand</th><th>Delivery</th><th /></tr>
+                <tr><th>Customer</th><th>Order</th><th>Product</th><th>Colour</th><th className="right">Demand</th><th>Delivery</th><th /></tr>
               </thead>
               <tbody>
                 {plan.lines.map((l) => (
                   <Fragment key={l.line_id}>
                     <tr className="group-row">
-                      <td colSpan={3}>
+                      <td colSpan={4}>
                         <strong>{l.sku}</strong> <span className="muted">{l.product_name}</span>
                       </td>
                       <td className="right"><strong>{num(l.demand_qty)}</strong>{l.forecast_qty > 0 && <div className="muted small">+ {num(l.forecast_qty)} forecast</div>}</td>
@@ -100,6 +101,7 @@ function DemandStep({ plan, readOnly, run }: { plan: PlanDetail; readOnly: boole
                         <td>{d.customer_name}</td>
                         <td>{d.order_number} <span className="muted small">line {d.line_no}</span></td>
                         <td>{d.sku}</td>
+                        <td>{d.color ?? <span className="muted" title="No colour: split across colours by usage share">–</span>}</td>
                         <td className="right">{num(d.qty)}</td>
                         <td>{d.requested_delivery_date ?? "–"}</td>
                         <td>
@@ -552,6 +554,88 @@ function ResourceStep({ plan, readOnly, run }: { plan: PlanDetail; readOnly: boo
 
 /* ---------------- Step 6: Confirmation ---------------- */
 
+/** MR-R26: the plan's material readiness before it is committed. A shortage warns; it does not block Confirm. */
+export function MaterialReadinessPanel({ planId, readOnly }: { planId: string; readOnly: boolean }) {
+  const [check, setCheck] = useState<MaterialCheck | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const path = `/api/materials/readiness/plans/${encodeURIComponent(planId)}`;
+  const recheck = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      setCheck(await post<MaterialCheck>(path));
+    } catch (e) {
+      setErr(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  useEffect(() => {
+    let alive = true;
+    setBusy(true);
+    // The saved check shows at once; a plan that can still change is then checked against stock now.
+    get<MaterialCheck>(path)
+      .then((c) => alive && setCheck(c))
+      .catch((e) => alive && setErr(errorText(e)))
+      .then(() => (alive && !readOnly ? post<MaterialCheck>(path) : null))
+      .then((c) => alive && c && (setCheck(c), setErr(null)))
+      .catch((e) => alive && setErr(errorText(e)))
+      .finally(() => alive && setBusy(false));
+    return () => {
+      alive = false;
+    };
+  }, [path, readOnly]);
+  const status = check?.status ?? "NOT_CHECKED";
+  const shortages = check?.shortages ?? (check?.materials ?? []).filter((m) => m.shortage_qty > 0);
+  return (
+    <div className="card" aria-label="Material readiness">
+      <header className="card-head">
+        <h2>Material readiness</h2>
+        <div className="card-actions">
+          <button className="small" onClick={recheck} disabled={busy}>{busy ? "Checking…" : "Check again"}</button>
+        </div>
+      </header>
+      <p className="small">
+        <ReadinessBadge status={status} /> {check?.readiness_pct != null && <><strong>{pct(check.readiness_pct, 0)}</strong> of materials ready</>}
+        {check?.checked_at && <span className="muted"> · checked {dt(check.checked_at)}</span>}{" "}
+        <Link to={`/material?tab=readiness&plan=${encodeURIComponent(planId)}`}>Open in Material Supply</Link>
+      </p>
+      {err && <p className="error small">Material readiness could not be checked: {err}</p>}
+      {status === "SHORTAGE" && (
+        <div className="notice-box warn" role="status">
+          No material of this plan is fully covered. You can still confirm; the shortage stays visible in Material Supply, where an MRP run can send the purchase to Purchasing.
+        </div>
+      )}
+      {status === "PARTIAL" && (
+        <div className="notice-box warn" role="status">
+          {shortages.length} material{shortages.length === 1 ? " is" : "s are"} short for this plan. Confirming is allowed; plan the purchase in Material Supply.
+        </div>
+      )}
+      {status === "READY" && <div className="notice-box good">All materials are available by their need dates.</div>}
+      {shortages.length > 0 && (
+        <div className="table-wrap">
+          <table aria-label="Material shortages">
+            <thead><tr><th>Material</th><th>Colour</th><th className="right">Required</th><th className="right">Available</th><th className="right">Shortage</th><th>Need date</th></tr></thead>
+            <tbody>
+              {shortages.map((m) => (
+                <tr key={`${m.material_id}-${m.color ?? ""}`}>
+                  <td><strong>{m.material_id}</strong> <span className="muted small">{m.material_name}</span>{m.note && <div className="muted small">{m.note}</div>}</td>
+                  <td>{m.color ?? "–"}</td>
+                  <td className="right">{qty(m.required_qty)} {m.unit}</td>
+                  <td className="right">{qty(m.available_qty)}</td>
+                  <td className="right neg">{qty(m.shortage_qty)}</td>
+                  <td>{m.required_date ?? "–"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ConfirmStep({ plan, readOnly, run }: { plan: PlanDetail; readOnly: boolean; run: Run }) {
   const s = plan.summary;
   const capUp = plan.lines.filter((l) => l.capacity?.status === "Capacity Up Required");
@@ -578,6 +662,7 @@ function ConfirmStep({ plan, readOnly, run }: { plan: PlanDetail; readOnly: bool
           {s.work_orders > 0 && unconfirmed.length > 0 && <div className="notice-box warn">{unconfirmed.length} work order{unconfirmed.length === 1 ? " is" : "s are"} not confirmed yet. Confirm them in Step 5.</div>}
         </div>
       )}
+      <MaterialReadinessPanel planId={plan.plan_id} readOnly={FINAL_STATUSES.includes(plan.status)} />
       <div className="dialog-foot">
         <button className="primary big" disabled={readOnly} onClick={() => run(() => post(`/api/plans/${plan.plan_id}/confirm`), `${plan.plan_number} confirmed.`)}>
           Confirm production plan
