@@ -167,6 +167,10 @@ export type PlanHeader = {
   cancel_reason?: string | null;
   wizard_step: number;
   origin: "user" | "agent";
+  /** Set on agent plans: "draft" from a period draft, absent for a re-plan. */
+  agent_kind?: "draft" | null;
+  approved_by?: string | null;
+  draft_notes?: string[];
 };
 
 export type PlanListRow = PlanHeader & {

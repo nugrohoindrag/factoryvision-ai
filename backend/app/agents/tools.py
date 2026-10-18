@@ -140,6 +140,23 @@ def propose_replan(*, reason: str, tool_context: ToolContext) -> ToolResult:
     return {**r, "reasons": t["reasons"], "molding_capacity_delta": d, "note": "a new Draft plan is created only after a manager approves"}
 
 
+def draft_production_plan(*, period_start: str, period_end: str, include_forecast: bool, tool_context: ToolContext) -> ToolResult:
+    r = _guard(lambda: plans.draft(_sid(tool_context), period_start, period_end, include_forecast=include_forecast))
+    r.pop("args", None)
+    return r
+
+
+def propose_draft_plan(*, period_start: str, period_end: str, include_forecast: bool, rationale: str, tool_context: ToolContext) -> ToolResult:
+    d = _guard(lambda: plans.draft(_sid(tool_context), period_start, period_end, include_forecast=include_forecast))
+    if "error" in d:
+        return d
+    title = f"Draft production plan {d['period_start']} to {d['period_end']}: {len(d['lines'])} line(s), {d['summary']['planned_qty']:,} pcs"
+    evidence = [{"source": d["source"], "rules": d["rules"], "lines": d["lines"], "gaps": d["gaps"]}]
+    return _propose(
+        tool_context, "production_plan_draft", title, f"{rationale} {plans.draft_rationale(d)}".strip(), d["args"], "planning", extra_evidence=evidence
+    )
+
+
 def get_capacity(*, apply_customer_po: bool, tool_context: ToolContext) -> ToolResult:
     o = _ov(tool_context)
     cyc = {m: effects.normal_cycle_factor(planning.machine_rates()) for m in o.maintenance}
@@ -375,6 +392,25 @@ TOOL_DOCS: dict[str, str] = {
         "Args:\n"
         "    reason: one or two sentences citing the trigger and the capacity delta numbers."
     ),
+    "draft_production_plan": (
+        "Compute a draft production plan for a period from open customer orders, forecast not yet ordered and capacity. "
+        "Firm orders first, earlier delivery first; a line above capacity is planned at what fits and its gap is reported. Saves nothing.\n"
+        "\n"
+        "Args:\n"
+        "    period_start: YYYY-MM-DD, today (2027-02-01) or later.\n"
+        "    period_end: YYYY-MM-DD, on or after the start.\n"
+        "    include_forecast: also plan forecast that customers have not ordered yet (from the latest forecast snapshot)."
+    ),
+    "propose_draft_plan": (
+        "Send the draft production plan to the Action Center as a pending proposal. After a person approves it, it becomes a Draft plan "
+        "the PPIC planner finishes in the wizard (work orders, schedule, resources, confirm). The quantities are recomputed here, not taken from you.\n"
+        "\n"
+        "Args:\n"
+        "    period_start: YYYY-MM-DD.\n"
+        "    period_end: YYYY-MM-DD.\n"
+        "    include_forecast: same choice as in draft_production_plan.\n"
+        "    rationale: one or two sentences: why this draft, and what the planner must decide about each capacity gap."
+    ),
     "get_capacity": (
         "Molding capacity check for this month: load per IMM and per tonnage group, bottleneck and capacity gap.\n"
         "\n"
@@ -523,6 +559,8 @@ MODULE_TOOLS: dict[str, list[Tool]] = {
         compare_capacity_options,
         propose_replan,
         propose_mold_move,
+        draft_production_plan,
+        propose_draft_plan,
     ],
     "mes": [get_oee, get_downtime_pareto, get_machine_health, twin_observations, propose_maintenance],
     "material": [get_material_requirements, get_stock_projection],

@@ -47,7 +47,11 @@ MODULES = {
         "(fill rate vs changeover time, overtime cost, maintenance stop). Call check_replan_trigger: when it reports a new forecast "
         "snapshot or a customer PO change, propose a re-plan with propose_replan, citing the snapshot number and the molding capacity "
         "delta (gap before -> after); the new Draft plan is created only after a manager approves. "
-        "Propose the best mold move with propose_mold_move when it raises the fill rate.",
+        "Propose the best mold move with propose_mold_move when it raises the fill rate. "
+        "You also help the PPIC planner build a plan for a period they name: compute it with draft_production_plan (open customer orders, "
+        "forecast not yet ordered, capacity), explain the lines and every capacity gap with options (extra shift, mold move, less forecast), "
+        "then send it with propose_draft_plan. A draft is only a proposal: the planner approves it and finishes it in the wizard. "
+        "Never invent quantities; quote the tool results.",
     ),
     "mes": (
         "mes_agent",

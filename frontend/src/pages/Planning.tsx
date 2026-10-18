@@ -48,7 +48,7 @@ export function CapacityBadge({ status }: { status: CapacityStatus | null | unde
 
 export function AgentBadge() {
   return (
-    <span title="Created by the planning agent from a re-plan proposal you approved in the Action Center.">
+    <span title="Created by the planning agent from a proposal (re-plan or draft) you approved in the Action Center.">
       <Badge tone="info">Agent</Badge>
     </span>
   );
@@ -271,6 +271,124 @@ function SolverViews({ data }: { data: Any }) {
   );
 }
 
+const addDays = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+
+/** The planning agent drafts a plan for a period from open orders, forecast and capacity; the draft goes to the Action Center for approval. */
+function AgentDraft() {
+  const { bump } = useApp();
+  const today = useData<{ as_of: string }>("/api/plans").data?.as_of ?? ""; // the plant's date, not the browser's
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [forecast, setForecast] = useState(true);
+  const [draft, setDraft] = useState<Any>(null);
+  const [sent, setSent] = useState<Action | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const s = start || today;
+  const e = end || (today ? addDays(today, 6) : "");
+  const reset = () => (setDraft(null), setSent(null));
+  const call = async (path: string) => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await post<Any>(path, { period_start: s, period_end: e, include_forecast: forecast });
+      if (r.action) {
+        setSent(r.action);
+        setDraft(r.draft);
+        bump();
+      } else {
+        setDraft(r);
+        setSent(null);
+      }
+    } catch (x) {
+      setErr(errorText(x));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card title="Draft with the planning agent" actions={<AgentBadge />}>
+      <p className="muted small">
+        The agent takes every open customer order line due in the period, adds forecast not yet ordered, sets priorities (firm orders first, earliest delivery first) and
+        checks capacity. A line above capacity is planned at what fits and its gap is shown. The draft goes to the Action Center; after approval it opens as a Draft plan
+        you finish in the wizard.
+      </p>
+      <div className="filters">
+        <label>
+          Period start
+          <input type="date" aria-label="Draft period start" value={s} onChange={(x) => (setStart(x.target.value), reset())} />
+        </label>
+        <label>
+          Period end
+          <input type="date" aria-label="Draft period end" value={e} onChange={(x) => (setEnd(x.target.value), reset())} />
+        </label>
+        <label className="row small">
+          <input type="checkbox" checked={forecast} onChange={(x) => (setForecast(x.target.checked), reset())} /> Include forecast not yet ordered
+        </label>
+      </div>
+      <div className="row">
+        <button onClick={() => call("/api/plans/draft")} disabled={busy || !s || !e}>{busy && !draft ? "Drafting…" : "Prepare draft"}</button>
+        {draft && !sent && (
+          <button className="primary" onClick={() => call("/api/plans/draft/propose")} disabled={busy}>Send draft for approval</button>
+        )}
+        {sent && (
+          <span className="small">
+            Pending in the <Link to="/actions">Action Center</Link>. Approve it there to open it as a Draft plan.
+          </span>
+        )}
+      </div>
+      {err && <p className="error" role="alert">{err}</p>}
+      {draft && (
+        <>
+          <div className="kpis">
+            <Kpi label="Order lines" value={num(draft.summary.order_lines)} sub={`${num(draft.summary.customer_orders)} customer orders, ${num(draft.summary.order_qty)} pcs`} />
+            <Kpi label="Forecast not yet ordered" value={num(draft.summary.forecast_qty)} sub={draft.forecast_id ?? "no forecast snapshot"} />
+            <Kpi label="Planned" value={num(draft.summary.planned_qty)} sub={draft.summary.worst_capacity_status ?? "no line"} tone={draft.gaps.length ? "warn" : "good"} />
+            <Kpi label="Capacity gaps" value={draft.gaps.length} sub={draft.gaps.map((g: Any) => `${g.sku} −${num(g.gap_qty)}`).join(", ") || "everything fits"} tone={draft.gaps.length ? "bad" : "good"} />
+          </div>
+          <Table
+            empty="Nothing to plan in this period."
+            cols={[
+              { key: "p", label: "Priority", align: "right" },
+              { key: "sku", label: "Product" },
+              { key: "orders", label: "Orders", align: "right" },
+              { key: "fc", label: "Forecast", align: "right" },
+              { key: "planned", label: "Planned", align: "right" },
+              { key: "cap", label: "Total capacity", align: "right" },
+              { key: "st", label: "Capacity" },
+            ]}
+            rows={draft.lines.map((l: Any) => ({
+              p: l.priority,
+              sku: (
+                <>
+                  <strong>{l.sku}</strong> <span className="muted small">{l.product_name}</span>
+                </>
+              ),
+              orders: `${num(l.demand_qty)} (${l.orders})`,
+              fc: num(l.forecast_qty),
+              planned: (
+                <>
+                  {num(l.planned_qty)}
+                  {l.short_of_orders + l.short_of_forecast > 0 && <div className="risk small">{num(l.short_of_orders + l.short_of_forecast)} not planned</div>}
+                </>
+              ),
+              cap: num(l.total_capacity),
+              st: <CapacityBadge status={l.capacity_status} />,
+            }))}
+          />
+          {draft.gaps.length > 0 && (
+            <p className="notice-box warn small">
+              Over capacity, planned at what fits: {draft.gaps.map((g: Any) => `${g.sku} ${num(g.gap_qty)} pcs short${g.short_of_orders ? ` (${num(g.short_of_orders)} of them firm orders)` : ""}`).join("; ")}.
+              Options: an extra shift, a mold move, or less forecast. Ask the agent to compare them.
+            </p>
+          )}
+          <Source>{draft.source}. {draft.rules}</Source>
+        </>
+      )}
+    </Card>
+  );
+}
+
 export function PlanningPage() {
   const { data, error, loading } = useData<Any>("/api/modules/planning/summary");
   const [creating, setCreating] = useState(false);
@@ -291,6 +409,7 @@ export function PlanningPage() {
       </section>
       <ReplanNotice />
       <PlanList onCreate={() => setCreating(true)} />
+      <AgentDraft />
       <Status loading={loading} error={error} />
       {data && <SolverViews data={data} />}
       <AskAgent module="planning" placeholder="Can we absorb FB-ARKA +40% next month? Compare the options." />
