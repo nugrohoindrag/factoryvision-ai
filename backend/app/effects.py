@@ -42,7 +42,8 @@ class Overrides:
 
 
 def session_doc(session_id: str) -> Doc:
-    return store().get("sessions", session_id) or {"session_id": session_id, "scenario": "baseline"}
+    # "" is the session-free view (readiness without this tab's receipts); there is no document to read
+    return (store().get("sessions", session_id) if session_id else None) or {"session_id": session_id, "scenario": "baseline"}
 
 
 def set_scenario(session_id: str, scenario: str) -> None:

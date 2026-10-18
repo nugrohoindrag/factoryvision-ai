@@ -91,7 +91,7 @@ def _run(sql: str, params: dict[str, Any] | None) -> list[dict[str, Any]]:
 
 # Each BigQuery query costs ~1-2 s of job round trip and a page runs several, while the fv tables are a read-only
 # seed. Results are kept for CACHE_TTL_S per (sql, params); fv.plant_events, which Pub/Sub keeps writing, is never cached.
-CACHE_TTL_S = 600
+CACHE_TTL_S = 6 * 3600  # the seed changes only when load_bigquery reruns; redeploy (or wait) after that
 _CACHE_MAX = 1024
 _cache: dict[tuple[str, str], tuple[float, list[dict[str, Any]]]] = {}
 _cache_lock = threading.Lock()

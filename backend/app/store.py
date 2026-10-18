@@ -73,6 +73,8 @@ class FirestoreStore:
         return self._db.collection(collection).document(doc_id.replace("/", "__"))
 
     def get(self, collection: str, doc_id: str) -> Doc | None:
+        if not doc_id:  # Firestore rejects an empty document id; the memory store simply has nothing there
+            return None
         snap = self._ref(collection, doc_id).get()
         return dict(snap.to_dict() or {}) if snap.exists else None
 
