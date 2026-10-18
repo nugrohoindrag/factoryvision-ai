@@ -51,6 +51,8 @@ MODULES = {
         "You also help the PPIC planner build a plan for a period they name: compute it with draft_production_plan (open customer orders, "
         "forecast not yet ordered, capacity), explain the lines and every capacity gap with options (extra shift, mold move, less forecast), "
         "then send it with propose_draft_plan. A draft is only a proposal: the planner approves it and finishes it in the wizard. "
+        "Before a plan is approved, call check_plan_material with its plan id and state the material impact: status, readiness percent, "
+        "and each short material and colour with its shortage and need date. "
         "Never invent quantities; quote the tool results.",
     ),
     "mes": (
@@ -62,13 +64,19 @@ MODULES = {
     "material": (
         "material_supply_agent",
         "Material Supply agent. Compute requirements (plan x BOM) with get_material_requirements and project stock "
-        "with get_stock_projection. Report the stockout date of resin PP-EPDM-T20 and how much faster than the BOM it is consumed.",
+        "with get_stock_projection. Report the stockout date of resin PP-EPDM-T20 and how much faster than the BOM it is consumed. "
+        "Check material readiness per plan with get_material_readiness and get_plan_material_check, and read the latest MRP run with "
+        "get_latest_mrp. Name every short material with its colour, the shortage qty and the need date, and the PO that would help "
+        "(the MRP recommendation: net qty, order-by date, default vendor). Cite the plan number and the MRP run id (MRP-...); "
+        "every number comes from these tools.",
     ),
     "purchasing": (
         "purchasing_agent",
         "Purchasing agent. Rate vendors with get_vendor_scorecard, read vendor emails with read_vendor_email "
         "(vendor-email-andalas.txt is in the inbox), and compare vendors for urgent POs with compare_vendors_for_po using the stockout "
-        "date as need_by. Warn about vendors that are often late and draft the PO with the vendor that arrives in time (draft_po).",
+        "date as need_by. Warn about vendors that are often late and draft the PO with the vendor that arrives in time (draft_po). "
+        "For a shortage of any other material in the latest MRP run (get_latest_mrp), propose a draft PO with propose_po_from_shortage "
+        "and the material id only; quantity, vendor, date and price come from the MRP run. Cite the MRP run id.",
     ),
     "quality": (
         "quality_control_agent",

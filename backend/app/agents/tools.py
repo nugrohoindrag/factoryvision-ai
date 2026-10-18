@@ -1,8 +1,9 @@
 from collections.abc import Callable
 from typing import Any, Protocol
 
-from app import actions, effects, forecasts, photos, plans, plant
+from app import actions, effects, forecasts, photos, plans, plant, readiness
 from app.agents import facts
+from app.agents import material as material_facts
 from app.ai import extract, vision
 from app.documents import DOCUMENTS
 from app.errors import FVError
@@ -214,6 +215,45 @@ def get_stock_projection(*, material_id: str, apply_customer_po: bool, tool_cont
     r = material.stock_projection(material_id, demand_change_pct=demand, extra_receipts=receipts or None)
     r["projection"] = r.get("projection", [])[::3]
     return r
+
+
+def get_material_readiness(*, date_from: str, date_to: str, tool_context: ToolContext) -> ToolResult:
+    def run() -> ToolResult:
+        r = readiness.readiness(_sid(tool_context), date_from or None, date_to or None)
+        return {**r, "plans": r.get("plans", [])[:10], "source": "material readiness per plan (BOM x plan vs stock and dated incoming)"}
+
+    return _guard(run)
+
+
+def get_plan_material_check(*, plan_id: str, tool_context: ToolContext) -> ToolResult:
+    return _guard(material_facts.plan_check, _sid(tool_context), plan_id)
+
+
+def check_plan_material(*, plan_id: str, tool_context: ToolContext) -> ToolResult:
+    return _guard(lambda: material_facts.check_view(readiness.check_plan(_sid(tool_context), plan_id, save=False), saved=False))
+
+
+def get_latest_mrp(*, tool_context: ToolContext) -> ToolResult:
+    def run() -> ToolResult:
+        r, new = material_facts.latest_or_new_run(_sid(tool_context), str(getattr(tool_context, "agent_name", "") or "agent"))
+        return material_facts.mrp_view(r, computed_now=new)
+
+    return _guard(run)
+
+
+def propose_po_from_shortage(*, material_id: str, tool_context: ToolContext) -> ToolResult:
+    def run() -> ToolResult:
+        sid = _sid(tool_context)
+        r, _new = material_facts.latest_or_new_run(sid, str(getattr(tool_context, "agent_name", "") or "agent"))
+        doc, created = material_facts.propose_po(sid, r, material_id, plan_id=tool_context.state.get("plan_id"))
+        out = {"action_id": doc["action_id"], "title": doc["title"], "args": doc["command"]["args"], "impact": doc["impact"], "mrp_run_id": r["run_id"]}
+        return {
+            **out,
+            "status": "pending (needs human approval)" if created else "pending",
+            "note": None if created else "a PO for this material is already waiting for approval",
+        }
+
+    return _guard(run)
 
 
 def get_vendor_scorecard(*, category: str) -> ToolResult:
@@ -455,6 +495,39 @@ TOOL_DOCS: dict[str, str] = {
         "    material_id: e.g. PP-EPDM-T20.\n"
         "    apply_customer_po: include the demand change from the latest customer PO."
     ),
+    "get_material_readiness": (
+        "Material readiness per production plan in a date range (and the OEM monthly plan): status READY / PARTIAL / SHORTAGE, "
+        "readiness percent and the number of short materials, plus KPIs.\n"
+        "\n"
+        "Args:\n"
+        "    date_from: YYYY-MM-DD, or empty for today.\n"
+        "    date_to: YYYY-MM-DD, or empty for the default range."
+    ),
+    "get_plan_material_check": (
+        "Material check of one plan: status, readiness percent, and every short material with colour, required and available qty, "
+        "shortage and need date. Uses the saved check, or computes one without saving.\n"
+        "\n"
+        "Args:\n"
+        "    plan_id: plan id, or OEM-YYYY-MM for the OEM monthly plan."
+    ),
+    "check_plan_material": (
+        "Read-only material impact of a (draft) production plan before it is approved: status, readiness percent and the short "
+        "materials with colour, shortage and need date. Saves nothing.\n"
+        "\n"
+        "Args:\n"
+        "    plan_id: plan id."
+    ),
+    "get_latest_mrp": (
+        "Latest MRP run of this session (computed now over the next 30 days if none exists): run id, horizon and the materials with "
+        "a net requirement, each with net qty, need date, order-by date, lead time, default vendor and recommendation."
+    ),
+    "propose_po_from_shortage": (
+        "Propose a draft PO for a short material from the latest MRP run. Quantity, vendor, arrival date and price are taken from the "
+        "MRP run and the material master, never from you. Creates a pending proposal only; one per material while it is pending.\n"
+        "\n"
+        "Args:\n"
+        "    material_id: e.g. B-C07, from get_latest_mrp."
+    ),
     "get_vendor_scorecard": (
         "On-time rate, average delay and effective lead time per vendor.\n\nArgs:\n    category: Resin, Paint, Component, Packaging, or empty for all."
     ),
@@ -563,10 +636,11 @@ MODULE_TOOLS: dict[str, list[Tool]] = {
         propose_mold_move,
         draft_production_plan,
         propose_draft_plan,
+        check_plan_material,
     ],
     "mes": [get_oee, get_downtime_pareto, get_machine_health, twin_observations, propose_maintenance],
-    "material": [get_material_requirements, get_stock_projection],
-    "purchasing": [get_vendor_scorecard, read_vendor_email, compare_vendors_for_po, draft_po],
+    "material": [get_material_requirements, get_stock_projection, get_material_readiness, get_plan_material_check, get_latest_mrp],
+    "purchasing": [get_vendor_scorecard, read_vendor_email, compare_vendors_for_po, draft_po, get_latest_mrp, propose_po_from_shortage],
     "quality": [get_defect_correlation, inspect_conveyor_photo, propose_hold],
     "delivery": [get_orders_at_risk, get_atp, propose_ship_date, draft_customer_notice],
 }

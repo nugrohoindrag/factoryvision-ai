@@ -75,6 +75,9 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-AI-003` | 504 | Agent timeout | An agent run exceeded its time budget. | Retry or use Replay. |
 | `FV-AGT-001` | 503 | Forecast feature unavailable | An agent asked for forecast vs actual or forecast accuracy and this build has no such function. | Answer from the forecast snapshot instead; the feature ships with the Forecast module. |
 | `FV-AGT-002` | 409 | Re-plan not needed | An agent proposed a re-plan but the current plan already uses the latest forecast snapshot and customer PO demand. | No action; propose a re-plan only when check_replan_trigger reports a reason. |
+| `FV-AGT-010` | 404 | Material not in MRP run | A draft PO was asked for a material that has no result row in the MRP run. | Pick a material from the run's results, or run MRP again. |
+| `FV-AGT-011` | 409 | Nothing to order | A draft PO was asked for a material whose MRP net requirement is zero. | No PO is needed; the material is covered by stock and dated incoming. |
+| `FV-AGT-012` | 422 | No default vendor | The material has no known default vendor, so a draft PO cannot be built. | Set the material's default vendor in the material master. |
 | `FV-PUB-001` | 400 | Invalid push message | A Pub/Sub push request is malformed. | Pub/Sub retries; check the publisher. |
 | `FV-PUB-002` | 403 | Push not authorised | The push request's OIDC token is missing or invalid. | Check the subscription's service account. |
 | `FV-SYS-001` | 500 | Internal error | Unexpected server error. | Report the `request_id` from the response headers. |
