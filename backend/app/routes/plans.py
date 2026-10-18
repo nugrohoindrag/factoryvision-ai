@@ -64,7 +64,8 @@ class RecalculateIn(BaseModel):
 
 
 class SettingsIn(BaseModel):
-    planning_utilization_pct: float
+    planning_utilization_pct: float | None = None
+    strict_process_sequence: bool | None = None
 
 
 @router.get("/plans")
@@ -193,8 +194,8 @@ def recalculate(request: Request, sid: SessionId, body: RecalculateIn | None = N
 
 
 @router.get("/capacity/snapshots")
-def list_snapshots(sid: SessionId) -> dict[str, Any]:
-    return {"snapshots": capacity.snapshots(sid)}
+def list_snapshots(sid: SessionId, status: str | None = None) -> dict[str, Any]:
+    return {"snapshots": capacity.snapshots(sid, status or None)}
 
 
 @router.get("/capacity/snapshots/{snapshot_id}")
@@ -209,4 +210,4 @@ def get_settings(sid: SessionId) -> dict[str, Any]:
 
 @router.put("/capacity/settings")
 def put_settings(body: SettingsIn, sid: SessionId) -> dict[str, Any]:
-    return capacity.set_utilization_pct(sid, body.planning_utilization_pct)
+    return capacity.update_settings(sid, body.planning_utilization_pct, strict=body.strict_process_sequence)

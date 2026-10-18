@@ -934,6 +934,15 @@ def advance_work_order(sid: str, plan_id: str, wo_id: str, status: str) -> dict[
         raise FVError(WO_TRANSITION, "Work orders move to production only after the plan is confirmed.", {"plan_status": p["status"]})
     if status not in WO_STATUSES or WO_STATUSES.index(status) <= WO_STATUSES.index(w["status"]):
         raise FVError(WO_TRANSITION, f"Work order {wo_id} cannot move from {w['status']} to {status}.", {"valid": list(WO_STATUSES)})
+    if status == "In Production" and effects.overrides(sid).strict_process_sequence:
+        earlier = [o for o in _wos(sid, plan_id) if o["line_id"] == w["line_id"] and o["routing_step"] < w["routing_step"] and o["status"] != "Completed"]
+        if earlier:
+            ids = [o["wo_id"] for o in earlier]
+            raise FVError(
+                WO_TRANSITION,
+                f"Work order {wo_id} cannot start: the earlier process ({', '.join(ids)}) is not completed. Strict process sequence is on.",
+                {"blocked_by": ids},
+            )
     w["status"] = status
     _save_wo(sid, w)
     p["status"] = derived_status(p, _wos(sid, plan_id))
@@ -969,7 +978,8 @@ def confirm(sid: str, plan_id: str, user: str = "You") -> dict[str, Any]:
         raise FVError(
             CONFIRM_UNCONFIRMED, f"{pending} work order(s) are not confirmed yet. Confirm every work order before confirming the plan.", {"count": pending}
         )
-    p.update(status="Confirmed", confirmed_at=_now(), confirmed_by=user, wizard_step=6)
+    current = next((d for d in capacity.snapshots(sid, "Computed") if d["period_start"] == p["period_start"] and d["period_end"] == p["period_end"]), None)
+    p.update(status="Confirmed", confirmed_at=_now(), confirmed_by=user, wizard_step=6, capacity_snapshot_id=current["cap_id"] if current else None)
     for ln in p["lines"]:
         ln["status"] = "Released"
     _save(p)
@@ -1318,6 +1328,10 @@ def period_demand(sid: str, start: date, end: date) -> tuple[dict[str, int], dic
     return demand, planned
 
 
+def plan_references(sid: str, cap_id: str) -> bool:
+    return any(p.get("capacity_snapshot_id") == cap_id and p["status"] != "Cancelled" for p in _plans(sid))
+
+
 def capacity_page(sid: str, period_start: str | None, period_end: str | None, utilization: float | None = None) -> dict[str, Any]:
     if period_start is None and period_end is None:
         start, end = capacity.month_bounds(TODAY)
@@ -1371,6 +1385,11 @@ def recalculate_capacity(
         old = capacity.get_snapshot(sid, snapshot_id)
         period_start, period_end = old["period_start"], old["period_end"]
         utilization = utilization if utilization is not None else float(old["planning_utilization_pct"])
+    if utilization is None:
+        start, end = capacity.month_bounds(TODAY) if period_start is None and period_end is None else capacity.parse_period(period_start, period_end)
+        cur = next((d for d in capacity.snapshots(sid, "Computed") if d["period_start"] == start.isoformat() and d["period_end"] == end.isoformat()), None)
+        if cur and plan_references(sid, cur["cap_id"]):
+            utilization = float(cur["planning_utilization_pct"])
     result = capacity_page(sid, period_start, period_end, utilization)
     keep = {k: result[k] for k in ("rows", "kpis", "formulas", "working_days")}
     doc = capacity.save_snapshot(sid, to_date(result["period_start"]), to_date(result["period_end"]), float(result["planning_utilization_pct"]), keep, user)

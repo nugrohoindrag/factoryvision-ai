@@ -35,6 +35,7 @@ class Overrides:
     cancelled_orders: dict[str, str] = field(default_factory=dict)
     applied: list[dict[str, Any]] = field(default_factory=list)
     planning_utilization_pct: float = DEFAULT_PLANNING_UTILIZATION_PCT
+    strict_process_sequence: bool = False
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -48,15 +49,20 @@ def set_scenario(session_id: str, scenario: str) -> None:
     store().update("sessions", session_id, {"session_id": session_id, "scenario": scenario})
 
 
+def planning_setting(session_id: str) -> Doc:
+    return store().get(PLANNING_SETTINGS, session_id) or {}
+
+
 def overrides(session_id: str) -> Overrides:
     sc = str(session_doc(session_id).get("scenario", "baseline"))
-    setting = store().get(PLANNING_SETTINGS, session_id) or {}
+    setting = planning_setting(session_id)
     util = float(setting.get("planning_utilization_pct", DEFAULT_PLANNING_UTILIZATION_PCT))
     o = Overrides(
         scenario=sc,
         demand_change_pct=dict(DEMAND_CHANGE_PCT.get(sc, {})),
         vendor_extra_delay=dict(VENDOR_EXTRA_DELAY.get(sc, {})),
         planning_utilization_pct=util,
+        strict_process_sequence=bool(setting.get("strict_process_sequence", False)),
     )
     for cmd in actions.approved_commands(session_id):
         apply(o, cmd)

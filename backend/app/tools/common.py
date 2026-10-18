@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 TODAY = plant.DEMO_TODAY
 AVAILABLE_FACTOR = 0.88
-MINUTES_PER_WORKDAY = 3 * 450
+MINUTES_PER_WORKDAY = sum(int(str(s["planned_minutes"])) for s in plant.SHIFTS)
 
 
 def to_date(v: object) -> date:
