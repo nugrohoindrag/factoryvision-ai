@@ -24,7 +24,6 @@ class Settings:
     store: str = _env("FV_STORE", "memory")  # memory | firestore
     pubsub: str = _env("FV_PUBSUB", "local")  # local (in-process) | gcp
     seed_dir: Path = Path(_env("FV_SEED_DIR", str(ROOT / "data" / "seed")))
-    web_dist: Path = Path(_env("FV_WEB_DIST", str(ROOT / "web" / "dist")))
     replay_dir: Path = Path(_env("FV_REPLAY_DIR", str(ROOT / "data" / "replays")))
     docs_dir: Path = Path(_env("FV_DOCS_DIR", str(ROOT / "data" / "docs")))
     bucket_prefix: str = _env("FV_BUCKET_PREFIX", "")
