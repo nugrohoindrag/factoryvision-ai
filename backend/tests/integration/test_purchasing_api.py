@@ -257,11 +257,9 @@ def test_session_po_replaces_approved_po_incoming(sid: str) -> None:
     args = {"vendor_id": "VEN-MERAPI", "material_id": "PP-EPDM-T20", "qty": 1000, "expected_date": "2027-02-06"}
     a = actions.propose(sid, "purchase_order", "PO resin", "purchasing", "x", args)
     actions.decide(sid, a["action_id"], approve=True, user="boss")
-    rows = [i for i in materials.incoming(sid, "PP-EPDM-T20") if i["source"] == "approved_po"]
-    assert [r["po_id"] for r in rows] == [a["action_id"]]
-    purchasing_docs.create_po(
-        sid, vendor_id="VEN-MERAPI", lines=[{"material_id": "PP-EPDM-T20", "qty": 1000}], note=f"Action Center {a['action_id']}", issue=True
-    )
+    out = actions.get(sid, a["action_id"])["execution"]["result"]
+    srcs = [(i["source"], i["po_id"]) for i in materials.incoming(sid, "PP-EPDM-T20")]
+    assert ("approved_po", a["action_id"]) not in srcs
+    assert [p for s_, p in srcs if s_ == "session_po"] == [out["session_po_id"]]
     srcs = [i["source"] for i in materials.incoming(sid, "PP-EPDM-T20")]
-    assert "approved_po" not in srcs
     assert srcs.count("session_po") == 1
