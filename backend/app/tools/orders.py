@@ -160,7 +160,7 @@ def _header(r: dict[str, Any], created: set[str], cancelled: dict[str, str]) -> 
     }
 
 
-def _line(r: dict[str, Any], p: dict[str, Any], *, cancelled: bool) -> dict[str, Any]:
+def _line(r: dict[str, Any], p: dict[str, Any], *, cancelled: bool, in_plans: int = 0) -> dict[str, Any]:
     stored, qty = r["order_status"], int(r["order_qty"])
     wos = p.get("work_orders", [])
     done = stored in DONE_STATUSES
@@ -172,7 +172,8 @@ def _line(r: dict[str, Any], p: dict[str, Any], *, cancelled: bool) -> dict[str,
         "sku": r["sku"],
         "product_name": product_name(r["sku"]),
         "ordered_qty": qty,
-        "planned_qty": qty if done or stored == "Planned" or produced > 0 or released else 0,
+        # the monthly OEM plan covers a line once it is released or started; the session's production plans add theirs
+        "planned_qty": qty if done or stored == "Planned" or produced > 0 or released else min(qty, in_plans),
         "produced_qty": produced,
         "from_stock_qty": int(p.get("from_stock_qty", 0)),
         "shipped_qty": int(r["shipped_qty"] or 0),
@@ -209,6 +210,7 @@ def order_view(
     new_orders: list[dict[str, Any]] | None = None,
     cancelled: dict[str, str] | None = None,
     mold_moves: dict[str, str] | None = None,
+    plan_allocations: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     """Every customer order as a header with its lines: what was ordered, planned and produced, and when it ships.
 
@@ -216,7 +218,7 @@ def order_view(
     Production while today's work order makes it, Planned once a released work order or the plan carries it.
     At risk is the Delivery ATP rule, so the two pages agree.
     """
-    new_orders, cancelled, mold_moves = new_orders or [], cancelled or {}, mold_moves or {}
+    new_orders, cancelled, mold_moves, alloc = new_orders or [], cancelled or {}, mold_moves or {}, plan_allocations or {}
     extra = session_lines(new_orders)
     rows = [{**r, "created_at": None, "created_by": None} for r in warehouse.query(LINE_SQL)] + extra
     created = {o["order_number"] for o in new_orders}
@@ -226,7 +228,7 @@ def order_view(
     for r in rows:
         num = str(r["order_number"])
         h = heads.get(num) or heads.setdefault(num, _header(r, created, cancelled))
-        h["lines"].append(_line(r, pegged.get(str(r["order_id"]), {}), cancelled=num in cancelled))
+        h["lines"].append(_line(r, pegged.get(str(r["order_id"]), {}), cancelled=num in cancelled, in_plans=alloc.get(str(r["order_id"]), 0)))
     for h in heads.values():
         _roll_up(h)
     return {

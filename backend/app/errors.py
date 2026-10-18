@@ -65,6 +65,27 @@ _SPECS = [
         "Relax the scenario (allow mold moves, extra shifts) and retry.",
     ),
     ErrorSpec(
+        "FV-PLAN-002",
+        409,
+        "Production plan locked",
+        "The production plan is confirmed, in execution, completed or cancelled, so it can no longer change.",
+        "A confirmed plan is a production commitment; create a new plan for further demand.",
+    ),
+    ErrorSpec(
+        "FV-PLAN-003",
+        409,
+        "Plan step not ready",
+        "A wizard step, work order generation, scheduling or confirmation lacks what it needs (demand, work orders, a schedule, resources, capacity).",
+        "Finish the step the message names first.",
+    ),
+    ErrorSpec(
+        "FV-PLAN-004",
+        409,
+        "Demand not plannable",
+        "The order line is already in this plan, belongs to a cancelled order, or is fully planned elsewhere.",
+        "Pick another open order line; remove the demand from the other plan to move it.",
+    ),
+    ErrorSpec(
         "FV-FCST-001",
         503,
         "Forecast model missing",

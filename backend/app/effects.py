@@ -5,6 +5,7 @@ from typing import Any
 
 from app import actions, plant
 from app.store import Doc, store
+from app.tools import production_plan
 
 DEMAND_CHANGE_PCT: dict[str, dict[str, float]] = {
     "disruption_response": {"FB-ARKA": 40},
@@ -31,6 +32,7 @@ class Overrides:
     customer_pos: list[dict[str, Any]] = field(default_factory=list)
     new_orders: list[dict[str, Any]] = field(default_factory=list)
     cancelled_orders: dict[str, str] = field(default_factory=dict)
+    plan_allocations: dict[str, int] = field(default_factory=dict)  # order line -> qty in this session's production plans
     applied: list[dict[str, Any]] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
@@ -50,6 +52,7 @@ def overrides(session_id: str) -> Overrides:
     o = Overrides(scenario=sc, demand_change_pct=dict(DEMAND_CHANGE_PCT.get(sc, {})), vendor_extra_delay=dict(VENDOR_EXTRA_DELAY.get(sc, {})))
     for cmd in actions.approved_commands(session_id):
         apply(o, cmd)
+    o.plan_allocations = production_plan.allocations(session_id)
     return o
 
 

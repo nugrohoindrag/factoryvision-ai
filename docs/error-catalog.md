@@ -20,6 +20,9 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-SQL-001` | 403 | Query rejected | An agent SQL query is not a single read-only SELECT. | Guardrail; agents may only read. |
 | `FV-SQL-002` | 403 | Table not allowlisted | An agent SQL query reads a table outside the allowlist. | Guardrail; extend the allowlist only through a code change. |
 | `FV-PLAN-001` | 422 | No feasible plan | CP-SAT found no feasible molding plan within the time limit. | Relax the scenario (allow mold moves, extra shifts) and retry. |
+| `FV-PLAN-002` | 409 | Production plan locked | The production plan is confirmed, in execution, completed or cancelled, so it can no longer change. | A confirmed plan is a production commitment; create a new plan for further demand. |
+| `FV-PLAN-003` | 409 | Plan step not ready | A wizard step, work order generation, scheduling or confirmation lacks what it needs (demand, work orders, a schedule, resources, capacity). | Finish the step the message names first. |
+| `FV-PLAN-004` | 409 | Demand not plannable | The order line is already in this plan, belongs to a cancelled order, or is fully planned elsewhere. | Pick another open order line; remove the demand from the other plan to move it. |
 | `FV-FCST-001` | 503 | Forecast model missing | The BQML model fv.demand_arima is not trained. | Run infra/bq_forecast.sql; the tool falls back to the local model meanwhile. |
 | `FV-ACT-001` | 404 | Action not found | The proposal ID does not exist in this session. | Refresh the Action Center. |
 | `FV-ACT-002` | 409 | Action already decided | Approve or reject was sent for a proposal that is no longer pending. | No retry needed; the first decision stands. |

@@ -49,13 +49,15 @@ def delivery_rates(o: Overrides) -> dict[str, Any]:
 @lru_cache(maxsize=64)
 def _order_view(key: str) -> str:
     o = Overrides(**json.loads(key))
-    view = orders.order_view(rates=delivery_rates(o) or None, new_orders=o.new_orders, cancelled=o.cancelled_orders, mold_moves=o.mold_moves)
+    view = orders.order_view(
+        rates=delivery_rates(o) or None, new_orders=o.new_orders, cancelled=o.cancelled_orders, mold_moves=o.mold_moves, plan_allocations=o.plan_allocations
+    )
     return json.dumps(view, default=str)
 
 
 def order_view(o: Overrides) -> dict[str, Any]:
     """Customer orders with lines, derived status, at-risk and work-order pegging; cached per session state."""
-    keep = ("maintenance", "mold_moves", "new_orders", "cancelled_orders")
+    keep = ("maintenance", "mold_moves", "new_orders", "cancelled_orders", "plan_allocations")
     key = json.dumps({k: v for k, v in o.as_dict().items() if k in keep}, sort_keys=True, default=str)
     result: dict[str, Any] = json.loads(_order_view(key))
     return result

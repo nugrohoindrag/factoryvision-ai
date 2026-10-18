@@ -18,7 +18,7 @@ from app import actions, effects, modules
 from app.errors import FVError
 from app.session import SessionId, user_label
 from app.store import store
-from app.tools import orders
+from app.tools import orders, production_plan
 
 INVALID_REQUEST = "FV-REQ-001"
 UNKNOWN_ENTITY = "FV-DATA-001"
@@ -73,7 +73,8 @@ def _documents(sid: str, order_number: str) -> list[dict[str, Any]]:
 
 def _detail(sid: str, o: effects.Overrides, order_number: str) -> dict[str, Any]:
     h = orders.find_order(modules.order_view(o), order_number)
-    return {**h, "traceability": orders.traceability(h, o.demand_change_pct or None), "documents": _documents(sid, order_number)}
+    trace = orders.traceability(h, o.demand_change_pct or None) + production_plan.traceability(sid, {ln["order_id"] for ln in h["lines"]})
+    return {**h, "traceability": trace, "documents": _documents(sid, order_number)}
 
 
 def _checked(body: OrderIn, o: effects.Overrides) -> tuple[dict[str, Any], list[str]]:

@@ -13,6 +13,7 @@ from app.errors import FVError
 from app.session import limiter
 from app.simulation.engine import MAX_TICKS_PER_CALL, SCENARIOS, State
 from app.store import Doc, store
+from app.tools import production_plan
 
 UNKNOWN_SCENARIO = "FV-REQ-003"
 
@@ -142,6 +143,7 @@ def reset(session_id: str, scenario: str = "baseline") -> dict[str, Any]:
         store().delete("inspections", insp["inspection_id"])
     for doc in store().where("order_documents", "session_id", session_id):
         store().delete("order_documents", doc["doc_id"])
+    production_plan.clear(session_id)
     effects.set_scenario(session_id, scenario)
     limiter.reset(session_id, keep=COST_BUCKETS)
     s = State.new(session_id, scenario)
