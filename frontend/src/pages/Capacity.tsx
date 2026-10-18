@@ -9,7 +9,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, Kpi, num, pct } from "../components/ui";
-import { errorText, post } from "../lib/api";
+import { errorText, post, put } from "../lib/api";
 import { useApp, useData } from "../lib/store";
 import type { CapacityStatus } from "../lib/types";
 import { CapacityBadge } from "./Planning";
@@ -72,8 +72,29 @@ export default function CapacityPage() {
   const ready = !!summary.data || !!summary.error;
   const cap = useData<Any>(ready && e >= s ? `/api/capacity?period_start=${s}&period_end=${e}` : null);
   const snaps = useData<Any>("/api/capacity/snapshots");
+  const settings = useData<Any>("/api/capacity/settings");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; bad: boolean } | null>(null);
+  const [utilDraft, setUtilDraft] = useState<string | null>(null);
+  const savedUtil: number | undefined = settings.data?.planning_utilization_pct;
+  const draft = utilDraft ?? (savedUtil != null ? String(savedUtil) : "");
+  const draftNum = Number(draft);
+  const utilInvalid = draft.trim() === "" || !Number.isFinite(draftNum) || draftNum <= 0 || draftNum > 100;
+
+  const saveUtil = async () => {
+    setBusy(true);
+    setNotice(null);
+    try {
+      await put<Any>("/api/capacity/settings", { planning_utilization_pct: draftNum });
+      setUtilDraft(null);
+      setNotice({ text: `Planning utilization set to ${draftNum}%. New calculations use it; saved snapshots keep the value they were calculated with.`, bad: false });
+      bump();
+    } catch (x) {
+      setNotice({ text: errorText(x), bad: true });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const recalc = async () => {
     setBusy(true);
@@ -121,6 +142,29 @@ export default function CapacityPage() {
             <button className="primary" onClick={recalc} disabled={busy || e < s}>{busy ? "Calculating…" : "Recalculate & save snapshot"}</button>
           </div>
         </div>
+        <div className="filters">
+          <label>
+            Planning utilization (%)
+            <input
+              type="number"
+              min={1}
+              max={100}
+              step={1}
+              aria-label="Planning utilization"
+              value={draft}
+              onChange={(x) => setUtilDraft(x.target.value)}
+              className={utilInvalid ? "invalid" : ""}
+            />
+            {utilInvalid ? (
+              <span className="field-error">Use a percentage above 0 and at most 100.</span>
+            ) : (
+              <span className="muted small">Planning capacity = Total × this value. Default {settings.data?.default_planning_utilization_pct ?? 80}%.</span>
+            )}
+          </label>
+          <div className="row filters-actions">
+            <button className="secondary" onClick={saveUtil} disabled={busy || utilInvalid || draftNum === savedUtil}>Save utilization</button>
+          </div>
+        </div>
         {notice && <div className={`notice-box ${notice.bad ? "bad" : "good"}`} role={notice.bad ? "alert" : "status"}>{notice.text}</div>}
       </Card>
       {cap.error ? (
@@ -150,7 +194,11 @@ export default function CapacityPage() {
           </div>
           {list[0] && (
             <p className="muted small">
-              Latest snapshot <strong>{list[0].snapshot_id ?? list[0].capacity_id ?? list[0].number}</strong> · period {list[0].period_start} → {list[0].period_end}. A snapshot keeps the numbers that held when it was calculated.
+              Latest snapshot <strong>{list[0].snapshot_id ?? list[0].capacity_id ?? list[0].number}</strong> · period {list[0].period_start} → {list[0].period_end} · utilization{" "}
+              {list[0].planning_utilization_pct ?? "–"}%. A snapshot keeps the numbers that held when it was calculated.
+              {savedUtil != null && list[0].planning_utilization_pct != null && savedUtil !== list[0].planning_utilization_pct && (
+                <> The setting is now {savedUtil}%; recalculate to use it.</>
+              )}
             </p>
           )}
           {gaps.length > 0 && (
@@ -217,7 +265,7 @@ export default function CapacityPage() {
                     <td>{x.status ?? "–"}</td>
                     <td className="right">{pct(x.kpis?.utilization_pct ?? x.utilization_pct)}</td>
                     <td className="right">{num(x.kpis?.gap ?? x.gap)}</td>
-                    <td>{(x.created_at ?? x.calculated_at ?? "").slice(0, 16).replace("T", " ") || "–"}</td>
+                    <td>{(x.computed_at ?? x.created_at ?? x.calculated_at ?? "").slice(0, 16).replace("T", " ") || "–"}</td>
                   </tr>
                 ))}
               </tbody>

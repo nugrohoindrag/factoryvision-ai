@@ -152,6 +152,11 @@ def get_capacity(
     return plans.capacity_page(sid, period_start or None, period_end or None, planning_utilization_pct)
 
 
+@router.get("/capacity/assess")
+def assess_capacity(sid: SessionId, sku: str, qty: int, period_start: str | None = None, period_end: str | None = None) -> dict[str, Any]:
+    return plans.assess_sku(sid, sku, qty, period_start or None, period_end or None)
+
+
 @router.post("/capacity/recalculate")
 def recalculate(request: Request, sid: SessionId, body: RecalculateIn | None = None) -> dict[str, Any]:
     b = body or RecalculateIn()

@@ -52,6 +52,7 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-CAP-001` | 400 | Invalid capacity period | The capacity period start or end is not a date, or the end is before the start. | Send ISO dates with period_end on or after period_start. |
 | `FV-CAP-002` | 404 | Capacity snapshot not found | The CAP snapshot to recalculate does not exist in this session. | List snapshots with GET /api/capacity/snapshots. |
 | `FV-CAP-003` | 400 | Invalid planning utilization | The planning utilization is not above 0 and at most 100 percent. | Send a percentage in (0, 100]. |
+| `FV-CAP-004` | 400 | Invalid capacity assessment | The SKU is not a product in the plant, or the quantity is not a whole number of at least 0. | Send a SKU from the product list and a quantity of 0 or more. |
 | `FV-FCST-001` | 503 | Forecast model missing | The BQML model fv.demand_arima is not trained. | Run infra/bq_forecast.sql; the tool falls back to the local model meanwhile. |
 | `FV-FC-001` | 400 | Invalid forecast parameters | Generate was sent a window, horizon, SKU filter or per-customer flag outside the allowed values. | Fix the fields listed in `detail.fields`: window 30/60/90 days, horizon 4/6/8 weeks, a non-empty SKU list or none. |
 | `FV-FC-002` | 404 | Forecast snapshot not found | The forecast ID does not exist in this session. | Pick a snapshot from GET /api/forecasts. |

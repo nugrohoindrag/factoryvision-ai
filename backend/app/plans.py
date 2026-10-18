@@ -1153,6 +1153,32 @@ def capacity_page(sid: str, period_start: str | None, period_end: str | None, ut
     }
 
 
+def assess_sku(sid: str, sku: str, qty: int, period_start: str | None, period_end: str | None) -> dict[str, Any]:
+    if period_start is None and period_end is None:
+        start, end = capacity.month_bounds(TODAY)
+    else:
+        start, end = capacity.parse_period(period_start, period_end)
+    if sku not in plant.PRODUCT_BY_SKU:
+        raise FVError(
+            capacity.INVALID_ASSESSMENT, f"{sku} is not a product in the plant.", {"fields": [{"field": "sku", "message": "Use a SKU from the product list."}]}
+        )
+    if qty < 0:
+        raise FVError(capacity.INVALID_ASSESSMENT, "The quantity is not valid.", {"fields": [{"field": "qty", "message": "Use a whole number of at least 0."}]})
+    o = effects.overrides(sid)
+    demand, _ = period_demand(sid, start, end)
+    row = capacity.sku_capacity({**demand, sku: qty}, start, end, capacity.utilization_pct(sid), maintenance=o.maintenance, mold_moves=o.mold_moves)[sku]
+    return {
+        "sku": sku,
+        "product_name": capacity.product_name(sku),
+        "period_start": start.isoformat(),
+        "period_end": end.isoformat(),
+        "qty": qty,
+        "planning_utilization_pct": capacity.utilization_pct(sid),
+        **row,
+        "formulas": capacity.FORMULAS,
+    }
+
+
 def recalculate_capacity(
     sid: str, period_start: str | None, period_end: str | None, snapshot_id: str | None = None, utilization: float | None = None, user: str = "You"
 ) -> dict[str, Any]:
