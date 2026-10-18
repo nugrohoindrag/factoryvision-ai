@@ -1,5 +1,3 @@
-"""Quality Control tools: defect correlation to resin lot and humidity, hold candidates."""
-
 from __future__ import annotations
 
 from datetime import timedelta
@@ -13,12 +11,6 @@ DEF_SQL = "SELECT resin_lot_id, humidity_pct, defect_code, SUM(defect_qty) AS n 
 
 
 def defect_correlation(days: int = 45, humidity_threshold: float = 80.0) -> dict:
-    """Defect rate by resin lot and by humidity band, with lift versus the overall rate.
-
-    Args:
-        days: look-back window (default 45).
-        humidity_threshold: humidity split in % RH (default 80).
-    """
     d0 = TODAY - timedelta(days=days)
     insp = warehouse.query(INSP_SQL, {"d0": d0})
     defs = warehouse.query(DEF_SQL, {"d0": d0})
@@ -60,7 +52,6 @@ def defect_correlation(days: int = 45, humidity_threshold: float = 80.0) -> dict
 
 
 def hold_candidates(resin_lot_id: str) -> dict:
-    """Finished and WIP bumpers made from one resin lot (candidates for quality hold)."""
     rows = warehouse.query("SELECT sku, color, wip_qty, mezzanine_qty, sgl_qty FROM fv.fact_stock_snapshot WHERE resin_lot_id = :lot", {"lot": resin_lot_id})
     units = sum(r["wip_qty"] + r["mezzanine_qty"] + r["sgl_qty"] for r in rows)
     prod = warehouse.query("SELECT MIN(production_date) AS d0, MAX(production_date) AS d1, SUM(output_quantity) AS q FROM fv.fact_production WHERE resin_lot_id = :lot", {"lot": resin_lot_id})

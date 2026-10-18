@@ -1,8 +1,3 @@
-"""Build the local DuckDB warehouse: Alembic upgrade, then load the seed CSVs.
-
-Run (from backend/): python -m app.db.build_local [--seed-dir ../data/seed] [--db ../data/local/fv.duckdb]
-"""
-
 from __future__ import annotations
 
 import argparse

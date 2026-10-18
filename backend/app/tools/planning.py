@@ -1,10 +1,3 @@
-"""Production Planning tools: capacity check and an OR-Tools CP-SAT molding plan.
-
-Mold compatibility and tonnage are hard constraints: a SKU runs only on an IMM its mold fits,
-one mold sits on at most one machine per planning week, and each extra mold on a machine in a
-week costs a changeover (machine status Setup).
-"""
-
 from __future__ import annotations
 
 import time
@@ -33,7 +26,6 @@ def _month(month: str | None) -> date:
 
 
 def machine_rates() -> dict[str, dict]:
-    """Current cycle factor (actual / ideal) and yield per IMM, last 7 days."""
     rows = warehouse.query(CYCLE_SQL, {"d0": TODAY - timedelta(days=8)})
     return {r["machine_id"]: {"cycle_factor": r["cycle_s"] / r["ideal"], "yield": r["yield_ratio"], "cycle_s": r["cycle_s"]} for r in rows}
 
@@ -53,12 +45,6 @@ def current_molds() -> dict[str, str]:
 
 def get_capacity(month: str | None = None, demand_change_pct: dict | None = None, cycle_override: dict | None = None,
                  extra_days: dict | None = None) -> dict:
-    """Molding capacity check for a month with the current mold assignment.
-
-    Args:
-        month: first day of the month (YYYY-MM-DD); default = current month.
-        demand_change_pct: e.g. {"FB-ARKA": 40} to raise one SKU's plan by 40%.
-    """
     m = _month(month)
     plan = monthly_plan(m, demand_change_pct)
     rates = machine_rates()
@@ -75,7 +61,6 @@ def get_capacity(month: str | None = None, demand_change_pct: dict | None = None
     machines = [{"machine_id": mid, "skus": [s for s, x in molds.items() if x == mid], "required_minutes": round(need[mid]),
                  "available_minutes": round(avail[mid]), "load_pct": pct(need[mid] / avail[mid]),
                  "cycle_factor": round(rates[mid]["cycle_factor"], 3)} for mid in P.IMM_IDS]
-    # Constraint groups: machines that can run the Arka molds (3,500 t) and the rest.
     groups = []
     for name, mids in (("3500t (IMM-04, IMM-05; only machines that fit the ARKA molds)", ["IMM-04", "IMM-05"]),
                        ("other IMMs", [x for x in P.IMM_IDS if x not in ("IMM-04", "IMM-05")])):
@@ -91,15 +76,6 @@ def get_capacity(month: str | None = None, demand_change_pct: dict | None = None
 
 def run_scheduler(month: str | None = None, demand_change_pct: dict | None = None, allow_mold_moves: bool = True,
                   maintenance: list | None = None, extra_shifts: dict | None = None, weeks: int = 4, time_limit_s: float = 10.0) -> dict:
-    """Weekly molding plan with OR-Tools CP-SAT. Minimises unmet demand, then changeovers and mold moves.
-
-    Args:
-        month: first day of the month; default current month.
-        demand_change_pct: e.g. {"FB-ARKA": 40}.
-        allow_mold_moves: allow molds to move to other compatible machines.
-        maintenance: machines to restore by maintenance in week 1, e.g. ["IMM-04"] (costs 120 min, cycle back to normal).
-        extra_shifts: extra full working days per machine, e.g. {"IMM-04": 4, "IMM-05": 4} (Sunday shifts).
-    """
     t0 = time.time()
     m = _month(month)
     plan = monthly_plan(m, demand_change_pct)
@@ -116,7 +92,7 @@ def run_scheduler(month: str | None = None, demand_change_pct: dict | None = Non
         return rates[mid]["cycle_factor"]
 
     model = cp_model.CpModel()
-    S = 10  # time unit: 10 seconds
+    S = 10
     x, on = {}, {}
     for sku in plan:
         for mid in P.MOLD_COMPAT[sku]:
@@ -127,7 +103,7 @@ def run_scheduler(month: str | None = None, demand_change_pct: dict | None = Non
                 if not allow_mold_moves and mid != molds[sku]:
                     model.Add(on[sku, mid, w] == 0)
         for w in range(weeks):
-            model.Add(sum(on[sku, mid, w] for mid in P.MOLD_COMPAT[sku]) <= 1)  # one mold, one machine
+            model.Add(sum(on[sku, mid, w] for mid in P.MOLD_COMPAT[sku]) <= 1)
     unmet = {sku: model.NewIntVar(0, plan[sku], f"unmet_{sku}") for sku in plan}
     for sku in plan:
         model.Add(sum(x[sku, mid, w] for mid in P.MOLD_COMPAT[sku] for w in range(weeks)) + unmet[sku] == plan[sku])
@@ -188,12 +164,6 @@ WHAT_IF = {
 
 
 def what_if(scenarios: list[str] | None = None, demand_change_pct: dict | None = None) -> dict:
-    """Compare molding plans under capacity scenarios.
-
-    Args:
-        scenarios: names from baseline, maintenance_imm04, move_arka_mold_imm05, sunday_shifts_3500t, maintenance_plus_sunday.
-        demand_change_pct: e.g. {"FB-ARKA": 40}.
-    """
     scenarios = scenarios or list(WHAT_IF)
     out = []
     for name in scenarios:

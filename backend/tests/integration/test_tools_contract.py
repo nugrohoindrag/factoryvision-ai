@@ -1,5 +1,3 @@
-"""Contract checks for the deterministic tools: provenance, KPI formulas, solver limits, guardrails."""
-
 import pytest
 
 from app import warehouse

@@ -1,6 +1,3 @@
-"""Demand Forecast tools. Numbers come from BigQuery ML ARIMA_PLUS (cloud) or a local
-trend + weekday model over the same series (dev only)."""
-
 from __future__ import annotations
 
 import logging
@@ -38,7 +35,6 @@ def demand_history(sku: str) -> list[tuple]:
 
 
 def _local_forecast(hist: list[tuple], horizon: int, fit_days: int = 42) -> list[tuple]:
-    """Linear trend with weekday effects on the last `fit_days`; Sundays forecast as zero."""
     window = hist[-fit_days:]
     rows, ys = [], []
     for k, (d, q) in enumerate(window):
@@ -69,12 +65,6 @@ def _bqml_forecast(sku: str, horizon: int) -> list[tuple] | None:
 
 
 def bq_forecast(sku: str = "FB-ARKA", horizon_weeks: int = 6) -> dict:
-    """Forecast daily demand for one SKU and summarise the change versus the last 7 days.
-
-    Args:
-        sku: product SKU, e.g. FB-ARKA.
-        horizon_weeks: forecast horizon in weeks (default 6).
-    """
     if sku not in P.PRODUCT_BY_SKU:
         return FVError("FV-DATA-001", f"unknown sku {sku}", {"valid_skus": P.SKUS}).tool_result()
     horizon = horizon_weeks * 7

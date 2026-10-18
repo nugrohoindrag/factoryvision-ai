@@ -1,9 +1,3 @@
-"""Migrate the BigQuery dataset with Alembic and (re)load the seed CSVs.
-
-Run (from backend/, with ADC and GOOGLE_CLOUD_PROJECT set):
-    python -m app.db.load_bigquery [--seed-dir ../data/seed]
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -14,7 +8,7 @@ from alembic import command
 from app.config import settings
 from app.db.build_local import alembic_config
 from app.db.engine import database_url
-from app.db.models import SCHEMA, TABLES, Base
+from app.db.models import PUBSUB_WRITTEN_TABLES, SCHEMA, TABLES, Base
 
 
 def load(seed_dir: Path) -> None:
@@ -23,8 +17,8 @@ def load(seed_dir: Path) -> None:
     command.upgrade(alembic_config(database_url("bigquery")), "head")
     client = bigquery.Client(project=settings.project)
     for table in Base.metadata.sorted_tables:
-        if table.name == "plant_events":
-            continue  # written by the Pub/Sub BigQuery subscription
+        if table.name in PUBSUB_WRITTEN_TABLES:
+            continue
         job = client.load_table_from_file(
             open(seed_dir / f"{table.name}.csv", "rb"),
             f"{settings.project}.{SCHEMA}.{table.name}",

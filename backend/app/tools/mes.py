@@ -1,5 +1,3 @@
-"""MES tools: OEE, downtime Pareto, machine health (MTBF and cycle-time trend)."""
-
 from __future__ import annotations
 
 from datetime import timedelta
@@ -39,13 +37,6 @@ def _oee(rows: list[dict]) -> dict:
 
 
 def get_oee(day: str | None = None, days: int = 1, machine_id: str | None = None) -> dict:
-    """OEE per machine, per shift and for the plant (time-weighted, KPI dictionary §5).
-
-    Args:
-        day: last day of the window (YYYY-MM-DD); default = last production day.
-        days: window length in days (default 1).
-        machine_id: optional filter, e.g. IMM-04.
-    """
     d1 = to_date(day) if day else last_production_date()
     d0 = d1 - timedelta(days=days - 1)
     rows = warehouse.query(OEE_SQL, {"d0": d0, "d1": d1})
@@ -74,13 +65,6 @@ LINE_STOP_IDR_PER_HOUR = {"molding": P.DOWNTIME_IDR_PER_HOUR_IMM, "painting": 9_
 
 
 def downtime_pareto(days: int = 30, top: int = 5, machine_id: str | None = None) -> dict:
-    """Top downtime reasons by hours and Rupiah over the last `days` days.
-
-    Args:
-        days: look-back window in days (default 30).
-        top: number of reasons to return (default 5).
-        machine_id: optional filter.
-    """
     d1 = last_production_date()
     d0 = d1 - timedelta(days=days - 1)
     if machine_id:
@@ -115,12 +99,6 @@ EVENTS_SQL = "SELECT production_date AS d, reason_code, duration_minutes FROM fv
 
 
 def machine_health(machine_id: str = "IMM-04", fit_days: int = 21) -> dict:
-    """Breakdown risk from the cycle-time trend and the MTBF trend of one machine.
-
-    Args:
-        machine_id: e.g. IMM-04.
-        fit_days: days of history for the cycle-time trend (default 21).
-    """
     if machine_id not in P.MACHINE_BY_ID:
         return FVError("FV-DATA-001", f"unknown machine {machine_id}", {"valid": list(P.MACHINE_BY_ID)}).tool_result()
     daily = warehouse.query(HEALTH_SQL, {"mid": machine_id})
@@ -136,7 +114,6 @@ def machine_health(machine_id: str = "IMM-04", fit_days: int = 21) -> dict:
     days_to_alarm = None
     if alarm and slope > 0.01:
         days_to_alarm = round(max(0.0, (alarm - intercept) / slope), 1)
-    # Weekly MTBF (run hours per downtime event), oldest first.
     weekly = []
     end = days[-1]
     for w in range(12, -1, -1):

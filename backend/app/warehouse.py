@@ -1,10 +1,3 @@
-"""Read-only analytics access through SQLAlchemy: BigQuery in the cloud, DuckDB locally.
-
-Agent tools only reach data through `query`, which enforces the guardrails of PRD §7:
-SELECT only, allowlisted tables, always a LIMIT. SQL is written once with `fv.<table>` and
-`:param` placeholders and must stay portable (plain aggregates; date math is done in Python).
-"""
-
 from __future__ import annotations
 
 import re
@@ -51,12 +44,10 @@ def _run(sql: str, params: dict | None) -> list[dict]:
 
 
 def query(sql: str, params: dict | None = None) -> list[dict]:
-    """Run an allowlisted read-only query and return rows as dicts."""
     return _run(check_sql(sql), params)
 
 
 def raw(sql: str, params: dict | None = None) -> list[dict]:
-    """Unchecked query for trusted server code (BQML forecast); never exposed to agents."""
     return _run(sql, params)
 
 

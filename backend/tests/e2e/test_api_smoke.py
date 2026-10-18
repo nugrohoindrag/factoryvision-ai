@@ -1,5 +1,3 @@
-"""Smoke test against a running fv-app (local uvicorn or the Cloud Run URL)."""
-
 import os
 
 import httpx

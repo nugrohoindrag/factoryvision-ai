@@ -1,5 +1,3 @@
-"""Material Supply tools: plan x BOM requirements and stock projection."""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -29,12 +27,6 @@ def _on_hand(material_id: str) -> float:
 
 
 def material_requirements(month: str | None = None, demand_change_pct: dict | None = None) -> dict:
-    """Material requirement for a month = monthly plan x BOM, against stock on hand.
-
-    Args:
-        month: first day of month; default current month.
-        demand_change_pct: e.g. {"FB-ARKA": 40}.
-    """
     m = to_date(month).replace(day=1) if month else TODAY.replace(day=1)
     plan = monthly_plan(m, demand_change_pct)
     bom = warehouse.query("SELECT sku, material_id, qty_per_unit, unit FROM fv.bom")
@@ -55,17 +47,6 @@ def material_requirements(month: str | None = None, demand_change_pct: dict | No
 
 def stock_projection(material_id: str = "PP-EPDM-T20", demand_change_pct: dict | None = None, horizon_days: int = 21,
                      extra_receipts: list | None = None) -> dict:
-    """Day-by-day stock projection and shortage date for one material.
-
-    Uses the actual consumption rate (last 14 working days, includes short-shot scrap) and,
-    for comparison, the BOM rate from the monthly plan. Open POs count at promised date plus
-    the vendor's average delay.
-
-    Args:
-        material_id: e.g. PP-EPDM-T20.
-        demand_change_pct: e.g. {"FB-ARKA": 40}.
-        horizon_days: projection length in calendar days.
-    """
     if material_id != "PP-EPDM-T20":
         return {"material_id": material_id, "note": "consumption history is tracked for resin only in this prototype"}
     use = warehouse.query(USE_SQL)

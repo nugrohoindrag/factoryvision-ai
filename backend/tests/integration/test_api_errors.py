@@ -1,5 +1,3 @@
-"""API layer: every error leaves the server in the catalog shape."""
-
 from fastapi.testclient import TestClient
 
 from app.errors import FVError

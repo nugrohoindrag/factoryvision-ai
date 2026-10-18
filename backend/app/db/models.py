@@ -1,11 +1,3 @@
-"""SQLAlchemy models of the `fv` analytics dataset: the single source of truth for the schema.
-
-Targets BigQuery (sqlalchemy-bigquery) in the cloud and DuckDB (duckdb_engine) locally; Alembic
-migrations in backend/migrations are generated from these models. BigQuery does not enforce
-primary keys: they document the grain of each table and give the ORM an identity.
-Operational state (actions, sessions, vision cache) lives in Firestore, not here.
-"""
-
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -13,8 +5,6 @@ from datetime import date, datetime
 from sqlalchemy import BigInteger, Boolean, Date, DateTime, Double, MetaData, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-# Dataset name. Tables carry no explicit schema: the BigQuery URL sets `fv` as default dataset and
-# the local DuckDB file is named fv.duckdb, so `fv.<table>` in SQL resolves in both engines.
 SCHEMA = "fv"
 
 
@@ -25,7 +15,7 @@ class Base(DeclarativeBase):
 Str = String
 Int = BigInteger
 Ts = DateTime(timezone=True)
-Dbl = Double  # 64-bit: DOUBLE in DuckDB, FLOAT64 in BigQuery (a plain Float is a 32-bit REAL in DuckDB)
+Dbl = Double
 
 
 def pk(type_=Str):
@@ -36,7 +26,6 @@ def col(type_=Str):
     return mapped_column(type_, nullable=True)
 
 
-# --- master -------------------------------------------------------------------------------
 
 class DimMachine(Base):
     __tablename__ = "dim_machine"
@@ -145,7 +134,6 @@ class DimDowntimeReason(Base):
     shop_term: Mapped[str | None] = col()
 
 
-# --- facts --------------------------------------------------------------------------------
 
 class FactProduction(Base):
     __tablename__ = "fact_production"
@@ -291,8 +279,6 @@ class FactEnergy(Base):
 
 
 class PlantEvent(Base):
-    """Written by the Pub/Sub BigQuery subscription on plant-events."""
-
     __tablename__ = "plant_events"
     event_id: Mapped[str] = pk()
     session_id: Mapped[str | None] = col()
@@ -301,6 +287,9 @@ class PlantEvent(Base):
     event_type: Mapped[str | None] = col()
     subject: Mapped[str | None] = col()
     payload: Mapped[str | None] = col()
+
+
+PUBSUB_WRITTEN_TABLES = frozenset({"plant_events"})
 
 
 def bq_type(sa_type) -> str:

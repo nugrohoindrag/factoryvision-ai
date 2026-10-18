@@ -1,11 +1,3 @@
-"""Deterministic 90-day seed for Vidad with the seven planted stories (PRD §9).
-
-Run (from backend/): python -m simulator.seed.generator [--out ../data/seed] [--seed 20270201]
-
-Every number an agent must find is produced by a documented rule here, and the same rule is
-used by the agent tools (app/tools). Ground truth is written to evals/ground_truth.json.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -20,26 +12,25 @@ from pathlib import Path
 from simulator import plant as P
 from simulator.seed.schema import TABLES
 
-ROOT = Path(__file__).resolve().parents[3]  # repo root
+ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_SEED = 20270201
 
-# --- Story knobs (tuned so the tools land in the middle of the PRD §9 tolerances) -------------
-ARKA_FLAT = 560  # FB-ARKA orders per working day before the Lebaran ramp
+ARKA_FLAT = 560
 RAMP_START = date(2026, 12, 20)
-ARKA_END = 835  # FB-ARKA orders per working day on 31 Jan
+ARKA_END = 835
 BASE_DEMAND = {"RB-ARKA": 800, "FB-BROMO": 520, "RB-BROMO": 500, "FB-CITRA": 600, "RB-CITRA": 590}
 FEB_PLAN_PER_DAY = {"FB-ARKA": 995, "RB-ARKA": 800, "FB-BROMO": 520, "RB-BROMO": 500, "FB-CITRA": 600, "RB-CITRA": 590}
-IMM04_CYCLE = (70.0, 72.6, 79.6)  # start, knee (day 68), last day
+IMM04_CYCLE = (70.0, 72.6, 79.6)
 CYCLE_ALARM_RATIO = 1.20
-SHORT_SHOT_EXTRA = 0.06  # resin used above BOM because of short-shot scrap
-STOCKOUT_WORKDAYS = 8.5  # resin on hand at 1 Feb, in working days of actual use
+SHORT_SHOT_EXTRA = 0.06
+STOCKOUT_WORKDAYS = 8.5
 BAD_LOT = "LOT-PPT20-0918"
 BAD_LOT_MULT = {"BUBBLE": 6.0, "GAS_MARK": 6.0}
 HUMID_THRESHOLD = 80.0
 HUMID_MULT = {"DUST_SEED": 2.6}
 LATE_ORDER_COUNT = 3
 
-SHIFTS_PER_MACHINE = {"IMM-04": 3, "IMM-05": 3}  # others run shifts A and B
+SHIFTS_PER_MACHINE = {"IMM-04": 3, "IMM-05": 3}
 DEFECT_RATE_PCT = {
     "DUST_SEED": 0.55, "SEED": 0.25, "FIBER_SEED": 0.12, "ORANGE_PEEL": 0.35, "SAG_RUN": 0.25,
     "THIN_FILM": 0.15, "DRY_SPRAY": 0.08, "ROBOT_BARE": 0.06, "VOID": 0.04, "BURR": 0.10,
@@ -94,7 +85,6 @@ SHIFT_START_MIN = {"A": 7 * 60, "B": 15 * 60, "C": 23 * 60}
 
 
 def output_rate_last7(production: list[dict], machine_id: str) -> float:
-    """Average daily output_quantity of a machine over its last 7 production days (ATP rule)."""
     by_day: dict[date, int] = defaultdict(int)
     for r in production:
         if r["machine_id"] == machine_id:
@@ -112,7 +102,6 @@ class Generator:
     def noise(self, sd: float) -> float:
         return self.rng.gauss(1.0, sd)
 
-    # ------------------------------------------------------------------ master data
     def master(self) -> None:
         t = self.t
         for m in P.MACHINES:
@@ -141,9 +130,7 @@ class Generator:
         t["dim_downtime_reason"] = [dict(zip(("reason_code", "reason_name", "loss_category", "reason_category", "shop_term"), r))
                                     for r in P.DOWNTIME_REASONS]
 
-    # ------------------------------------------------------------------ downtime + production
     def downtime_events(self, days: list[date]) -> dict[tuple, list[dict]]:
-        """Downtime events keyed by (date, shift, machine)."""
         events: dict[tuple, list[dict]] = defaultdict(list)
         seq = 0
         for i, d in enumerate(days):
@@ -217,7 +204,6 @@ class Generator:
                         "rework_quantity": rework, "resin_kg": round(resin, 1),
                     })
 
-    # ------------------------------------------------------------------ resin, POs, lots
     def resin(self, days: list[date]) -> None:
         t = self.t
         use_by_day: dict[date, float] = defaultdict(float)
@@ -227,7 +213,6 @@ class Generator:
         rate = sum(use_by_day[d] for d in work[-14:]) / 14
         s_end = round(rate * STOCKOUT_WORKDAYS, -2)
 
-        # Resin POs every 5 days; Andalas gets ~70% and is ~4 days late on average.
         pos = []
         d = days[0] - timedelta(days=6)
         n = 0
@@ -245,7 +230,6 @@ class Generator:
         received_in_window = [p for p in pos if p["received_date"] >= days[0]]
         s0 = s_end - len(received_in_window) * qty + total_use
 
-        # Lots: FIFO; number them so that the lot in use during the last days is BAD_LOT.
         lots = [{"lot": None, "qty": s0, "po": None}] + [{"lot": None, "qty": qty, "po": p} for p in received_in_window]
         stock_lots = [dict(lots[0])]
         pending = sorted(lots[1:], key=lambda x: x["po"]["received_date"])
@@ -309,7 +293,6 @@ class Generator:
         self.resin_end = stock
         self.resin_rate = rate
 
-        # Other materials: one received PO each from the other vendors, for the scorecard.
         others = [("VEN-WARNA", "P1", 2400), ("VEN-KILAU", "K1", 2000), ("VEN-BAJA", "BRK-SET", 30000), ("VEN-RAKIT", "PKG-RT", 400)]
         for k, (vid, mat, q) in enumerate(others):
             for j in range(3):
@@ -324,7 +307,6 @@ class Generator:
                     "po_status": "Received", "received_qty": float(q), "lot_id": None,
                 })
 
-    # ------------------------------------------------------------------ quality
     def quality(self, days: list[date]) -> None:
         humidity: dict[tuple, float] = {}
         for d in days:
@@ -354,7 +336,6 @@ class Generator:
             self.t["fact_inspection"].append({"inspection_date": d, "shift_id": s, "sku": r["sku"], "resin_lot_id": lot,
                                               "humidity_pct": hum, "inspected_qty": qty, "ok_qty": qty - defects})
 
-    # ------------------------------------------------------------------ demand, orders, shipments
     def orders(self, days: list[date]) -> None:
         t = self.t
         seq = defaultdict(int)
@@ -367,7 +348,6 @@ class Generator:
             return row
 
         def split(sku: str, d: date, level: float) -> list[tuple[str, int]]:
-            """Customer lines for one day. OEMs call off daily; others order in weekly or twice-weekly lumps."""
             model = P.PRODUCT_BY_SKU[sku].model
             out = []
             for cust, share in P.CUSTOMER_MIX[model]:
@@ -394,7 +374,6 @@ class Generator:
                                                "sku": sku, "shipped_qty": qty, "ship_date": d + timedelta(days=1 if late else 0),
                                                "on_time": not late})
 
-        # Open orders for the firm week (Mon 1 – Sat 6 Feb).
         week = [P.DEMO_TODAY + timedelta(days=k) for k in range(6)]
         self.open_orders = []
         for d in week:
@@ -403,7 +382,6 @@ class Generator:
                 for cust, qty in split(sku, d, level):
                     self.open_orders.append(add_order(cust, sku, qty, d, "Planned" if d <= week[1] else "Received", 0))
 
-        # Monthly plans (Vidad "plan per month" pattern): history from orders, Feb from the OEM forecast.
         by_month: dict[tuple, int] = defaultdict(int)
         for r in t["fact_customer_order"]:
             if r["requested_delivery_date"] < P.DEMO_TODAY:
@@ -415,15 +393,12 @@ class Generator:
         for sku, per_day in FEB_PLAN_PER_DAY.items():
             t["fact_monthly_plan"].append({"plan_month": date(2027, 2, 1), "sku": sku, "plan_qty": per_day * feb_days, "source": "OEM forecast"})
 
-    # ------------------------------------------------------------------ stock snapshot (1 Feb 07:00)
     def stock_snapshot(self) -> None:
-        """Finished and WIP stock per SKU x colour. FB-ARKA is sized so exactly LATE_ORDER_COUNT open orders are late."""
         t = self.t
         ts = utc(P.DEMO_TODAY, 7 * 60)
         feb = {r["sku"]: r["plan_qty"] for r in t["fact_monthly_plan"] if r["plan_month"] == date(2027, 2, 1)}
         last_lot = self.lot_by_day[max(self.lot_by_day)]
 
-        # ATP rule shared with app/tools/delivery.py: supply by date d = stock on hand + output rate x working days up to and including d.
         rate = output_rate_last7(t["fact_production"], "IMM-04")
         orders = sorted([o for o in self.open_orders if o["sku"] == "FB-ARKA"], key=order_sort_key)
         cum, gaps = 0, []
@@ -431,8 +406,6 @@ class Generator:
             cum += o["order_qty"]
             wd = sum(1 for k in range((o["requested_delivery_date"] - P.DEMO_TODAY).days + 1) if P.is_working_day(P.DEMO_TODAY + timedelta(days=k)))
             gaps.append(cum - rate * wd)
-        # An order is late when its cumulative gap exceeds stock on hand; put stock between the
-        # 3rd and 4th largest gaps so exactly LATE_ORDER_COUNT orders are late.
         ranked = sorted(gaps, reverse=True)
         hi, lo = ranked[LATE_ORDER_COUNT - 1], ranked[LATE_ORDER_COUNT]
         assert hi - lo >= 20, f"cannot isolate {LATE_ORDER_COUNT} late orders: {gaps}"
@@ -447,7 +420,7 @@ class Generator:
             wsum = sum(weights)
             if p.sku == "FB-ARKA":
                 total = fb_arka_stock
-                parts = (0.05, 0.25, 0.70)  # WIP rack nearly empty (CAM-WIP shows 6)
+                parts = (0.05, 0.25, 0.70)
             else:
                 total = round(hourly * self.rng.uniform(8.0, 10.0))
                 parts = (0.30, 0.30, 0.40)
@@ -457,13 +430,12 @@ class Generator:
                 wip, mez = round(qty * parts[0]), round(qty * parts[1])
                 sgl = round(qty) - wip - mez
                 if p.sku == "FB-ARKA":
-                    wip = (2, 1, 1, 1, 1, 0)[k]  # 6 on the WIP rack in total
+                    wip = (2, 1, 1, 1, 1, 0)[k]
                     sgl = round(qty) - wip - mez
                 t["fact_stock_snapshot"].append({"snapshot_ts": ts, "sku": p.sku, "color": c, "wip_qty": wip, "mezzanine_qty": mez,
                                                  "sgl_qty": sgl, "hourly_use": round(hourly * share, 2), "target_hours": float(P.WIP_TARGET_HOURS),
                                                  "resin_lot_id": last_lot})
 
-    # ------------------------------------------------------------------ energy
     def energy(self) -> None:
         agg: dict[tuple, dict] = defaultdict(lambda: {"kwh": 0.0, "units": 0, "run": 0.0})
         for r in self.t["fact_production"]:
@@ -478,7 +450,6 @@ class Generator:
             co2 = kwh * P.GRID_KG_CO2_PER_KWH + (a["units"] * P.OVEN_KG_CO2_PER_UNIT if mid == "OVN-01" else 0)
             self.t["fact_energy"].append({"energy_date": d, "machine_id": mid, "kwh": round(kwh, 1), "gas_m3": round(gas, 1), "co2e_kg": round(co2, 1)})
 
-    # ------------------------------------------------------------------
     def run(self) -> None:
         days = history_days()
         self.master()

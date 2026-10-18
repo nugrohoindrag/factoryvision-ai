@@ -1,5 +1,3 @@
-"""fv-app: FastAPI entry point. Run (from backend/): uvicorn app.main:app --reload --port 8080"""
-
 from __future__ import annotations
 
 import logging

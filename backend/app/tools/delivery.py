@@ -1,8 +1,3 @@
-"""Delivery tools: ATP check, orders at risk, stock in hours of customer use.
-
-The ATP rule and the supply formula it is computed from are ATP_RULE_SUMMARY and ATP_RULE_FORMULA.
-"""
-
 from __future__ import annotations
 
 from datetime import timedelta
@@ -46,11 +41,6 @@ def _stock() -> dict:
 
 
 def atp_check(sku: str | None = None, rate_override: dict | None = None, extra_stock: dict | None = None) -> dict:
-    """Available-to-promise per SKU for the open orders, with estimated completion dates.
-
-    Args:
-        sku: optional SKU filter.
-    """
     molds = {r["sku"]: r["current_machine_id"] for r in warehouse.query("SELECT sku, current_machine_id FROM fv.dim_mold")}
     orders = warehouse.query("SELECT order_id, customer_id, sku, order_qty, requested_delivery_date FROM fv.fact_customer_order WHERE order_status IN ('Received', 'Planned')")
     stock = _stock()
@@ -83,7 +73,6 @@ def atp_check(sku: str | None = None, rate_override: dict | None = None, extra_s
 
 
 def orders_at_risk(rate_override: dict | None = None, extra_stock: dict | None = None) -> dict:
-    """Open orders whose estimated completion is after the requested delivery date, plus SKU x colour below stock target."""
     atp = atp_check(rate_override=rate_override, extra_stock=extra_stock)
     customers = {c["customer_id"]: c for c in P.CUSTOMERS}
     risk, low = [], []

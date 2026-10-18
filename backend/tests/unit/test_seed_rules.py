@@ -7,7 +7,7 @@ from simulator.seed import generator as G
 def test_working_day_helpers():
     assert working_days_in_month(date(2027, 2, 1)) == 24
     assert working_days_between(date(2027, 2, 1), date(2027, 2, 8)) == 6
-    assert add_working_days(date(2027, 2, 6), 1) == date(2027, 2, 8)  # skips Sunday
+    assert add_working_days(date(2027, 2, 6), 1) == date(2027, 2, 8)
 
 
 def test_lebaran_ramp_shape():

@@ -1,8 +1,3 @@
-"""Test pyramid: tests/unit (no I/O), tests/integration (DuckDB + Alembic), tests/e2e (running API).
-
-Markers are applied from the directory, so `pytest -m unit` runs only the base of the pyramid.
-"""
-
 from __future__ import annotations
 
 import json

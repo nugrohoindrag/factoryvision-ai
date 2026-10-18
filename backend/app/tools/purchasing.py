@@ -1,5 +1,3 @@
-"""Purchasing tools: vendor scorecard and PO recommendation."""
-
 from __future__ import annotations
 
 from datetime import timedelta
@@ -12,11 +10,6 @@ PO_SQL = "SELECT po_id, vendor_id, material_id, order_qty, order_date, promised_
 
 
 def vendor_performance(category: str | None = None) -> dict:
-    """On-time rate, average delay and actual lead time per vendor over the last 90 days.
-
-    Args:
-        category: optional vendor category filter (Resin, Paint, Component, Packaging).
-    """
     rows = warehouse.query(PO_SQL)
     vendors = {v["vendor_id"]: v for v in warehouse.query("SELECT vendor_id, vendor_name, category, lead_time_days, unit_price_idr FROM fv.dim_vendor")}
     out = []
@@ -37,13 +30,6 @@ def vendor_performance(category: str | None = None) -> dict:
 
 
 def recommend_po(material_id: str = "PP-EPDM-T20", need_by: str | None = None, qty: float | None = None) -> dict:
-    """Compare vendors for an urgent PO: expected arrival = today + quoted lead time + average delay.
-
-    Args:
-        material_id: e.g. PP-EPDM-T20.
-        need_by: date the material must arrive (YYYY-MM-DD), e.g. the projected stockout date.
-        qty: order quantity in kg; default = 10 working days of use.
-    """
     perf = {v["vendor_id"]: v for v in vendor_performance()["vendors"]}
     need = to_date(need_by) if need_by else None
     qty = qty or 160_000.0

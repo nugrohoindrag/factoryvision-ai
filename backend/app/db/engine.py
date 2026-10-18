@@ -1,9 +1,3 @@
-"""SQLAlchemy engines for the analytics warehouse and the local build step.
-
-- local:    DuckDB file named fv.duckdb (its catalog name is then `fv`), built by `python -m app.db.build_local`
-- bigquery: bigquery://<project>/fv, migrated with Alembic, loaded by `python -m app.db.load_bigquery`
-"""
-
 from __future__ import annotations
 
 import os
@@ -34,5 +28,4 @@ def make_engine(url: str, read_only: bool = False) -> Engine:
 
 @lru_cache(maxsize=1)
 def engine() -> Engine:
-    """Read-only engine used by agent tools."""
     return make_engine(database_url(), read_only=settings.warehouse != "bigquery")

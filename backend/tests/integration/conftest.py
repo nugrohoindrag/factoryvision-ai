@@ -1,5 +1,3 @@
-"""Builds a fresh seed and DuckDB warehouse (through Alembic) once per test session."""
-
 from __future__ import annotations
 
 import pytest

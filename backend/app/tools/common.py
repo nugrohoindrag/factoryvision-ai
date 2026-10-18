@@ -1,5 +1,3 @@
-"""Shared helpers for the deterministic agent tools."""
-
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -9,7 +7,7 @@ import numpy as np
 from simulator import plant as P
 
 TODAY = P.DEMO_TODAY
-AVAILABLE_FACTOR = 0.88  # planning efficiency: planned maintenance, minor stops
+AVAILABLE_FACTOR = 0.88
 MINUTES_PER_WORKDAY = 3 * 450
 
 
@@ -20,7 +18,6 @@ def to_date(v) -> date:
 
 
 def working_days_between(start: date, end: date) -> int:
-    """Working days in [start, end)."""
     return sum(1 for k in range((end - start).days) if P.is_working_day(start + timedelta(days=k)))
 
 
@@ -39,7 +36,6 @@ def add_working_days(start: date, n: int) -> date:
 
 
 def linear_fit(xs: list[float], ys: list[float]) -> tuple[float, float]:
-    """Least-squares slope and intercept."""
     slope, intercept = np.polyfit(np.asarray(xs, float), np.asarray(ys, float), 1)
     return float(slope), float(intercept)
 

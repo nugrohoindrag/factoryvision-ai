@@ -5,8 +5,13 @@ import logging
 
 from sqlalchemy.exc import DatabaseError
 
+from app.db.models import Base
 from app.main import app
 from app.tools import delivery, forecast, material
+
+
+def test_every_table_declares_its_grain_as_a_primary_key():
+    assert [t.name for t in Base.metadata.sorted_tables if not t.primary_key.columns] == []
 
 
 def test_atp_rule_is_not_parsed_from_a_docstring():

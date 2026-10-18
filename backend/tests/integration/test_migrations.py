@@ -1,9 +1,3 @@
-"""Alembic migrations must build exactly the tables and column types of the SQLAlchemy models.
-
-Compared through information_schema: duckdb_engine's column reflection is not compatible with
-SQLAlchemy 2.1, so Alembic autogenerate compare cannot be used against DuckDB.
-"""
-
 from alembic import command
 from sqlalchemy import BigInteger, Boolean, Date, DateTime, Double, String, text
 

@@ -1,5 +1,3 @@
-"""The seven planted stories (PRD §9), checked at tool level against evals/ground_truth.json."""
-
 from app.tools import delivery, forecast, material, mes, planning, purchasing, quality
 
 
@@ -34,7 +32,7 @@ def test_material_shortage(ground_truth):
     s = ground_truth["stories"]["material_supply"]
     r = material.stock_projection(s["material"])
     within(r["days_to_stockout"], s)
-    assert 0 < r["overconsumption_vs_bom_pct"] < 12  # short-shot scrap
+    assert 0 < r["overconsumption_vs_bom_pct"] < 12
 
 
 def test_purchasing_late_vendor(ground_truth):
