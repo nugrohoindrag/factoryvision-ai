@@ -192,9 +192,14 @@ def _cached(module: str, key: str) -> str:
     return json.dumps(_BUILDERS[module](Overrides(**d)), default=str)
 
 
-def summary(module: str, o: Overrides | None = None) -> dict[str, Any]:
+def summary(module: str, o: Overrides | None = None, *, sid: str | None = None) -> dict[str, Any]:
     if module not in _BUILDERS:
         raise FVError(UNKNOWN_MODULE, detail={"module": module, "valid": list(PAGES)})
     o = o or Overrides()
     key = json.dumps({**o.as_dict(), "applied": []}, sort_keys=True, default=str)
-    return {"module": module, "scenario": o.scenario, "applied_actions": o.applied, **json.loads(_cached(module, key))}
+    out = {"module": module, "scenario": o.scenario, "applied_actions": o.applied, **json.loads(_cached(module, key))}
+    if module == "purchasing":
+        from app import purchasing_docs
+
+        out.update(purchasing_docs.summary(sid or ""))
+    return out
