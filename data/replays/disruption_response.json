@@ -2,7 +2,7 @@
  "scenario": "disruption_response",
  "recorded_with": "scripted playbook (deterministic tools, templated narrative, no Gemini)",
  "scripted": true,
- "recorded_at": "2026-10-18T13:34:02+00:00",
+ "recorded_at": "2026-10-18T14:08:05+00:00",
  "prompt": "Disruption: OEM-A sent a revised delivery schedule (customer-po-oem-a.pdf) raising FB-ARKA; the resin vendor for PP-EPDM-T20 emailed about a late delivery (vendor-email-andalas.txt); IMM-04 is slowing down. Trace the impact across all modules and produce one action plan.",
  "timeline": [
   {
@@ -63,7 +63,7 @@
    "kind": "tool_result",
    "agent": "demand_forecast_agent",
    "tool": "get_latest_forecast_snapshot",
-   "summary": "forecast_id=FC-2027-02-001, status=Generated, superseded_by=None, engine=local trend+weekday (dev), generated_at=2026-10-18T13:34:01+00:00",
+   "summary": "forecast_id=FC-2027-02-001, status=Generated, superseded_by=None, engine=local trend+weekday (dev), generated_at=2026-10-18T14:08:05+00:00",
    "error": false
   },
   {
@@ -141,7 +141,7 @@
    "kind": "tool_result",
    "agent": "production_planning_agent",
    "tool": "run_scheduler",
-   "summary": "status=OPTIMAL, solve_seconds=0.06, month=2027-02-01, plan_qty={'FB-ARKA': 33432, 'RB-ARKA': 19200, 'F…, unmet_qty={'FB-ARKA': 10000, 'RB-ARKA': 0, 'FB-BR…",
+   "summary": "status=OPTIMAL, solve_seconds=0.05, month=2027-02-01, plan_qty={'FB-ARKA': 33432, 'RB-ARKA': 19200, 'F…, unmet_qty={'FB-ARKA': 10000, 'RB-ARKA': 0, 'FB-BR…",
    "error": false
   },
   {
@@ -158,7 +158,7 @@
    "kind": "tool_result",
    "agent": "production_planning_agent",
    "tool": "propose_replan",
-   "summary": "action_id=ACT-36c9b992aa, status=pending (needs human approval), impact={'rupiah_idr': 0, 'scrap_kg': 0, 'kwh':…, impact_breakdown={}, reasons=['No production plan uses the latest fo…",
+   "summary": "action_id=ACT-13ab9a1c11, status=pending (needs human approval), impact={'rupiah_idr': 0, 'scrap_kg': 0, 'kwh':…, impact_breakdown={}, reasons=['No production plan uses the latest fo…",
    "error": false
   },
   {
@@ -177,7 +177,7 @@
    "kind": "tool_result",
    "agent": "production_planning_agent",
    "tool": "propose_mold_move",
-   "summary": "action_id=ACT-d68e07a57e, status=pending (needs human approval), impact={'rupiah_idr': 571358000, 'scrap_kg': 0…, impact_breakdown={'extra_units_contribution_idr': 591758…",
+   "summary": "action_id=ACT-6d94d2dc4e, status=pending (needs human approval), impact={'rupiah_idr': 571358000, 'scrap_kg': 0…, impact_breakdown={'extra_units_contribution_idr': 591758…",
    "error": false
   },
   {
@@ -238,7 +238,7 @@
    "kind": "tool_result",
    "agent": "material_supply_agent",
    "tool": "get_latest_mrp",
-   "summary": "run_id=MRP-2027-02-001, horizon_start=2027-02-01, horizon_end=2027-03-03, plan_ids=['OEM-2027-02'], created_at=2026-10-18T13:34:01.907708+00:00",
+   "summary": "run_id=MRP-2027-02-001, horizon_start=2027-02-01, horizon_end=2027-03-03, plan_ids=['OEM-2027-02'], created_at=2026-10-18T14:08:05.605891+00:00",
    "error": false
   },
   {
@@ -322,11 +322,45 @@
    "kind": "tool_result",
    "agent": "purchasing_agent",
    "tool": "draft_po",
-   "summary": "action_id=ACT-8298dfad64, status=pending (needs human approval), impact={'rupiah_idr': 2213943000, 'scrap_kg': …, impact_breakdown={'avoided_line_stop_idr': 2517943000, '…",
+   "summary": "action_id=ACT-69d4d9be03, status=pending (needs human approval), impact={'rupiah_idr': 2213943000, 'scrap_kg': …, impact_breakdown={'avoided_line_stop_idr': 2517943000, '…",
    "error": false
   },
   {
    "t_ms": 36000,
+   "kind": "tool_call",
+   "agent": "purchasing_agent",
+   "tool": "list_overdue_purchase_orders",
+   "args": {}
+  },
+  {
+   "t_ms": 36900,
+   "kind": "tool_result",
+   "agent": "purchasing_agent",
+   "tool": "list_overdue_purchase_orders",
+   "summary": "count=0, orders=[], truncated=False",
+   "error": false
+  },
+  {
+   "t_ms": 37800,
+   "kind": "tool_call",
+   "agent": "purchasing_agent",
+   "tool": "recommend_vendor",
+   "args": {
+    "material_id": "SNS-HLD",
+    "qty": "88070.0",
+    "need_by": "2027-02-01"
+   }
+  },
+  {
+   "t_ms": 38700,
+   "kind": "tool_result",
+   "agent": "purchasing_agent",
+   "tool": "recommend_vendor",
+   "summary": "material_id=SNS-HLD, qty=88070.0, need_by=2027-02-01, options=[{'vendor_id': 'VEN-BAJA', 'vendor_name…, recommended_vendor_id=VEN-BAJA",
+   "error": false
+  },
+  {
+   "t_ms": 39600,
    "kind": "tool_call",
    "agent": "purchasing_agent",
    "tool": "propose_po_from_shortage",
@@ -335,25 +369,25 @@
    }
   },
   {
-   "t_ms": 36900,
+   "t_ms": 40500,
    "kind": "tool_result",
    "agent": "purchasing_agent",
    "tool": "propose_po_from_shortage",
-   "summary": "action_id=ACT-41816d0600, title=PO SNS-HLD 88,070 pcs from CV Baja Klip…, args={'vendor_id': 'VEN-BAJA', 'material_id'…, impact={'rupiah_idr': 0, 'scrap_kg': 0, 'kwh':…, mrp_run_id=MRP-2027-02-001",
+   "summary": "action_id=ACT-d93574887b, title=PO SNS-HLD 88,070 pcs from CV Baja Klip…, args={'vendor_id': 'VEN-BAJA', 'material_id'…, impact={'rupiah_idr': 0, 'scrap_kg': 0, 'kwh':…, mrp_run_id=MRP-2027-02-001",
    "error": false
   },
   {
-   "t_ms": 37800,
+   "t_ms": 41400,
    "kind": "agent_end",
    "agent": "purchasing_agent"
   },
   {
-   "t_ms": 38700,
+   "t_ms": 42300,
    "kind": "agent_start",
    "agent": "mes_agent"
   },
   {
-   "t_ms": 39600,
+   "t_ms": 43200,
    "kind": "tool_call",
    "agent": "mes_agent",
    "tool": "get_machine_health",
@@ -362,7 +396,7 @@
    }
   },
   {
-   "t_ms": 40500,
+   "t_ms": 44100,
    "kind": "tool_result",
    "agent": "mes_agent",
    "tool": "get_machine_health",
@@ -370,14 +404,14 @@
    "error": false
   },
   {
-   "t_ms": 41400,
+   "t_ms": 45000,
    "kind": "tool_call",
    "agent": "mes_agent",
    "tool": "twin_observations",
    "args": {}
   },
   {
-   "t_ms": 42300,
+   "t_ms": 45900,
    "kind": "tool_result",
    "agent": "mes_agent",
    "tool": "twin_observations",
@@ -385,7 +419,7 @@
    "error": false
   },
   {
-   "t_ms": 43200,
+   "t_ms": 46800,
    "kind": "tool_call",
    "agent": "mes_agent",
    "tool": "propose_maintenance",
@@ -395,25 +429,25 @@
    }
   },
   {
-   "t_ms": 44100,
+   "t_ms": 47700,
    "kind": "tool_result",
    "agent": "mes_agent",
    "tool": "propose_maintenance",
-   "summary": "action_id=ACT-b79ac29e46, status=pending (needs human approval), impact={'rupiah_idr': 937629000, 'scrap_kg': 1…, impact_breakdown={'avoided_breakdown_idr': 114240000, 's…",
+   "summary": "action_id=ACT-c32ff50940, status=pending (needs human approval), impact={'rupiah_idr': 937629000, 'scrap_kg': 1…, impact_breakdown={'avoided_breakdown_idr': 114240000, 's…",
    "error": false
   },
   {
-   "t_ms": 45000,
+   "t_ms": 48600,
    "kind": "agent_end",
    "agent": "mes_agent"
   },
   {
-   "t_ms": 45900,
+   "t_ms": 49500,
    "kind": "agent_start",
    "agent": "quality_control_agent"
   },
   {
-   "t_ms": 46800,
+   "t_ms": 50400,
    "kind": "tool_call",
    "agent": "quality_control_agent",
    "tool": "get_defect_correlation",
@@ -422,7 +456,7 @@
    }
   },
   {
-   "t_ms": 47700,
+   "t_ms": 51300,
    "kind": "tool_result",
    "agent": "quality_control_agent",
    "tool": "get_defect_correlation",
@@ -430,7 +464,7 @@
    "error": false
   },
   {
-   "t_ms": 48600,
+   "t_ms": 52200,
    "kind": "tool_call",
    "agent": "quality_control_agent",
    "tool": "propose_hold",
@@ -440,32 +474,32 @@
    }
   },
   {
-   "t_ms": 49500,
+   "t_ms": 53100,
    "kind": "tool_result",
    "agent": "quality_control_agent",
    "tool": "propose_hold",
-   "summary": "action_id=ACT-129bc1ad2d, status=pending (needs human approval), impact={'rupiah_idr': 37911000, 'scrap_kg': 0,…, impact_breakdown={'avoided_customer_claims_idr': 3791100…",
+   "summary": "action_id=ACT-0077b29a78, status=pending (needs human approval), impact={'rupiah_idr': 37911000, 'scrap_kg': 0,…, impact_breakdown={'avoided_customer_claims_idr': 3791100…",
    "error": false
   },
   {
-   "t_ms": 50400,
+   "t_ms": 54000,
    "kind": "agent_end",
    "agent": "quality_control_agent"
   },
   {
-   "t_ms": 51300,
+   "t_ms": 54900,
    "kind": "agent_start",
    "agent": "delivery_agent"
   },
   {
-   "t_ms": 52200,
+   "t_ms": 55800,
    "kind": "tool_call",
    "agent": "delivery_agent",
    "tool": "get_orders_at_risk",
    "args": {}
   },
   {
-   "t_ms": 53100,
+   "t_ms": 56700,
    "kind": "tool_result",
    "agent": "delivery_agent",
    "tool": "get_orders_at_risk",
@@ -473,7 +507,7 @@
    "error": false
   },
   {
-   "t_ms": 54000,
+   "t_ms": 57600,
    "kind": "tool_call",
    "agent": "delivery_agent",
    "tool": "propose_ship_date",
@@ -484,15 +518,15 @@
    }
   },
   {
-   "t_ms": 54900,
+   "t_ms": 58500,
    "kind": "tool_result",
    "agent": "delivery_agent",
    "tool": "propose_ship_date",
-   "summary": "action_id=ACT-2a8f41d836, status=pending (needs human approval), impact={'rupiah_idr': 2500000, 'scrap_kg': 0, …, impact_breakdown={'penalty_reduction_idr': 2500000}",
+   "summary": "action_id=ACT-362670587e, status=pending (needs human approval), impact={'rupiah_idr': 2500000, 'scrap_kg': 0, …, impact_breakdown={'penalty_reduction_idr': 2500000}",
    "error": false
   },
   {
-   "t_ms": 55800,
+   "t_ms": 59400,
    "kind": "tool_call",
    "agent": "delivery_agent",
    "tool": "propose_ship_date",
@@ -503,15 +537,15 @@
    }
   },
   {
-   "t_ms": 56700,
+   "t_ms": 60300,
    "kind": "tool_result",
    "agent": "delivery_agent",
    "tool": "propose_ship_date",
-   "summary": "action_id=ACT-99b665e08c, status=pending (needs human approval), impact={'rupiah_idr': 7500000, 'scrap_kg': 0, …, impact_breakdown={'penalty_reduction_idr': 7500000}",
+   "summary": "action_id=ACT-9a2f7ad2c1, status=pending (needs human approval), impact={'rupiah_idr': 7500000, 'scrap_kg': 0, …, impact_breakdown={'penalty_reduction_idr': 7500000}",
    "error": false
   },
   {
-   "t_ms": 57600,
+   "t_ms": 61200,
    "kind": "tool_call",
    "agent": "delivery_agent",
    "tool": "propose_ship_date",
@@ -522,15 +556,15 @@
    }
   },
   {
-   "t_ms": 58500,
+   "t_ms": 62100,
    "kind": "tool_result",
    "agent": "delivery_agent",
    "tool": "propose_ship_date",
-   "summary": "action_id=ACT-98bc1fb0b8, status=pending (needs human approval), impact={'rupiah_idr': 85000000, 'scrap_kg': 0,…, impact_breakdown={'penalty_reduction_idr': 85000000}",
+   "summary": "action_id=ACT-1aac924986, status=pending (needs human approval), impact={'rupiah_idr': 85000000, 'scrap_kg': 0,…, impact_breakdown={'penalty_reduction_idr': 85000000}",
    "error": false
   },
   {
-   "t_ms": 59400,
+   "t_ms": 63000,
    "kind": "tool_call",
    "agent": "delivery_agent",
    "tool": "draft_customer_notice",
@@ -540,35 +574,35 @@
    }
   },
   {
-   "t_ms": 60300,
+   "t_ms": 63900,
    "kind": "tool_result",
    "agent": "delivery_agent",
    "tool": "draft_customer_notice",
-   "summary": "action_id=ACT-4a04f3e346, status=pending (needs human approval), impact={'rupiah_idr': 0, 'scrap_kg': 0, 'kwh':…, impact_breakdown={}",
+   "summary": "action_id=ACT-45fae42041, status=pending (needs human approval), impact={'rupiah_idr': 0, 'scrap_kg': 0, 'kwh':…, impact_breakdown={}",
    "error": false
   },
   {
-   "t_ms": 61200,
+   "t_ms": 64800,
    "kind": "agent_end",
    "agent": "delivery_agent"
   },
   {
-   "t_ms": 62100,
+   "t_ms": 65700,
    "kind": "tool_call",
    "agent": "orchestrator",
    "tool": "plan_summary",
    "args": {}
   },
   {
-   "t_ms": 63000,
+   "t_ms": 66600,
    "kind": "tool_result",
    "agent": "orchestrator",
    "tool": "plan_summary",
-   "summary": "plan_id=PLAN-0aa26666, proposals=[{'action_id': 'ACT-36c9b992aa', 'kind'…, total={'rupiah_idr': 3855841000, 'scrap_kg': …",
+   "summary": "plan_id=PLAN-af8d11d1, proposals=[{'action_id': 'ACT-13ab9a1c11', 'kind'…, total={'rupiah_idr': 3855841000, 'scrap_kg': …",
    "error": false
   },
   {
-   "t_ms": 63900,
+   "t_ms": 67500,
    "kind": "agent_end",
    "agent": "orchestrator"
   }
@@ -770,16 +804,16 @@
    "rationale": "IMM-04 cycle 79.28 s vs ideal 68.0 s, rising 0.336 s/day; alarm in 6.9 days; MTBF fell from 87.6 h to 21.5 h.",
    "evidence": [
     {
-     "source": "get_material_readiness: material readiness per plan (BOM x plan vs stock and dated incoming)"
-    },
-    {
-     "source": "get_latest_mrp: MRP run MRP-2027-02-001 (gross = BOM x plans, net = gross - available)"
-    },
-    {
      "source": "get_vendor_scorecard: fv.fact_purchase_order, fv.dim_vendor"
     },
     {
      "source": "compare_vendors_for_po: fv.fact_purchase_order, fv.dim_vendor"
+    },
+    {
+     "source": "list_overdue_purchase_orders: purchasing_docs (session POs and seed open POs from fv.fact_purchase_order)"
+    },
+    {
+     "source": "recommend_vendor: purchasing_docs.recommend (today + quoted lead time + average delay + announced delay)"
     },
     {
      "source": "get_machine_health: fv.fact_production, fv.fact_downtime, fv.dim_machine"
@@ -805,13 +839,13 @@
    "rationale": "Gas mark is 6.2x the plant rate on LOT-PPT20-0918 (0.68% vs 0.11%); 1342 bumpers from this lot are in stock.",
    "evidence": [
     {
-     "source": "get_latest_mrp: MRP run MRP-2027-02-001 (gross = BOM x plans, net = gross - available)"
-    },
-    {
-     "source": "get_vendor_scorecard: fv.fact_purchase_order, fv.dim_vendor"
-    },
-    {
      "source": "compare_vendors_for_po: fv.fact_purchase_order, fv.dim_vendor"
+    },
+    {
+     "source": "list_overdue_purchase_orders: purchasing_docs (session POs and seed open POs from fv.fact_purchase_order)"
+    },
+    {
+     "source": "recommend_vendor: purchasing_docs.recommend (today + quoted lead time + average delay + announced delay)"
     },
     {
      "source": "get_machine_health: fv.fact_production, fv.fact_downtime, fv.dim_machine"
@@ -840,10 +874,10 @@
    "rationale": "456 x FB-ARKA short by 43 on 2027-02-04 because IMM-04 output is down.",
    "evidence": [
     {
-     "source": "get_vendor_scorecard: fv.fact_purchase_order, fv.dim_vendor"
+     "source": "list_overdue_purchase_orders: purchasing_docs (session POs and seed open POs from fv.fact_purchase_order)"
     },
     {
-     "source": "compare_vendors_for_po: fv.fact_purchase_order, fv.dim_vendor"
+     "source": "recommend_vendor: purchasing_docs.recommend (today + quoted lead time + average delay + announced delay)"
     },
     {
      "source": "get_machine_health: fv.fact_production, fv.fact_downtime, fv.dim_machine"
@@ -876,10 +910,10 @@
    "rationale": "359 x FB-ARKA short by 314 on 2027-02-05 because IMM-04 output is down.",
    "evidence": [
     {
-     "source": "get_vendor_scorecard: fv.fact_purchase_order, fv.dim_vendor"
+     "source": "list_overdue_purchase_orders: purchasing_docs (session POs and seed open POs from fv.fact_purchase_order)"
     },
     {
-     "source": "compare_vendors_for_po: fv.fact_purchase_order, fv.dim_vendor"
+     "source": "recommend_vendor: purchasing_docs.recommend (today + quoted lead time + average delay + announced delay)"
     },
     {
      "source": "get_machine_health: fv.fact_production, fv.fact_downtime, fv.dim_machine"
@@ -912,10 +946,10 @@
    "rationale": "870 x FB-ARKA short by 340 on 2027-02-06 because IMM-04 output is down.",
    "evidence": [
     {
-     "source": "get_vendor_scorecard: fv.fact_purchase_order, fv.dim_vendor"
+     "source": "list_overdue_purchase_orders: purchasing_docs (session POs and seed open POs from fv.fact_purchase_order)"
     },
     {
-     "source": "compare_vendors_for_po: fv.fact_purchase_order, fv.dim_vendor"
+     "source": "recommend_vendor: purchasing_docs.recommend (today + quoted lead time + average delay + announced delay)"
     },
     {
      "source": "get_machine_health: fv.fact_production, fv.fact_downtime, fv.dim_machine"
@@ -948,10 +982,10 @@
    "rationale": "Dear Bengawan Aftermarket team,\n\nOur injection molding machine for FB-ARKA needs preventive maintenance this week. To protect quality we are re-sequencing production, which moves these deliveries:\n- SO-270204-002: 456 x FB-ARKA, requested 2027-02-04, new date 2027-02-05\n- SO-270205-002: 359 x FB-ARKA, requested 2027-02-05, new date 2027-02-06\n- SO-270206-001: 870 x FB-ARKA, requested 2027-02-06, new date 2027-02-08\n\nWe have moved the mold to a second machine and are pulling in resin to recover as fast as possible, and will confirm each call-off 48 hours ahead.\n\nBest regards,\nVidad Delivery Team",
    "evidence": [
     {
-     "source": "get_vendor_scorecard: fv.fact_purchase_order, fv.dim_vendor"
+     "source": "list_overdue_purchase_orders: purchasing_docs (session POs and seed open POs from fv.fact_purchase_order)"
     },
     {
-     "source": "compare_vendors_for_po: fv.fact_purchase_order, fv.dim_vendor"
+     "source": "recommend_vendor: purchasing_docs.recommend (today + quoted lead time + average delay + announced delay)"
     },
     {
      "source": "get_machine_health: fv.fact_production, fv.fact_downtime, fv.dim_machine"

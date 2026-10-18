@@ -93,6 +93,11 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-AGT-010` | 404 | Material not in MRP run | A draft PO was asked for a material that has no result row in the MRP run. | Pick a material from the run's results, or run MRP again. |
 | `FV-AGT-011` | 409 | Nothing to order | A draft PO was asked for a material whose MRP net requirement is zero. | No PO is needed; the material is covered by stock and dated incoming. |
 | `FV-AGT-012` | 422 | No default vendor | The material has no known default vendor, so a draft PO cannot be built. | Set the material's default vendor in the material master. |
+| `FV-AGT-020` | 409 | Nothing to requisition | A requisition was proposed from an MRP run that has no material with a net requirement above zero. | No requisition is needed; run MRP again after the plans change. |
+| `FV-AGT-021` | 422 | Vendor does not supply the material | A purchase order was proposed with a vendor that is not listed for the material. | Pick a vendor from recommend_vendor, or leave the vendor empty to use the recommended one. |
+| `FV-AGT-022` | 422 | Quantity must be above zero | A purchase order was proposed with a quantity of zero or less. | Use the net quantity from the MRP run or the readiness shortage. |
+| `FV-AGT-023` | 409 | PO cannot be expedited | An expedite was proposed for a PO that is not Issued or Partially Received, or for a seed PO. | Expedite only open session POs; list them with list_purchase_orders. |
+| `FV-AGT-024` | 422 | Expedite date not earlier | The new promised date of an expedite is not earlier than the PO's current promised date. | Give a date before the current promised date. |
 | `FV-PUB-001` | 400 | Invalid push message | A Pub/Sub push request is malformed. | Pub/Sub retries; check the publisher. |
 | `FV-PUB-002` | 403 | Push not authorised | The push request's OIDC token is missing or invalid. | Check the subscription's service account. |
 | `FV-SYS-001` | 500 | Internal error | Unexpected server error. | Report the `request_id` from the response headers. |
@@ -110,3 +115,19 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-MD-003` | 404 | Unknown master data row | No row with this key exists in this master data. | Reload the list; the row may have been deleted. |
 | `FV-MD-004` | 409 | Row still referenced | The row is used by other master data (for example a material in a BOM), so deleting it would leave a broken reference. | Change or delete the rows listed in `detail.references` first. |
 | `FV-MD-005` | 400 | Read-only master data | The master data is derived from other master data (product routings) and cannot be edited directly. | Edit the source it is derived from instead. |
+| `FV-PUR-001` | 404 | Unknown vendor | The vendor id is not in the vendor master. | Use a vendor_id from GET /api/purchasing/vendors. |
+| `FV-PUR-002` | 404 | No vendor for material | No vendor in the vendor master supplies this material. | Add the material to a vendor before buying it. |
+| `FV-PUR-003` | 400 | No lines | A requisition, purchase order or goods receipt has no lines. | Send at least one line with a material and a quantity. |
+| `FV-PUR-004` | 400 | Quantity must be positive | A line quantity is zero or negative. | Send a quantity greater than zero. |
+| `FV-PUR-005` | 409 | Action not allowed in this status | The requisition or purchase order is in a status that does not allow this action. | Check `detail.status` and `detail.allowed_from`; refresh the document and retry. |
+| `FV-PUR-006` | 404 | Requisition not found | The purchase requisition id does not exist in this session. | List requisitions with GET /api/purchasing/requisitions. |
+| `FV-PUR-007` | 400 | Vendor does not supply material | The chosen vendor is not a supplier of this material. | Pick one of the vendors in `detail.valid` (GET /api/purchasing/recommend lists them). |
+| `FV-PUR-008` | 400 | Expedite date not earlier | The new promised date is not earlier than the current promised date. | Send a date before the current one. |
+| `FV-PUR-009` | 400 | Receipt over tolerance | A received quantity is more than the open quantity plus the 5% tolerance. | Receive at most `detail.max_qty`; raise a new PO for the rest. |
+| `FV-PUR-010` | 400 | Invalid date | A date field is not an ISO date. | Send dates as YYYY-MM-DD. |
+| `FV-PUR-011` | 400 | Reason required | A reject or expedite was sent without a reason. | Give a reason of at least 3 characters. |
+| `FV-PUR-012` | 404 | Purchase order not found | The PO id is neither a session PO nor a seed PO. | List purchase orders with GET /api/purchasing/orders. |
+| `FV-PUR-013` | 409 | Seed PO is read-only | The action edits, issues, closes, cancels or expedites a seed PO from the warehouse. | Only receiving is allowed on seed POs; raise a session PO instead. |
+| `FV-PUR-014` | 400 | Unknown action | The document action is not one of the actions listed in `detail.valid`. | Use one of `detail.valid`. |
+| `FV-PUR-015` | 400 | Unknown status | The status filter is not a requisition or PO status. | Use one of `detail.valid`. |
+| `FV-PUR-016` | 400 | Material not on PO | A goods-receipt line names a material that is not on the purchase order. | Receive only the PO's materials. |

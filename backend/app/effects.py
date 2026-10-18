@@ -87,7 +87,7 @@ def apply(o: Overrides, cmd: Doc) -> None:
     elif name == "add_shift":
         for mid in a.get("machine_ids", []):
             o.extra_shifts[mid] = o.extra_shifts.get(mid, 0) + int(a.get("days", 4))
-    elif name in ("place_po", "expedite_po"):
+    elif name == "place_po":
         o.extra_receipts.append(
             {
                 "po_id": a.get("po_id", cmd.get("action_id")),
