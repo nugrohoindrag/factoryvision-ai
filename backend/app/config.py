@@ -14,15 +14,21 @@ class Settings(BaseSettings):
 
     project: str = Field(default="", validation_alias="GOOGLE_CLOUD_PROJECT")
     region: str = "us-central1"
-    model_location: str = Field(default="us-central1", validation_alias=AliasChoices("FV_MODEL_LOCATION", "GOOGLE_CLOUD_LOCATION"))
+    model_location: str = Field(default="global", validation_alias=AliasChoices("FV_MODEL_LOCATION", "GOOGLE_CLOUD_LOCATION"))
     dataset: str = "fv"
     warehouse: Literal["local", "bigquery"] = "local"
     store: Literal["memory", "firestore"] = "memory"
     pubsub: Literal["local", "gcp"] = "local"
+    ai: Literal["auto", "vertex", "off"] = "auto"
     seed_dir: Path = ROOT / "data" / "seed"
     replay_dir: Path = ROOT / "data" / "replays"
     docs_dir: Path = ROOT / "data" / "docs"
+    web_dist: Path = ROOT / "frontend" / "dist"
+    photos_dir: Path = ROOT / "data" / "photos"
+    photos_require_review: bool = False
     bucket_prefix: str = ""
+    push_audience: str = ""
+    push_service_account: str = ""
     model_orchestrator: str = "gemini-4-argon"
     model_module: str = "gemini-3.8-flash"
     model_vision: str = "gemini-3.5-flash-lite"

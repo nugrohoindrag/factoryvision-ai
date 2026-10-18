@@ -6,11 +6,13 @@ from typing import TYPE_CHECKING
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
 from app.errors import FVError
+from app.routes import agents, core, twin, vision
 
 if TYPE_CHECKING:
     from starlette.middleware.base import RequestResponseEndpoint
@@ -19,10 +21,25 @@ log = logging.getLogger("fv")
 
 
 def create_app() -> FastAPI:
-    return FastAPI(title="Factory Vision AI", version="0.1.0")
+    application = FastAPI(title="Factory Vision AI", version="0.1.0")
+    for router in (core.router, twin.router, vision.router, agents.router):
+        application.include_router(router)
+    if (settings.web_dist / "assets").is_dir():
+        application.mount("/assets", StaticFiles(directory=settings.web_dist / "assets"), name="assets")
+    return application
 
 
 app = create_app()
+
+
+def _spa_page(request: Request) -> FileResponse | None:
+    dist = settings.web_dist
+    path = request.url.path.lstrip("/")
+    if request.method != "GET" or path.startswith(("api/", "pubsub/")) or not (dist / "index.html").exists():
+        return None
+    target = dist / path
+    inside = path and target.is_file() and target.resolve().is_relative_to(dist.resolve())
+    return FileResponse(target if inside else dist / "index.html")
 
 
 @app.middleware("http")
@@ -46,7 +63,9 @@ async def validation_error(_request: Request, exc: RequestValidationError) -> JS
 
 
 @app.exception_handler(StarletteHTTPException)
-async def http_error(_request: Request, exc: StarletteHTTPException) -> JSONResponse:
+async def http_error(request: Request, exc: StarletteHTTPException) -> Response:
+    if exc.status_code == 404 and (page := _spa_page(request)) is not None:
+        return page
     code = "FV-REQ-004" if exc.status_code == 404 else "FV-REQ-001"
     err = FVError(code, message=str(exc.detail))
     return JSONResponse(err.body(), status_code=exc.status_code)

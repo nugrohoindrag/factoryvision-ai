@@ -1,0 +1,17 @@
+# Cloud Build uploads this context. Unlike .gitignore, the curated photos (data/photos) ARE uploaded:
+# they carry fictional names only and ship in the image. Raw data and internal docs never leave the machine.
+.git
+.venv
+**/node_modules
+**/__pycache__
+frontend/dist
+data/seed
+data/local
+data/vidad-raw
+data/*.log
+data/*.pdf
+docs/internal
+docs/*.xlsx
+.env
+.env.*
+*-key.json

@@ -1,0 +1,15 @@
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+.venv
+.git
+frontend/dist
+data/seed
+data/local
+data/vidad-raw
+data/*.log
+data/*.pdf
+docs/internal
+docs/*.xlsx
+**/test-results
+**/playwright-report

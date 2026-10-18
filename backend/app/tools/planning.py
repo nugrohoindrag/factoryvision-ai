@@ -43,6 +43,10 @@ def current_molds() -> dict[str, str]:
     return {r["sku"]: r["current_machine_id"] for r in warehouse.query("SELECT sku, current_machine_id FROM fv.dim_mold")}
 
 
+def current_molds_by_machine() -> dict[str, str]:
+    return {mid: sku for sku, mid in current_molds().items()}
+
+
 def get_capacity(
     month: str | None = None,
     demand_change_pct: dict[str, float] | None = None,

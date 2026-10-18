@@ -9,7 +9,7 @@ ENV_EXAMPLE = Path(__file__).resolve().parents[3] / ".env.example"
 
 GOOGLE_UNPREFIXED = {"GOOGLE_CLOUD_PROJECT", "GOOGLE_CLOUD_LOCATION"}
 
-MAY_BE_EMPTY = {"FV_SEED_DIR", "FV_REPLAY_DIR", "FV_DOCS_DIR"}
+MAY_BE_EMPTY = {"FV_SEED_DIR", "FV_REPLAY_DIR", "FV_DOCS_DIR", "FV_WEB_DIST", "FV_PHOTOS_DIR"}
 
 
 def _env_names_for(field_name: str, field: FieldInfo) -> list[str]:
