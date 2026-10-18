@@ -3,9 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
-from simulator import plant
-
-from app import warehouse
+from app import plant, warehouse
 from app.tools.common import TODAY, to_date, working_days_in_month
 from app.tools.planning import monthly_plan
 

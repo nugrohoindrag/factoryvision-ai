@@ -3,9 +3,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Any
 
-from simulator import plant
-
-from app import warehouse
+from app import plant, warehouse
 from app.errors import FVError
 from app.tools.common import TODAY, idr, linear_fit, pct, to_date
 

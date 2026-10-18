@@ -5,7 +5,7 @@ Nested from the root `AGENTS.md`. That file wins if anything here contradicts it
 ## Layout
 
 ```
-app/        FastAPI service, the pydantic Settings, the SQL guardrail
+app/        FastAPI service, the pydantic Settings, the SQL guardrail, the plant spec (plant.py)
 simulator/  Seed-data generation; numpy, so S311 is exempt here
 tests/unit/ pure logic, no I/O
 tests/integration/ real DuckDB through the migrations
@@ -13,9 +13,10 @@ tests/e2e/  Playwright, belongs to neither tier
 migrations/ Alembic
 ```
 
-`app/**` imports from `simulator/` in eight places. That direction is wrong and
-pre-existing. Do not add a ninth, and do not fix it as a side effect — it is its
-own change with its own review.
+Dependencies point one way: `simulator/` imports `app/` (the plant spec, the
+schema), `app/**` never imports `simulator/`. The eight imports that used to point
+the other way were removed by moving `simulator/plant.py` to `app/plant.py`. Do not
+add one back; if `app` needs something from the generator, move it into `app`.
 
 ## Rules specific to this directory
 

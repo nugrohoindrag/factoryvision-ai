@@ -126,8 +126,9 @@ you forget, but it will not tell you why you should have.
   directions, values included.** Adding a setting means adding the row.
 - **`FV_MODEL_LOCATION` reads `GOOGLE_CLOUD_LOCATION` as a fallback** and is
   deliberately not renamed — the Google client libraries read that name themselves.
-- **`app/**` imports from `simulator/` in eight places.** Wrong direction, but
-  pre-existing. Do not add a ninth.
+- **`app/**` never imports from `simulator/`.** The plant spec lives in
+  `app/plant.py`; `simulator/` (the seed generator) depends on `app`, not the other
+  way round. There are zero such imports today. Do not add the first one.
 - **The SQL guardrail parses, it does not pattern-match.** `check_sql` builds a
   sqlglot AST and inspects it: the root must be a single `SELECT`, no write node may
   appear anywhere, and every referenced table must be allowlisted. Table functions

@@ -1,10 +1,10 @@
 from datetime import date, datetime
 
 import pytest
+from app import plant
 from app.config import Settings
 from app.db.models import TABLES
 from pydantic import ValidationError
-from simulator import plant
 
 
 def test_sixteen_machines_and_six_imm() -> None:

@@ -5,10 +5,9 @@ from datetime import date, timedelta
 from typing import Any
 
 import numpy as np
-from simulator import plant
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import warehouse
+from app import plant, warehouse
 from app.errors import FVError
 from app.tools.common import TODAY, pct
 

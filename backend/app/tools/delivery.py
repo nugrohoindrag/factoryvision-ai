@@ -3,9 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
-from simulator import plant
-
-from app import warehouse
+from app import plant, warehouse
 from app.tools.common import TODAY, to_date, working_days_between
 
 ATP_RULE_SUMMARY = "Ship what is needed, and delay what is not: any exception must be confirmed by the planner before the cutoff."
