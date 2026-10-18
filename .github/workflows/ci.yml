@@ -56,8 +56,18 @@ jobs:
         with:
           version: "0.11.7"
       - run: uv sync --project backend --python 3.12 --frozen
-      - run: uv run --project backend --python 3.12 pytest -m unit
-      - run: uv run --project backend --python 3.12 pytest -m integration
+      # The justfile test asserts `just` is on PATH. It is not in the runner
+      # image, so without this the tier fails for a reason that has nothing to
+      # do with the code under test.
+      - uses: extractions/setup-just@v4
+      # working-directory is load-bearing: backend/pyproject.toml holds the only
+      # [tool.pytest.ini_options] (testpaths, markers, pythonpath). Running from
+      # the workspace root finds no configfile, so `app` is not importable and
+      # `-m unit` silently does not filter.
+      - run: uv run --project . --python 3.12 pytest -m unit
+        working-directory: backend
+      - run: uv run --project . --python 3.12 pytest -m integration
+        working-directory: backend
 
   backend-contract:
     runs-on: ubuntu-latest

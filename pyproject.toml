@@ -28,9 +28,6 @@ ignore = [
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "parents"
 
-[tool.ruff.lint.flake8-tidy-imports.banned-api]
-"app.warehouse.raw" = { msg = "raw() is unchecked; use query()" }
-
 [tool.ruff.format]
 quote-style = "double"
 

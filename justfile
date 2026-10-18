@@ -52,7 +52,7 @@ lint-fix:
 
 # Type-check the backend and the frontend
 typecheck:
-    uv run --project {{backend_dir}} mypy
+    uv run --project {{backend_dir}} --python 3.12 mypy
     npm --prefix {{frontend_dir}} run --silent typecheck
 
 # Everything CI runs for the backend, measured once over both tiers. Depends on
@@ -66,7 +66,17 @@ ci-frontend:
     npm --prefix {{frontend_dir}} run --silent build
     npm --prefix {{frontend_dir}} test
 
-# Run the full CI surface locally
+# Serve the API on :8080
+serve:
+    cd {{backend_dir}} && uv run --project . --python 3.12 uvicorn app.main:app --reload --port 8080
+
+# Serve the frontend on :5173, proxying /api to :8080
+serve-frontend:
+    npm --prefix {{frontend_dir}} run dev
+
+# Run the full CI surface locally. This is not all of CI: the Playwright smoke
+# test and the error-catalog drift gate are not recipes, and ci-backend measures
+# coverage that CI does not.
 verify: ci-backend ci-frontend
 
 # Regenerate docs/error-catalog.md from backend/app/errors.py

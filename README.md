@@ -45,7 +45,9 @@ The API has exactly one endpoint: `GET /api/health`.
 ## Commands
 
 Every command in this repository is a `just` recipe. Do not `cd backend` and do not run `uv` or `npm` by hand —
-the recipes pin the interpreter, the virtualenv location and the coverage config, and CI calls these same recipes.
+the recipes pin the interpreter, the virtualenv location and the coverage config. CI runs the same tools with the
+same pins, but calls `uv` and `npm` directly rather than through `just`; the two surfaces are kept in step by hand,
+not by a gate.
 
 ```bash
 just --list              # every recipe, with its description
@@ -60,32 +62,36 @@ just lint-fix            # ruff --fix + ruff format          (Python only)
 just typecheck           # mypy (backend) + tsc (frontend)
 just ci-backend          # lint, typecheck, tests, coverage
 just ci-frontend         # vite build + vitest
-just verify              # ci-backend + ci-frontend
+just verify              # ci-backend + ci-frontend (excludes the e2e smoke and catalog drift)
 just catalog             # regenerate docs/error-catalog.md from app/errors.py
+just serve               # uvicorn on :8080
+just serve-frontend      # vite on :5173
 just clean               # remove data/seed, data/local, coverage artefacts
 ```
 
 There is one virtualenv, at the repository root. The justfile exports `UV_PROJECT_ENVIRONMENT` so that every `uv`
-invocation uses it regardless of the working directory.
+invocation uses it regardless of the working directory. Run the serve commands below through `just` for the same
+reason — a bare `uv run` does not get that export and will quietly build a second venv under `backend/`.
 
 To serve the app after `just bootstrap && just seed && just db-build`:
 
 ```bash
-cd backend && uv run uvicorn app.main:app --reload --port 8080
-cd frontend && npm run dev    # http://localhost:5173, proxies /api to :8080
+just serve           # uvicorn on http://localhost:8080
+just serve-frontend  # vite on http://localhost:5173, proxies /api to :8080
 ```
 
 ## Current state of the checks
 
-`just lint` and `just typecheck` **do not pass today**. They are wired up and they fail loudly, which is the point:
-CI calls them, so a command that only works on a laptop is not a command.
+All five gates pass on this branch, and they are meant to stay that way. If one goes red, it is a regression — fix the
+code, not the configuration.
 
-- `just lint` — ruff reports 126 findings across the backend, mostly missing annotations and import ordering.
-- `just typecheck` — mypy aborts before checking anything: `backend/tests/` contains several `conftest.py` files and
-  no `__init__.py`, so mypy reports `Duplicate module named "conftest"`. It also warns that the `pydantic-mypy`
-  section is not a recognised option.
+- `just lint` — ruff check and ruff format --check, clean.
+- `just typecheck` — mypy over 40 backend source files, and `tsc` for the frontend. Clean.
+- `just test` — 45 unit and 20 integration pass. One further test, `tests/e2e/test_api_smoke.py`, belongs to
+  neither tier and only runs under Playwright.
 
-The tests are green: 45 unit and 20 integration pass. Do not silence the linters to make them pass.
+CI enforces the first three. It does not enforce coverage thresholds, and `just ci-backend` measures coverage that
+nothing acts on — treat the number as information, not as a gate.
 
 ## Data layer
 

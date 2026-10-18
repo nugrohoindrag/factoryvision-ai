@@ -10,18 +10,9 @@ def _tables(path: Path) -> dict[str, Any]:
     return tomllib.loads(path.read_text(encoding="utf-8"))
 
 
-def _tool_tables(path: Path) -> list[str]:
-    names = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        header = line.strip()
-        if header.startswith("[tool.") and header.endswith("]"):
-            names.append(header[1:-1])
-    return names
-
-
 def test_backend_pyproject_has_no_tool_tables() -> None:
-    tool_tables = _tool_tables(BACKEND)
-    assert tool_tables == ["tool.pytest.ini_options"], tool_tables
+    tool_tables = sorted(_tables(BACKEND).get("tool", {}))
+    assert tool_tables == ["pytest"], tool_tables
 
 
 def test_root_pyproject_owns_every_linter() -> None:
@@ -31,4 +22,27 @@ def test_root_pyproject_owns_every_linter() -> None:
 
 def test_ruff_selects_the_declared_rules() -> None:
     select = _tables(ROOT)["tool"]["ruff"]["lint"]["select"]
-    assert {"S", "BLE", "PGH", "RUF", "DTZ", "B", "I"} <= set(select), select
+    required = {
+        "S",
+        "BLE",
+        "PGH",
+        "RUF",
+        "DTZ",
+        "B",
+        "I",
+        "TC",
+        "TRY",
+        "ANN",
+        "ASYNC",
+        "EM",
+        "TID",
+        "UP",
+        "C4",
+        "PIE",
+        "PERF",
+        "RET",
+        "SIM",
+        "T20",
+        "FA",
+    }
+    assert required <= set(select), required - set(select)

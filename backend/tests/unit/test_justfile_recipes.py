@@ -34,6 +34,7 @@ def test_every_required_recipe_exists() -> None:
     assert _recipe_names() >= REQUIRED, REQUIRED - _recipe_names()
 
 
+@pytest.mark.skipif(shutil.which("just") is None, reason="just is not installed; CI installs it")
 def test_recipes_are_reachable_with_just(monkeypatch: pytest.MonkeyPatch) -> None:
     just = shutil.which("just")
     assert just is not None, "just is not installed"
