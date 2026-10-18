@@ -1,31 +1,38 @@
 import uuid
+from pathlib import Path
+from typing import Any
 
+import pytest
 from app.agents import replay
 from app.main import app
 from fastapi.testclient import TestClient
 
 client = TestClient(app, raise_server_exceptions=False)
+CHAIN = {
+    "demand_forecast_agent",
+    "production_planning_agent",
+    "material_supply_agent",
+    "purchasing_agent",
+    "mes_agent",
+    "quality_control_agent",
+    "delivery_agent",
+    "orchestrator",
+}
 
 
-def h(s):
+def h(s: str) -> dict[str, str]:
     return {"X-Session-Id": s}
 
 
-def test_scripted_playbook_covers_the_chain(ground_truth):
+def _comparable(proposals: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [{k: p[k] for k in ("kind", "title", "args", "impact")} for p in proposals]
+
+
+def test_scripted_playbook_covers_the_chain(ground_truth: dict[str, Any]) -> None:
     rec = replay.load("disruption_response")
-    agents = {e["agent"] for e in rec["timeline"]}
-    assert {
-        "demand_forecast_agent",
-        "production_planning_agent",
-        "material_supply_agent",
-        "purchasing_agent",
-        "mes_agent",
-        "quality_control_agent",
-        "delivery_agent",
-        "orchestrator",
-    } <= agents
-    kinds = [p["kind"] for p in rec["proposals"]]
-    assert {"maintenance", "mold_move", "purchase_order", "quality_hold", "ship_date", "customer_notice"} <= set(kinds)
+    assert {e["agent"] for e in rec["timeline"]} >= CHAIN
+    kinds = {p["kind"] for p in rec["proposals"]}
+    assert {"maintenance", "mold_move", "purchase_order", "quality_hold", "ship_date", "customer_notice"} <= kinds
     ship = sorted(p["args"]["order_id"] for p in rec["proposals"] if p["kind"] == "ship_date")
     assert ship == sorted(ground_truth["stories"]["delivery"]["order_ids"])
     hold = next(p for p in rec["proposals"] if p["kind"] == "quality_hold")
@@ -35,42 +42,52 @@ def test_scripted_playbook_covers_the_chain(ground_truth):
     assert "pending your approval" in rec["text"]
 
 
-def test_fresh_scripted_recording_matches_shipped_one(tmp_path, monkeypatch):
+def test_fresh_scripted_recording_matches_shipped_one(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     shipped = replay.load("disruption_response")
     if not shipped.get("scripted"):
-        return
-    monkeypatch.setattr(replay, "path", lambda s: tmp_path / f"{s}.json")
-    fresh = replay.load(replay.record("disruption_response", True).stem)
-    strip = lambda ps: [{k: p[k] for k in ("kind", "title", "args", "impact")} for p in ps]
-    assert strip(fresh["proposals"]) == strip(shipped["proposals"])
+        pytest.skip("a live recording is not reproducible by design")
+
+    def temp_path(scenario: str) -> Path:
+        return tmp_path / f"{scenario}.json"
+
+    monkeypatch.setattr(replay, "path", temp_path)
+    fresh = replay.load(replay.record("disruption_response", use_scripted=True).stem)
+    assert _comparable(fresh["proposals"]) == _comparable(shipped["proposals"])
 
 
-def test_play_then_approve_plan_updates_modules_and_twin():
+def test_play_then_approve_plan_updates_modules_and_twin() -> None:
     s = str(uuid.uuid4())
     r = client.post("/api/replay/disruption_response", headers=h(s))
     assert r.status_code == 200, r.text
-    plan = r.json()["plan_id"]
-    assert client.get("/api/actions", headers=h(s)).json()["pending"] == len(r.json()["proposals"])
+    played = r.json()
+    assert client.get("/api/actions", headers=h(s)).json()["pending"] == len(played["proposals"])
     before = client.get("/api/modules/delivery/summary", headers=h(s)).json()["risk"]["count"]
     client.post("/api/twin/tick", headers=h(s), json={"minutes": 30})
-    d = client.post(f"/api/plans/{plan}/approve", headers=h(s)).json()
-    assert not d["failed"] and len(d["decided"]) == len(r.json()["proposals"])
+    d = client.post(f"/api/plans/{played['plan_id']}/approve", headers=h(s)).json()
+    assert not d["failed"]
+    assert len(d["decided"]) == len(played["proposals"])
     after = client.get("/api/modules/delivery/summary", headers=h(s)).json()
-    assert after["risk"]["count"] < before and len(after["revised_ship_dates"]) == 3
+    assert after["risk"]["count"] < before
+    assert len(after["revised_ship_dates"]) == 3
     snap = client.post("/api/twin/tick", headers=h(s), json={"minutes": 1}).json()
     m = {x["machine_id"]: x for x in snap["machines"]}
-    assert m["IMM-04"]["andon"] == "blue" and m["IMM-05"]["andon"] == "yellow"
-    assert snap["holds"] == ["LOT-PPT20-0918"] and snap["resin"]["incoming"]
+    assert m["IMM-04"]["andon"] == "blue"
+    assert m["IMM-05"]["andon"] == "yellow"
+    assert snap["holds"] == ["LOT-PPT20-0918"]
+    assert snap["resin"]["incoming"]
     assert client.get("/api/modules/quality/summary", headers=h(s)).json()["holds"][0]["status"] == "OPEN"
 
 
-def test_mode_reports_replays():
+def test_mode_reports_replays() -> None:
     m = client.get("/api/mode").json()
-    assert "disruption_response" in m["replays"] and set(m["models"]) == {"orchestrator", "module", "vision"}
+    assert "disruption_response" in m["replays"]
+    assert set(m["models"]) == {"orchestrator", "module", "vision"}
 
 
-def test_live_needs_ai():
+def test_live_needs_ai(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "ai", "off")
     r = client.post("/api/disruptions/disruption_response", headers=h(str(uuid.uuid4())))
-    assert r.status_code in (200, 503)
-    if r.status_code == 503:
-        assert r.json()["error"]["code"] == "FV-AI-001"
+    assert r.status_code == 503
+    assert r.json()["error"]["code"] == "FV-AI-001"

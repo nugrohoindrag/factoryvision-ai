@@ -249,11 +249,7 @@ class State:
             return next(k for k, top in enumerate((5, 10, 20, 40, 10**9)) if n < top)
 
         views = {
-            "CAM-Molding": {
-                m.machine_id: andon(m.status, m.performance_pct())
-                for m in self.machines.values()
-                if m.machine_id.startswith("IMM")
-            },
+            "CAM-Molding": {m.machine_id: andon(m.status, m.performance_pct()) for m in self.machines.values() if m.machine_id.startswith("IMM")},
             "CAM-WIP": {k: bucket(v) for k, v in self.wip.items()},
             "CAM-Warehouse": {k: [any(lot in self.holds for lot, _ in r), bucket(sum(u for _, u in r) // 10)] for k, r in self.warehouse.items()},
         }

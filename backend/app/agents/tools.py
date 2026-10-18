@@ -1,8 +1,5 @@
-from __future__ import annotations
-
-from typing import Any
-
-from google.adk.tools import ToolContext
+from collections.abc import Callable
+from typing import Any, Protocol
 
 from app import actions, effects, photos, plant
 from app.ai import extract, vision
@@ -10,70 +7,86 @@ from app.documents import DOCUMENTS
 from app.errors import FVError
 from app.tools import delivery, forecast, material, mes, planning, purchasing, quality
 from app.tools.impact import impact_calculator as _impact
+from app.tools.impact import plan_total
 
 UNKNOWN_ENTITY = "FV-DATA-001"
 
+ToolResult = dict[str, Any]
+
+
+class ToolContext(Protocol):
+    @property
+    def state(self) -> Any: ...
+
 
 def _sid(tc: ToolContext) -> str:
-    return tc.state.get("session_id", "")
+    return str(tc.state.get("session_id", ""))
 
 
 def _ov(tc: ToolContext) -> effects.Overrides:
     return effects.overrides(_sid(tc))
 
 
-def _demand(tc: ToolContext, apply_customer_po: bool) -> dict[str, Any] | None:
+def _demand(tc: ToolContext, *, apply_customer_po: bool) -> dict[str, float] | None:
     return (_ov(tc).demand_change_pct or None) if apply_customer_po else None
 
 
-def _guard(fn, *args, **kwargs) -> dict[str, Any]:
+def _guard(fn: Callable[..., ToolResult], *args: Any) -> ToolResult:
     try:
-        return fn(*args, **kwargs)
+        return fn(*args)
     except FVError as e:
         return e.tool_result()
 
 
-def get_forecast(sku: str, tool_context: ToolContext) -> dict[str, Any]:
+def _unknown(message: str, detail: object = None) -> ToolResult:
+    return FVError(UNKNOWN_ENTITY, message, detail).tool_result()
+
+
+def get_forecast(*, sku: str) -> ToolResult:
     r = forecast.bq_forecast(sku)
     r.pop("weekly_history", None)
     return r
 
 
-def read_customer_po(document_name: str, tool_context: ToolContext) -> dict[str, Any]:
+def read_customer_po(*, document_name: str) -> ToolResult:
     if document_name not in DOCUMENTS:
-        return FVError(UNKNOWN_ENTITY, f"unknown document {document_name}", {"valid": list(DOCUMENTS)}).tool_result()
+        return _unknown(f"unknown document {document_name}", {"valid": list(DOCUMENTS)})
     return _guard(extract.read_customer_po, DOCUMENTS[document_name][1]())
 
 
-def get_capacity(apply_customer_po: bool, tool_context: ToolContext) -> dict[str, Any]:
-    o = _ov(tc := tool_context)
+def get_capacity(*, apply_customer_po: bool, tool_context: ToolContext) -> ToolResult:
+    o = _ov(tool_context)
     cyc = {m: effects.normal_cycle_factor(planning.machine_rates()) for m in o.maintenance}
-    return planning.get_capacity(demand_change_pct=_demand(tc, apply_customer_po), cycle_override=cyc or None, extra_days=o.extra_shifts or None)
+    demand = _demand(tool_context, apply_customer_po=apply_customer_po)
+    return planning.get_capacity(demand_change_pct=demand, cycle_override=cyc or None, extra_days=o.extra_shifts or None)
 
 
-def run_scheduler(apply_customer_po: bool, allow_mold_moves: bool, maintain_imm04: bool, tool_context: ToolContext) -> dict[str, Any]:
+def run_scheduler(*, apply_customer_po: bool, allow_mold_moves: bool, maintain_imm04: bool, tool_context: ToolContext) -> ToolResult:
     r = planning.run_scheduler(
-        demand_change_pct=_demand(tool_context, apply_customer_po), allow_mold_moves=allow_mold_moves, maintenance=["IMM-04"] if maintain_imm04 else None
+        demand_change_pct=_demand(tool_context, apply_customer_po=apply_customer_po),
+        allow_mold_moves=allow_mold_moves,
+        maintenance=["IMM-04"] if maintain_imm04 else None,
     )
     r.pop("schedule", None)
     return r
 
 
-def compare_capacity_options(apply_customer_po: bool, tool_context: ToolContext) -> dict[str, Any]:
-    return planning.what_if(demand_change_pct=_demand(tool_context, apply_customer_po))
+def compare_capacity_options(*, apply_customer_po: bool, tool_context: ToolContext) -> ToolResult:
+    return planning.what_if(demand_change_pct=_demand(tool_context, apply_customer_po=apply_customer_po))
 
 
-def get_oee(days: int, tool_context: ToolContext) -> dict[str, Any]:
+def get_oee(*, days: int) -> ToolResult:
     r = mes.get_oee(days=max(1, min(days, 30)))
-    r["by_machine"] = {k: {x: v[x] for x in ("availability_pct", "performance_pct", "quality_pct", "oee_pct")} for k, v in r["by_machine"].items()}
+    keys = ("availability_pct", "performance_pct", "quality_pct", "oee_pct")
+    r["by_machine"] = {k: {x: v[x] for x in keys} for k, v in r["by_machine"].items()}
     return r
 
 
-def get_downtime_pareto(days: int, tool_context: ToolContext) -> dict[str, Any]:
+def get_downtime_pareto(*, days: int) -> ToolResult:
     return mes.downtime_pareto(days=max(1, min(days, 90)))
 
 
-def get_machine_health(machine_id: str, tool_context: ToolContext) -> dict[str, Any]:
+def get_machine_health(*, machine_id: str, tool_context: ToolContext) -> ToolResult:
     r = mes.machine_health(machine_id)
     r.pop("weekly_mtbf", None)
     if machine_id in _ov(tool_context).maintenance:
@@ -81,57 +94,57 @@ def get_machine_health(machine_id: str, tool_context: ToolContext) -> dict[str, 
     return r
 
 
-def twin_observations(tool_context: ToolContext) -> dict[str, Any]:
+def twin_observations(*, tool_context: ToolContext) -> ToolResult:
     cams = vision.latest(_sid(tool_context))
     return {"cameras": cams, "note": "no camera observations yet" if not cams else None, "source": "Twin Vision Analyzer (gemini-3.5-flash-lite)"}
 
 
-def get_material_requirements(apply_customer_po: bool, tool_context: ToolContext) -> dict[str, Any]:
-    return material.material_requirements(demand_change_pct=_demand(tool_context, apply_customer_po))
+def get_material_requirements(*, apply_customer_po: bool, tool_context: ToolContext) -> ToolResult:
+    return material.material_requirements(demand_change_pct=_demand(tool_context, apply_customer_po=apply_customer_po))
 
 
-def get_stock_projection(material_id: str, apply_customer_po: bool, tool_context: ToolContext) -> dict[str, Any]:
+def get_stock_projection(*, material_id: str, apply_customer_po: bool, tool_context: ToolContext) -> ToolResult:
     receipts = [r for r in _ov(tool_context).extra_receipts if r.get("material_id") == material_id]
-    r = material.stock_projection(material_id, demand_change_pct=_demand(tool_context, apply_customer_po), extra_receipts=receipts or None)
+    demand = _demand(tool_context, apply_customer_po=apply_customer_po)
+    r = material.stock_projection(material_id, demand_change_pct=demand, extra_receipts=receipts or None)
     r["projection"] = r.get("projection", [])[::3]
     return r
 
 
-def get_vendor_scorecard(category: str, tool_context: ToolContext) -> dict[str, Any]:
+def get_vendor_scorecard(*, category: str) -> ToolResult:
     return purchasing.vendor_performance(category or None)
 
 
-def read_vendor_email(document_name: str, tool_context: ToolContext) -> dict[str, Any]:
+def read_vendor_email(*, document_name: str) -> ToolResult:
     if document_name not in DOCUMENTS:
-        return FVError(UNKNOWN_ENTITY, f"unknown document {document_name}", {"valid": list(DOCUMENTS)}).tool_result()
+        return _unknown(f"unknown document {document_name}", {"valid": list(DOCUMENTS)})
     return _guard(extract.read_vendor_email, DOCUMENTS[document_name][1]().decode())
 
 
-def compare_vendors_for_po(material_id: str, need_by: str, qty_kg: float, tool_context: ToolContext) -> dict[str, Any]:
+def compare_vendors_for_po(*, material_id: str, need_by: str, qty_kg: float, tool_context: ToolContext) -> ToolResult:
     return purchasing.recommend_po(material_id, need_by or None, qty_kg or None, extra_delay=_ov(tool_context).vendor_extra_delay or None)
 
 
-def get_defect_correlation(days: int, tool_context: ToolContext) -> dict[str, Any]:
+def get_defect_correlation(*, days: int) -> ToolResult:
     return quality.defect_correlation(days=days or 45)
 
 
-def inspect_conveyor_photo(photo_id: str, expected_sku: str, expected_color: str, tool_context: ToolContext) -> dict[str, Any]:
+def inspect_conveyor_photo(*, photo_id: str, expected_sku: str, expected_color: str) -> ToolResult:
     entry = photos.find(photo_id=photo_id)
     if not entry:
-        return FVError(UNKNOWN_ENTITY, f"unknown photo {photo_id}").tool_result()
+        return _unknown(f"unknown photo {photo_id}")
     return _guard(extract.inspect_photo, photos.read(entry), photos.mime_type(entry), expected_sku, expected_color, photo_id)
 
 
-def get_orders_at_risk(tool_context: ToolContext) -> dict[str, Any]:
+def get_orders_at_risk(*, tool_context: ToolContext) -> ToolResult:
     from app.modules import delivery_rates
 
-    o = _ov(tool_context)
-    r = delivery.orders_at_risk(rate_override=delivery_rates(o) or None)
+    r = delivery.orders_at_risk(rate_override=delivery_rates(_ov(tool_context)) or None)
     r["below_stock_target"] = r["below_stock_target"][:8]
     return r
 
 
-def get_atp(sku: str, tool_context: ToolContext) -> dict[str, Any]:
+def get_atp(*, sku: str) -> ToolResult:
     r = delivery.atp_check(sku)
     for s in r["skus"]:
         s.pop("stock_by_color", None)
@@ -140,7 +153,7 @@ def get_atp(sku: str, tool_context: ToolContext) -> dict[str, Any]:
 
 def _propose(
     tc: ToolContext, kind: str, title: str, rationale: str, args: dict[str, Any], origin: str, impact_args: dict[str, Any] | None = None
-) -> dict[str, Any]:
+) -> ToolResult:
     sid, plan = _sid(tc), tc.state.get("plan_id")
     for a in actions.list_actions(sid, "pending"):
         if a["plan_id"] == plan and a["kind"] == kind and a["command"]["args"] == args:
@@ -151,80 +164,58 @@ def _propose(
     return {"action_id": doc["action_id"], "status": "pending (needs human approval)", "impact": doc["impact"], "impact_breakdown": impact["breakdown"]}
 
 
-def propose_maintenance(machine_id: str, rationale: str, tool_context: ToolContext) -> dict[str, Any]:
+def propose_maintenance(*, machine_id: str, rationale: str, tool_context: ToolContext) -> ToolResult:
     if machine_id not in plant.MACHINE_BY_ID:
-        return FVError(UNKNOWN_ENTITY, f"unknown machine {machine_id}").tool_result()
+        return _unknown(f"unknown machine {machine_id}")
     return _propose(tool_context, "maintenance", f"Preventive maintenance on {machine_id}", rationale, {"machine_id": machine_id}, "mes")
 
 
-def propose_mold_move(sku: str, to_machine_id: str, rationale: str, tool_context: ToolContext) -> dict[str, Any]:
+def propose_mold_move(*, sku: str, to_machine_id: str, rationale: str, tool_context: ToolContext) -> ToolResult:
     if to_machine_id not in plant.MOLD_COMPAT.get(sku, []):
-        return FVError(UNKNOWN_ENTITY, f"mold {sku} does not fit {to_machine_id}", {"fits": plant.MOLD_COMPAT.get(sku)}).tool_result()
-    return _propose(tool_context, "mold_move", f"Move {sku} mold to {to_machine_id}", rationale, {"sku": sku, "to_machine_id": to_machine_id}, "planning")
+        return _unknown(f"mold {sku} does not fit {to_machine_id}", {"fits": plant.MOLD_COMPAT.get(sku)})
+    args = {"sku": sku, "to_machine_id": to_machine_id}
+    return _propose(tool_context, "mold_move", f"Move {sku} mold to {to_machine_id}", rationale, args, "planning")
 
 
-def draft_po(vendor_id: str, material_id: str, qty_kg: float, expected_date: str, rationale: str, tool_context: ToolContext) -> dict[str, Any]:
+def draft_po(*, vendor_id: str, material_id: str, qty_kg: float, expected_date: str, rationale: str, tool_context: ToolContext) -> ToolResult:
     if vendor_id not in plant.VENDOR_BY_ID or vendor_id not in plant.MATERIAL_VENDORS.get(material_id, []):
-        return FVError(UNKNOWN_ENTITY, f"vendor {vendor_id} does not supply {material_id}").tool_result()
+        return _unknown(f"vendor {vendor_id} does not supply {material_id}")
     args = {"vendor_id": vendor_id, "material_id": material_id, "qty": float(qty_kg), "expected_date": expected_date}
     name = plant.VENDOR_BY_ID[vendor_id]["vendor_name"]
-    return _propose(
-        tool_context,
-        "purchase_order",
-        f"PO {material_id} {qty_kg:,.0f} kg from {name}",
-        rationale,
-        args,
-        "purchasing",
-        {**args, "demand_change_pct": _ov(tool_context).demand_change_pct or None},
-    )
+    impact_args = {**args, "demand_change_pct": _ov(tool_context).demand_change_pct or None}
+    return _propose(tool_context, "purchase_order", f"PO {material_id} {qty_kg:,.0f} kg from {name}", rationale, args, "purchasing", impact_args)
 
 
-def propose_hold(resin_lot_id: str, rationale: str, tool_context: ToolContext) -> dict[str, Any]:
-    return _propose(tool_context, "quality_hold", f"Quality hold on resin lot {resin_lot_id}", rationale, {"resin_lot_id": resin_lot_id}, "quality")
+def propose_hold(*, resin_lot_id: str, rationale: str, tool_context: ToolContext) -> ToolResult:
+    args = {"resin_lot_id": resin_lot_id}
+    return _propose(tool_context, "quality_hold", f"Quality hold on resin lot {resin_lot_id}", rationale, args, "quality")
 
 
-def propose_ship_date(order_id: str, new_date: str, rationale: str, tool_context: ToolContext) -> dict[str, Any]:
-    return _propose(
-        tool_context,
-        "ship_date",
-        f"Revise ship date of {order_id} to {new_date}",
-        rationale,
-        {"order_id": order_id, "new_date": new_date},
-        "delivery",
-        {"order_ids": [order_id]},
-    )
+def propose_ship_date(*, order_id: str, new_date: str, rationale: str, tool_context: ToolContext) -> ToolResult:
+    args = {"order_id": order_id, "new_date": new_date}
+    title = f"Revise ship date of {order_id} to {new_date}"
+    return _propose(tool_context, "ship_date", title, rationale, args, "delivery", {"order_ids": [order_id]})
 
 
-def draft_customer_notice(order_ids: list[str], message: str, tool_context: ToolContext) -> dict[str, Any]:
-    return _propose(
-        tool_context,
-        "customer_notice",
-        f"Customer notice for {len(order_ids)} order(s)",
-        message,
-        {"order_ids": order_ids, "message": message},
-        "delivery",
-        {"order_ids": order_ids},
-    )
+def draft_customer_notice(*, order_ids: list[str], message: str, tool_context: ToolContext) -> ToolResult:
+    args = {"order_ids": order_ids, "message": message}
+    title = f"Customer notice for {len(order_ids)} order(s)"
+    return _propose(tool_context, "customer_notice", title, message, args, "delivery", {"order_ids": order_ids})
 
 
-def impact_calculator(kind: str, machine_id: str, sku: str, to_machine_id: str, resin_lot_id: str, tool_context: ToolContext) -> dict[str, Any]:
-    args = {k: v for k, v in {"machine_id": machine_id, "sku": sku, "to_machine_id": to_machine_id, "resin_lot_id": resin_lot_id}.items() if v}
-    return _guard(_impact, kind, args)
+def impact_calculator(*, kind: str, machine_id: str, sku: str, to_machine_id: str, resin_lot_id: str) -> ToolResult:
+    named = {"machine_id": machine_id, "sku": sku, "to_machine_id": to_machine_id, "resin_lot_id": resin_lot_id}
+    return _guard(_impact, kind, {k: v for k, v in named.items() if v})
 
 
-def plan_summary(tool_context: ToolContext) -> dict[str, Any]:
-    from app.tools.impact import plan_total
-
+def plan_summary(*, tool_context: ToolContext) -> ToolResult:
     plan = tool_context.state.get("plan_id")
     items = [a for a in actions.list_actions(_sid(tool_context)) if a["plan_id"] == plan]
-    return {
-        "plan_id": plan,
-        "proposals": [{k: a[k] for k in ("action_id", "kind", "title", "origin_agent", "impact", "status")} for a in items],
-        "total": plan_total([a["impact"] for a in items]),
-    }
+    keys = ("action_id", "kind", "title", "origin_agent", "impact", "status")
+    return {"plan_id": plan, "proposals": [{k: a[k] for k in keys} for a in items], "total": plan_total([a["impact"] for a in items])}
 
 
-def plant_briefing(tool_context: ToolContext) -> dict[str, Any]:
+def plant_briefing() -> ToolResult:
     from app.briefing import briefing
 
     return briefing()
@@ -378,7 +369,9 @@ TOOL_DOCS: dict[str, str] = {
     "plant_briefing": ("Morning briefing numbers: yesterday's OEE, top 3 losses in Rupiah, this week's risks."),
 }
 
-MODULE_TOOLS = {
+Tool = Callable[..., ToolResult]
+
+MODULE_TOOLS: dict[str, list[Tool]] = {
     "forecast": [get_forecast, read_customer_po],
     "planning": [get_capacity, run_scheduler, compare_capacity_options, propose_mold_move],
     "mes": [get_oee, get_downtime_pareto, get_machine_health, twin_observations, propose_maintenance],
@@ -387,7 +380,7 @@ MODULE_TOOLS = {
     "quality": [get_defect_correlation, inspect_conveyor_photo, propose_hold],
     "delivery": [get_orders_at_risk, get_atp, propose_ship_date, draft_customer_notice],
 }
-ORCHESTRATOR_TOOLS = [plant_briefing, impact_calculator, plan_summary]
+ORCHESTRATOR_TOOLS: list[Tool] = [plant_briefing, impact_calculator, plan_summary]
 
 for _fn in [*(f for fns in MODULE_TOOLS.values() for f in fns), *ORCHESTRATOR_TOOLS]:
     _fn.__doc__ = TOOL_DOCS[_fn.__name__]

@@ -63,12 +63,16 @@ async def validation_error(_request: Request, exc: RequestValidationError) -> JS
 
 
 @app.exception_handler(StarletteHTTPException)
-async def http_error(request: Request, exc: StarletteHTTPException) -> Response:
-    if exc.status_code == 404 and (page := _spa_page(request)) is not None:
-        return page
+async def http_error(_request: Request, exc: StarletteHTTPException) -> JSONResponse:
     code = "FV-REQ-004" if exc.status_code == 404 else "FV-REQ-001"
     err = FVError(code, message=str(exc.detail))
     return JSONResponse(err.body(), status_code=exc.status_code)
+
+
+@app.exception_handler(404)
+async def not_found(request: Request, exc: StarletteHTTPException) -> Response:
+    page = _spa_page(request)
+    return page if page is not None else await http_error(request, exc)
 
 
 @app.exception_handler(Exception)

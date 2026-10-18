@@ -1,12 +1,22 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import TYPE_CHECKING, Any
 
 from google.adk.agents import LlmAgent
 from google.adk.tools.agent_tool import AgentTool
 
+from app.agents.runner import TRACE_CALLBACKS
 from app.agents.tools import MODULE_TOOLS, ORCHESTRATOR_TOOLS
 from app.config import settings
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from google.adk.tools import BaseTool
+    from google.adk.tools.base_toolset import BaseToolset
+
+    AdkTool = Callable[..., Any] | BaseTool | BaseToolset
 
 COMMON = """You work for Vidad, a car-bumper plant (injection molding IMM-01..06, painting, assembly). Today is Monday 1 Feb 2027, 07:00 WIB.
 Rules:
@@ -70,23 +80,27 @@ Module agents create the proposals. Then call plan_summary and write ONE action 
 For a morning briefing, call plant_briefing and summarise it."""
 
 
+def _module_agent(module: str, name: str, desc: str) -> LlmAgent:
+    tools: list[AdkTool] = list(MODULE_TOOLS[module])
+    return LlmAgent(
+        name=name, model=settings.model_module, description=desc.split(".")[0], instruction=f"You are the {desc}\n\n{COMMON}", tools=tools, **TRACE_CALLBACKS
+    )
+
+
 @lru_cache(maxsize=1)
 def module_agents() -> dict[str, LlmAgent]:
-    return {
-        m: LlmAgent(
-            name=name, model=settings.model_module, description=desc.split(".")[0], instruction=f"You are the {desc}\n\n{COMMON}", tools=MODULE_TOOLS[m]
-        )
-        for m, (name, desc) in MODULES.items()
-    }
+    return {m: _module_agent(m, name, desc) for m, (name, desc) in MODULES.items()}
 
 
 @lru_cache(maxsize=1)
 def orchestrator() -> LlmAgent:
-    tools = [AgentTool(agent=a) for a in module_agents().values()] + ORCHESTRATOR_TOOLS
+    tools: list[AdkTool] = [AgentTool(agent=a) for a in module_agents().values()]
+    tools.extend(ORCHESTRATOR_TOOLS)
     return LlmAgent(
         name="orchestrator",
         model=settings.model_orchestrator,
         description="Plans across all seven modules",
         instruction=f"{ORCHESTRATOR}\n\n{COMMON}",
         tools=tools,
+        **TRACE_CALLBACKS,
     )

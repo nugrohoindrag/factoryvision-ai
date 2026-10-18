@@ -1,6 +1,7 @@
 import base64
 import json
 import uuid
+from typing import Any
 
 from app import actions, twin
 from app.main import app
@@ -9,37 +10,41 @@ from fastapi.testclient import TestClient
 client = TestClient(app, raise_server_exceptions=False)
 
 
-def h(s):
+def h(s: str) -> dict[str, str]:
     return {"X-Session-Id": s}
 
 
-def m(snap, mid):
+def m(snap: dict[str, Any], mid: str) -> dict[str, Any]:
     return next(x for x in snap["machines"] if x["machine_id"] == mid)
 
 
-def test_sessions_are_isolated():
+def test_sessions_are_isolated() -> None:
     a, b = str(uuid.uuid4()), str(uuid.uuid4())
     client.post("/api/demo/reset", headers=h(a), json={"scenario": "disruption_response"})
     client.post("/api/demo/reset", headers=h(b), json={"scenario": "baseline"})
     sa = client.post("/api/twin/tick", headers=h(a), json={"minutes": 60}).json()
     sb = client.post("/api/twin/tick", headers=h(b), json={"minutes": 10}).json()
-    assert sa["sim_minute"] == 60 and sb["sim_minute"] == 10
-    assert m(sa, "IMM-04")["andon"] == "yellow" and m(sb, "IMM-04")["andon"] == "green"
+    assert sa["sim_minute"] == 60
+    assert sb["sim_minute"] == 10
+    assert m(sa, "IMM-04")["andon"] == "yellow"
+    assert m(sb, "IMM-04")["andon"] == "green"
 
 
-def test_tick_is_capped_and_validated():
+def test_tick_is_capped_and_validated() -> None:
     s = str(uuid.uuid4())
     r = client.post("/api/twin/tick", headers=h(s), json={"minutes": 500})
-    assert r.status_code == 400 and r.json()["error"]["code"] == "FV-REQ-001"
+    assert r.status_code == 400
+    assert r.json()["error"]["code"] == "FV-REQ-001"
     assert client.post("/api/twin/tick", headers=h(s), json={"minutes": 0}).json()["sim_minute"] == 0
 
 
-def test_unknown_scenario():
+def test_unknown_scenario() -> None:
     r = client.post("/api/demo/reset", headers=h(str(uuid.uuid4())), json={"scenario": "meteor"})
-    assert r.status_code == 404 and r.json()["error"]["code"] == "FV-REQ-003"
+    assert r.status_code == 404
+    assert r.json()["error"]["code"] == "FV-REQ-003"
 
 
-def test_approve_reaches_twin_and_reset_clears_actions():
+def test_approve_reaches_twin_and_reset_clears_actions() -> None:
     s = str(uuid.uuid4())
     client.post("/api/demo/reset", headers=h(s), json={"scenario": "disruption_response"})
     client.post("/api/twin/tick", headers=h(s), json={"minutes": 20})
@@ -51,7 +56,7 @@ def test_approve_reaches_twin_and_reset_clears_actions():
     assert client.get("/api/actions", headers=h(s)).json()["actions"] == []
 
 
-def test_state_survives_instance_restart():
+def test_state_survives_instance_restart() -> None:
     s = str(uuid.uuid4())
     client.post("/api/demo/reset", headers=h(s), json={"scenario": "disruption_response"})
     client.post("/api/twin/tick", headers=h(s), json={"minutes": 30})
@@ -64,17 +69,18 @@ def test_state_survives_instance_restart():
         assert before[k] == after[k], k
 
 
-def test_pubsub_commands_push_envelope():
+def test_pubsub_commands_push_envelope() -> None:
     s = str(uuid.uuid4())
     client.post("/api/demo/reset", headers=h(s), json={})
     msg = {"session_id": s, "action_id": "A1", "command": {"name": "hold_lot", "args": {"resin_lot_id": "LOT-PPT20-0918"}}}
     body = {"message": {"data": base64.b64encode(json.dumps(msg).encode()).decode()}}
     r = client.post("/pubsub/commands", json=body)
-    assert r.status_code == 200 and r.json()["result"]["units_on_hold"] > 0
+    assert r.status_code == 200
+    assert r.json()["result"]["units_on_hold"] > 0
     assert client.post("/pubsub/commands", json={"nope": 1}).json()["error"]["code"] == "FV-PUB-001"
 
 
-def test_redelivered_command_applies_once():
+def test_redelivered_command_applies_once() -> None:
     s = str(uuid.uuid4())
     client.post("/api/demo/reset", headers=h(s), json={})
     msg = {"session_id": s, "action_id": "A-dup", "command": {"name": "place_po", "args": {"qty": 1000}}}

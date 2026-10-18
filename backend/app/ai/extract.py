@@ -145,14 +145,14 @@ def inspect_photo(image: bytes, mime_type: str, expected_sku: str, expected_colo
         {
             "expected_sku": expected_sku,
             "expected_color": expected_color,
-            "verdict": verdict(model_ok, color_ok, out["defects"]),
+            "verdict": verdict(model_ok=bool(model_ok), color_ok=bool(color_ok), defects=out["defects"]),
             "references": [r["photo_id"] for r in refs],
         }
     )
     return out
 
 
-def verdict(model_ok: bool, color_ok: bool, defects: list[dict[str, Any]]) -> str:
+def verdict(*, model_ok: bool, color_ok: bool, defects: list[dict[str, Any]]) -> str:
     if not model_ok:
         return "WRONG_PART"
     if not color_ok:
@@ -160,5 +160,5 @@ def verdict(model_ok: bool, color_ok: bool, defects: list[dict[str, Any]]) -> st
     if any(d["disposition"] == "Scrap" for d in defects):
         return "SCRAP"
     if defects:
-        return defects[0]["disposition"].upper().replace(" ", "_")
+        return str(defects[0]["disposition"]).upper().replace(" ", "_")
     return "OK"

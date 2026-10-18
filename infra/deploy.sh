@@ -14,7 +14,7 @@ gcloud builds submit --tag "$IMAGE" .
 
 gcloud run deploy fv-app --image "$IMAGE" --region "$REGION" --service-account "$SA" \
   --allow-unauthenticated --max-instances 3 --min-instances "$MIN_INSTANCES" --memory 2Gi --cpu 2 --timeout 300 \
-  --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT,FV_REGION=$REGION,FV_MODEL_LOCATION=$MODEL_LOCATION,GOOGLE_GENAI_USE_VERTEXAI=TRUE,FV_AI=vertex,FV_WAREHOUSE=bigquery,FV_STORE=firestore,FV_PUBSUB=gcp,FV_PHOTOS_REQUIRE_REVIEW=true"
+  --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT,GOOGLE_CLOUD_LOCATION=$MODEL_LOCATION,FV_REGION=$REGION,FV_MODEL_LOCATION=$MODEL_LOCATION,GOOGLE_GENAI_USE_VERTEXAI=TRUE,FV_AI=vertex,FV_WAREHOUSE=bigquery,FV_STORE=firestore,FV_PUBSUB=gcp,FV_PHOTOS_REQUIRE_REVIEW=true"
 
 URL=$(gcloud run services describe fv-app --region "$REGION" --format 'value(status.url)')
 gcloud run services update fv-app --region "$REGION" \
