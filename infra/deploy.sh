@@ -16,9 +16,10 @@ FIREBASE_APP_ID=${FIREBASE_APP_ID:-}
 
 gcloud builds submit --tag "$IMAGE" .
 
+# "^##^" makes "##" the env-var separator, so a value may contain commas (ADMIN_EMAILS); see `gcloud topic escaping`.
 gcloud run deploy fv-app --image "$IMAGE" --region "$REGION" --service-account "$SA" \
   --allow-unauthenticated --max-instances 3 --min-instances "$MIN_INSTANCES" --memory 2Gi --cpu 2 --timeout 300 \
-  --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT,GOOGLE_CLOUD_LOCATION=$MODEL_LOCATION,FV_REGION=$REGION,FV_MODEL_LOCATION=$MODEL_LOCATION,GOOGLE_GENAI_USE_VERTEXAI=TRUE,FV_AI=vertex,FV_WAREHOUSE=bigquery,FV_STORE=firestore,FV_PUBSUB=gcp,FV_PHOTOS_REQUIRE_REVIEW=true,FV_MAIL_BASE=$MAIL_BASE,FV_ADMIN_EMAILS=$ADMIN_EMAILS,FV_FIREBASE_API_KEY=$FIREBASE_API_KEY,FV_FIREBASE_APP_ID=$FIREBASE_APP_ID" \
+  --set-env-vars "^##^GOOGLE_CLOUD_PROJECT=$PROJECT##GOOGLE_CLOUD_LOCATION=$MODEL_LOCATION##FV_REGION=$REGION##FV_MODEL_LOCATION=$MODEL_LOCATION##GOOGLE_GENAI_USE_VERTEXAI=TRUE##FV_AI=vertex##FV_WAREHOUSE=bigquery##FV_STORE=firestore##FV_PUBSUB=gcp##FV_PHOTOS_REQUIRE_REVIEW=true##FV_MAIL_BASE=$MAIL_BASE##FV_ADMIN_EMAILS=$ADMIN_EMAILS##FV_FIREBASE_API_KEY=$FIREBASE_API_KEY##FV_FIREBASE_APP_ID=$FIREBASE_APP_ID" \
   $(gcloud secrets describe fv-gmail-oauth >/dev/null 2>&1 && echo --set-secrets FV_GMAIL_OAUTH=fv-gmail-oauth:latest)
 
 URL=$(gcloud run services describe fv-app --region "$REGION" --format 'value(status.url)')
