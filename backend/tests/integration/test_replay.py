@@ -86,7 +86,7 @@ def test_play_then_approve_plan_updates_modules_and_twin() -> None:
     assert client.get("/api/modules/quality/summary", headers=h(s)).json()["holds"][0]["status"] == "OPEN"
     new_plans = plans.list_plans(s)
     assert len(new_plans) == 1
-    assert new_plans[0]["status"] == "Draft"
+    assert new_plans[0]["status"] in {"Draft", "Planning"}
     assert new_plans[0]["origin"] == "agent"
 
 

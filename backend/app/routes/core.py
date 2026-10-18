@@ -3,7 +3,7 @@ from typing import Any
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
-from app import actions, effects, modules
+from app import actions, effects, modules, plans
 from app.briefing import briefing
 from app.errors import FVError
 from app.session import SessionId, user_label
@@ -26,7 +26,10 @@ def planning_what_if(sid: SessionId) -> dict[str, Any]:
 
 @router.get("/modules/{module}/summary")
 def module_summary(module: str, sid: SessionId) -> dict[str, Any]:
-    return modules.summary(module, effects.overrides(sid))
+    out = modules.summary(module, effects.overrides(sid))
+    if module in plans.EVENT_AUDIENCE:
+        out = {**out, "production_plans": plans.downstream(sid, module)}
+    return out
 
 
 @router.get("/forecast/{sku}")
