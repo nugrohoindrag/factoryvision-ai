@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from app import plant
+
 from simulator.seed.schema import TABLES
 
 ROOT = Path(__file__).resolve().parents[3]
