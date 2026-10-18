@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 from alembic import command
@@ -19,16 +20,19 @@ def load(seed_dir: Path) -> None:
     for table in Base.metadata.sorted_tables:
         if table.name in PUBSUB_WRITTEN_TABLES:
             continue
-        job = client.load_table_from_file(
-            open(seed_dir / f"{table.name}.csv", "rb"),
-            f"{settings.project}.{SCHEMA}.{table.name}",
-            job_config=bigquery.LoadJobConfig(
-                source_format=bigquery.SourceFormat.CSV, skip_leading_rows=1, write_disposition="WRITE_TRUNCATE",
-                schema=[bigquery.SchemaField(c, t) for c, t in TABLES[table.name]],
-            ),
-        )
+        with open(seed_dir / f"{table.name}.csv", "rb") as handle:
+            job = client.load_table_from_file(
+                handle,
+                f"{settings.project}.{SCHEMA}.{table.name}",
+                job_config=bigquery.LoadJobConfig(
+                    source_format=bigquery.SourceFormat.CSV,
+                    skip_leading_rows=1,
+                    write_disposition="WRITE_TRUNCATE",
+                    schema=[bigquery.SchemaField(c, t) for c, t in TABLES[table.name]],
+                ),
+            )
         job.result()
-        print(f"loaded {table.name}: {job.output_rows} rows")
+        sys.stdout.write(f"loaded {table.name}: {job.output_rows} rows\n")
 
 
 def main() -> None:

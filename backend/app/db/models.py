@@ -1,9 +1,9 @@
-from __future__ import annotations
-
 from datetime import date, datetime
+from typing import Any
 
 from sqlalchemy import BigInteger, Boolean, Date, DateTime, Double, MetaData, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.types import TypeEngine
 
 SCHEMA = "fv"
 
@@ -18,13 +18,12 @@ Ts = DateTime(timezone=True)
 Dbl = Double
 
 
-def pk(type_=Str):
+def pk(type_: type[TypeEngine[Any]] | TypeEngine[Any] = Str) -> Mapped[Any]:
     return mapped_column(type_, primary_key=True, autoincrement=False)
 
 
-def col(type_=Str):
+def col(type_: type[TypeEngine[Any]] | TypeEngine[Any] = Str) -> Mapped[Any]:
     return mapped_column(type_, nullable=True)
-
 
 
 class DimMachine(Base):
@@ -132,7 +131,6 @@ class DimDowntimeReason(Base):
     loss_category: Mapped[str | None] = col()
     reason_category: Mapped[str | None] = col()
     shop_term: Mapped[str | None] = col()
-
 
 
 class FactProduction(Base):
@@ -292,7 +290,7 @@ class PlantEvent(Base):
 PUBSUB_WRITTEN_TABLES = frozenset({"plant_events"})
 
 
-def bq_type(sa_type) -> str:
+def bq_type(sa_type: TypeEngine[Any]) -> str:
     if isinstance(sa_type, Boolean):
         return "BOOL"
     if isinstance(sa_type, BigInteger):
@@ -306,6 +304,4 @@ def bq_type(sa_type) -> str:
     return "STRING"
 
 
-TABLES: dict[str, list[tuple[str, str]]] = {
-    t.name: [(c.name, bq_type(c.type)) for c in t.columns] for t in Base.metadata.sorted_tables
-}
+TABLES: dict[str, list[tuple[str, str]]] = {t.name: [(c.name, bq_type(c.type)) for c in t.columns] for t in Base.metadata.sorted_tables}

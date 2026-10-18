@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from alembic import context
 from alembic.ddl.impl import DefaultImpl
-from sqlalchemy import text
-
 from app.config import settings
 from app.db.engine import database_url, make_engine
 from app.db.models import SCHEMA, Base
+from sqlalchemy import text
 
 
 class DuckDBImpl(DefaultImpl):

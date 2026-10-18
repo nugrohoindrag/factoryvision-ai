@@ -1,0 +1,15 @@
+# An agent that can edit a gate is not gated by it. These are the files that
+# decide whether the suite, the linter, the type checker, and the frontend
+# tests run at all — and how much of the tree they are allowed to look at.
+
+/.github/workflows/            @harunnryd
+/.github/CODEOWNERS            @harunnryd
+/justfile                      @harunnryd
+/pyproject.toml                @harunnryd
+/backend/pyproject.toml        @harunnryd
+/backend/uv.lock               @harunnryd
+/frontend/package.json         @harunnryd
+/frontend/package-lock.json    @harunnryd
+/frontend/vite.config.ts       @harunnryd
+/frontend/tsconfig.json        @harunnryd
+/frontend/playwright.config.ts @harunnryd

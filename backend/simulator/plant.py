@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
+from typing import Any
 
 WIB = timezone(timedelta(hours=7))
 
@@ -29,7 +30,6 @@ def shift_of(ts: datetime) -> str:
 
 def is_working_day(d: date) -> bool:
     return d.weekday() in WORKING_WEEKDAYS
-
 
 
 @dataclass(frozen=True)
@@ -66,7 +66,6 @@ IMM_IDS = [m.machine_id for m in MACHINES if m.process == "Injection Molding"]
 MACHINE_STATUSES = ("Running", "Idle", "Downtime", "Setup", "Maintenance", "Offline")
 
 
-
 @dataclass(frozen=True)
 class Product:
     sku: str
@@ -80,8 +79,18 @@ class Product:
 
 
 COLOR_NAMES: dict[str, str] = {
-    "C01": "C01", "C02": "C02", "C04": "C04", "C05": "C05", "C06": "C06", "C07": "C07",
-    "C08": "C08", "C09": "C09", "C10": "C10", "C11": "C11", "C12": "C12", "C16": "C16",
+    "C01": "C01",
+    "C02": "C02",
+    "C04": "C04",
+    "C05": "C05",
+    "C06": "C06",
+    "C07": "C07",
+    "C08": "C08",
+    "C09": "C09",
+    "C10": "C10",
+    "C11": "C11",
+    "C12": "C12",
+    "C16": "C16",
     "C17": "C17",
 }
 
@@ -121,7 +130,6 @@ INITIAL_MOLDS: dict[str, str] = {
 }
 
 
-
 @dataclass(frozen=True)
 class Material:
     material_id: str
@@ -153,7 +161,7 @@ PAINT_G_PER_UNIT = {
 }
 
 
-def bom_lines() -> list[dict]:
+def bom_lines() -> list[dict[str, object]]:
     rows = []
     for p in PRODUCTS:
         rows.append({"sku": p.sku, "material_id": "PP-EPDM-T20", "qty_per_unit": round(p.shot_weight_kg * 0.97, 3), "unit": "kg"})
@@ -167,11 +175,16 @@ def bom_lines() -> list[dict]:
 
 
 ROUTING = [
-    ("Resin Drying", "DRY-01"), ("Injection Molding", "IMM-*"), ("Trimming", "TRM-01"),
-    ("Surface Prep", "PWS-01"), ("Painting", "PNT-01"), ("Painting", "PNT-02"),
-    ("Curing", "OVN-01"), ("Assembly", "ASM-*"), ("Final Inspection", "INS-01"),
+    ("Resin Drying", "DRY-01"),
+    ("Injection Molding", "IMM-*"),
+    ("Trimming", "TRM-01"),
+    ("Surface Prep", "PWS-01"),
+    ("Painting", "PNT-01"),
+    ("Painting", "PNT-02"),
+    ("Curing", "OVN-01"),
+    ("Assembly", "ASM-*"),
+    ("Final Inspection", "INS-01"),
 ]
-
 
 
 CUSTOMERS = [
@@ -188,23 +201,41 @@ CUSTOMER_MIX = {
     "CITRA": [("CUS-OEMA", 0.70), ("CUS-OEMB", 0.20), ("CUS-AFTM", 0.10)],
 }
 
-VENDORS = [
-    {"vendor_id": "VEN-ANDALAS", "vendor_name": "PT Andalas Polimindo", "category": "Resin", "lead_time_days": 7, "avg_delay_days": 4.0, "unit_price_idr": 31_500},
-    {"vendor_id": "VEN-MERAPI", "vendor_name": "PT Merapi Resin Indonesia", "category": "Resin", "lead_time_days": 5, "avg_delay_days": 0.4, "unit_price_idr": 33_400},
+VENDORS: list[dict[str, Any]] = [
+    {
+        "vendor_id": "VEN-ANDALAS",
+        "vendor_name": "PT Andalas Polimindo",
+        "category": "Resin",
+        "lead_time_days": 7,
+        "avg_delay_days": 4.0,
+        "unit_price_idr": 31_500,
+    },
+    {
+        "vendor_id": "VEN-MERAPI",
+        "vendor_name": "PT Merapi Resin Indonesia",
+        "category": "Resin",
+        "lead_time_days": 5,
+        "avg_delay_days": 0.4,
+        "unit_price_idr": 33_400,
+    },
     {"vendor_id": "VEN-WARNA", "vendor_name": "PT Warna Prima Coatings", "category": "Paint", "lead_time_days": 6, "avg_delay_days": 0.8, "unit_price_idr": 0},
     {"vendor_id": "VEN-KILAU", "vendor_name": "PT Kilau Kimia", "category": "Paint", "lead_time_days": 8, "avg_delay_days": 1.2, "unit_price_idr": 0},
     {"vendor_id": "VEN-BAJA", "vendor_name": "CV Baja Klip Mandiri", "category": "Component", "lead_time_days": 4, "avg_delay_days": 0.5, "unit_price_idr": 0},
     {"vendor_id": "VEN-RAKIT", "vendor_name": "PT Rakit Kemasan", "category": "Packaging", "lead_time_days": 3, "avg_delay_days": 0.3, "unit_price_idr": 0},
 ]
-VENDOR_BY_ID = {v["vendor_id"]: v for v in VENDORS}
+VENDOR_BY_ID: dict[str, dict[str, Any]] = {v["vendor_id"]: v for v in VENDORS}
 MATERIAL_VENDORS = {
     "PP-EPDM-T20": ["VEN-ANDALAS", "VEN-MERAPI"],
     "MB-BLK": ["VEN-MERAPI"],
-    "P1": ["VEN-WARNA"], "B-BASE": ["VEN-WARNA", "VEN-KILAU"], "K1": ["VEN-KILAU"],
-    "H1": ["VEN-KILAU"], "T1": ["VEN-WARNA"], "BRK-SET": ["VEN-BAJA"], "SNS-HLD": ["VEN-BAJA"],
+    "P1": ["VEN-WARNA"],
+    "B-BASE": ["VEN-WARNA", "VEN-KILAU"],
+    "K1": ["VEN-KILAU"],
+    "H1": ["VEN-KILAU"],
+    "T1": ["VEN-WARNA"],
+    "BRK-SET": ["VEN-BAJA"],
+    "SNS-HLD": ["VEN-BAJA"],
     "PKG-RT": ["VEN-RAKIT"],
 }
-
 
 
 DEFECT_CLASSES = [
@@ -266,7 +297,6 @@ DOWNTIME_REASONS = [
     ("BOOTH_TEMP", "Booth temperature high", "Utility", "Machine", "Temp. booth panas"),
 ]
 REASON_BY_CODE = {r[0]: r for r in DOWNTIME_REASONS}
-
 
 
 ELECTRICITY_IDR_PER_KWH = 1_115

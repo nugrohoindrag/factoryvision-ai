@@ -1,0 +1,66 @@
+[tool.ruff]
+line-length = 160
+target-version = "py312"
+extend-exclude = ["data", "frontend"]
+
+[tool.ruff.lint]
+select = [
+  "F", "E", "W", "I", "N", "UP", "B", "SIM", "C4", "RET", "ARG", "PIE",
+  "PT", "T20", "DTZ", "TID", "EM", "TRY", "BLE", "PERF", "RUF", "TC",
+  "S", "ANN", "ASYNC", "G", "LOG", "FA", "SLOT", "FBT", "A", "ERA",
+  "PGH", "SLF", "FURB",
+]
+ignore = [
+  "E501",
+  "ANN401",
+  "COM812",
+  "ISC001",
+  "PLC0415",
+  "TC006",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/tests/**" = ["S101", "ANN", "PLR2004", "ARG001", "SLF001", "S608", "EM101", "TRY", "PT011", "B011"]
+"backend/migrations/**" = ["ANN", "E501", "N", "RUF012", "PLR2004", "ARG", "EM101", "ERA001", "S608"]
+"backend/simulator/**" = ["S311"]
+"**/__init__.py" = ["F401", "F403"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"app.warehouse.raw" = { msg = "raw() is unchecked; use query()" }
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "backend"
+explicit_package_bases = true
+files = ["backend/app", "backend/simulator", "backend/tests"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+disallow_any_generics = true
+disallow_subclassing_any = true
+check_untyped_defs = true
+strict_equality = true
+no_implicit_reexport = true
+warn_return_any = true
+warn_unused_ignores = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unreachable = true
+local_partial_types = true
+plugins = []
+num_workers = "auto"
+
+[tool.coverage.run]
+source = ["app", "simulator"]
+omit = ["app/db/load_bigquery.py"]
+relative_files = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

@@ -1,1 +1,3 @@
-from app.db.models import TABLES  # noqa: F401
+from app.db.models import TABLES
+
+__all__ = ["TABLES"]
