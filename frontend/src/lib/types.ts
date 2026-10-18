@@ -370,3 +370,129 @@ export type BomItem = {
 export type Bom = { bom_id: string; sku: string; version: number | string; status: "Draft" | "Active" | "Inactive"; effective_date: string | null; items: BomItem[] };
 
 export type Warehouse = { warehouse_id: string; name?: string; warehouse_name?: string };
+
+/* ---------------- Purchasing (PU-R01..R46) ---------------- */
+
+export type PrStatus = "Draft" | "Submitted" | "Approved" | "Rejected" | "Cancelled" | "Converted";
+export type PoStatus = "Draft" | "Issued" | "Partially Received" | "Received" | "Closed" | "Cancelled";
+
+export type DocHistory = { at: string | null; by: string | null; action: string; from: string | null; to: string | null; reason?: string | null };
+
+export type PrLine = {
+  line_id: string;
+  material_id: string;
+  material_name: string | null;
+  unit: string | null;
+  qty: number;
+  need_by: string | null;
+  suggested_vendor_id: string | null;
+  suggested_vendor_name: string | null;
+  source: string | null;
+  duplicate_of: string | null;
+};
+
+export type PurchaseRequisition = {
+  pr_id: string;
+  status: PrStatus | string;
+  created_at: string | null;
+  created_by: string | null;
+  source: string | null;
+  note: string | null;
+  lines: PrLine[];
+  po_ids: string[];
+  history: DocHistory[];
+};
+
+export type PoLine = {
+  line_id: string;
+  material_id: string;
+  material_name: string | null;
+  unit: string | null;
+  qty: number;
+  unit_price_idr: number | null;
+  value_idr: number | null;
+  received_qty: number | null;
+  open_qty: number | null;
+};
+
+export type GoodsReceipt = {
+  gr_id: string;
+  po_id: string;
+  received_date: string | null;
+  lot_id: string | null;
+  note: string | null;
+  by: string | null;
+  lines: { material_id: string; qty: number }[];
+};
+
+export type PurchaseOrder = {
+  po_id: string;
+  origin: "session" | "seed" | string;
+  vendor_id: string;
+  vendor_name: string | null;
+  status: PoStatus | string;
+  order_date: string | null;
+  promised_date: string | null;
+  expected_date: string | null;
+  pr_id: string | null;
+  note: string | null;
+  currency: string;
+  total_value_idr: number | null;
+  received_pct: number | null;
+  overdue: boolean;
+  days_late: number | null;
+  lines: PoLine[];
+  receipts: GoodsReceipt[];
+  history: DocHistory[];
+};
+
+export type VendorMaterial = string | { material_id: string; material_name?: string | null; unit?: string | null; unit_price_idr?: number | null };
+
+export type Vendor = {
+  vendor_id: string;
+  vendor_name: string;
+  category: string | null;
+  lead_time_days?: number | null;
+  quoted_lead_time_days?: number | null;
+  unit_price_idr: number | null;
+  materials: VendorMaterial[];
+  on_time_pct: number | null;
+  avg_delay_days: number | null;
+  effective_lead_time_days: number | null;
+  po_count: number | null;
+};
+
+export type VendorDetail = Vendor & {
+  scorecard?: Partial<Vendor> | null;
+  open_pos?: PurchaseOrder[];
+  received_pos?: PurchaseOrder[];
+  recent_receipts?: PurchaseOrder[];
+};
+
+export type VendorOption = {
+  vendor_id: string;
+  vendor_name: string;
+  expected_arrival: string | null;
+  arrives_before_need: boolean | null;
+  unit_price_idr: number | null;
+  po_value_idr: number | null;
+  avg_delay_days: number | null;
+  expected_delay_days: number | null;
+};
+
+export type VendorRecommendation = {
+  material_id: string;
+  qty: number;
+  need_by: string | null;
+  options: VendorOption[];
+  recommended_vendor: string | null;
+  recommended_vendor_id: string | null;
+  premium_vs_cheapest_idr: number | null;
+};
+
+export type PurchasingKpis = {
+  open_pos?: number | null;
+  overdue_pos?: number | null;
+  open_value_idr?: number | null;
+  pending_requisitions?: number | null;
+};

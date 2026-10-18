@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { formatIdrCompact } from "../lib/format";
 import { AppProvider } from "../lib/store";
 import { MaterialPage } from "./Material";
@@ -138,11 +138,19 @@ function mockApi(over: (url: string, method: string) => unknown = () => undefine
   });
 }
 
+function Where() {
+  const loc = useLocation();
+  return <p>At {loc.pathname + loc.search}</p>;
+}
+
 function renderPage(path = "/material") {
   render(
     <MemoryRouter initialEntries={[path]}>
       <AppProvider>
-        <MaterialPage />
+        <Routes>
+          <Route path="/material" element={<MaterialPage />} />
+          <Route path="/purchasing" element={<Where />} />
+        </Routes>
       </AppProvider>
     </MemoryRouter>,
   );
@@ -277,4 +285,28 @@ it("BOM: picks SKU and colour, shows the active items for that colour and the ve
   expect(screen.getByText("Inactive")).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("BOM product"), { target: { value: "RB-ARKA" } });
   expect(screen.getByRole("heading", { name: "Versions of RB-ARKA" })).toBeInTheDocument();
+});
+
+it("MRP: Create requisition turns the run into a PR and opens it in Purchasing", async () => {
+  mockApi((url, method) => (url === "/api/purchasing/requisitions" && method === "POST" ? { pr_id: "PR-2702-001", status: "Draft", lines: [] } : undefined));
+  renderPage("/material?tab=mrp");
+  fireEvent.click(await screen.findByRole("button", { name: "View MRP-2027-02-001" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Create requisition from MRP-2027-02-001" }));
+  expect(await screen.findByText("At /purchasing?tab=requisitions&pr=PR-2702-001")).toBeInTheDocument();
+  expect(calls.find((c) => c.url === "/api/purchasing/requisitions")?.body).toEqual({ from_mrp_run: "MRP-2027-02-001" });
+});
+
+it("readiness: a plan with shortages offers Create requisition; a refusal stays on the page", async () => {
+  mockApi((url, method) => (url === "/api/purchasing/requisitions" && method === "POST" ? fail("FV-PUR-003", "Empty requisition", "No line to buy.") : undefined));
+  renderPage("/material?plan=p1");
+  fireEvent.click(await screen.findByRole("button", { name: "Create requisition for PP-2027-02" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Empty requisition (FV-PUR-003): No line to buy.");
+  expect(calls.find((c) => c.url === "/api/purchasing/requisitions")?.body).toEqual({ from_plan: "p1" });
+});
+
+it("readiness: a ready plan has no Create requisition button", async () => {
+  mockApi((url) => (url === "/api/materials/readiness/plans/OEM-2027-02" ? { ...CHECK, plan_id: "OEM-2027-02", plan_number: "OEM monthly plan 2027-02", status: "READY", shortages: [] } : undefined));
+  renderPage("/material?plan=OEM-2027-02");
+  expect(await screen.findByRole("heading", { name: "Material requirements: OEM monthly plan 2027-02" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /^Create requisition/ })).not.toBeInTheDocument();
 });

@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AskAgent } from "../components/agents";
 import { Line } from "../components/charts";
 import { Badge, Card, Kpi, Source, Status, Table, num, pct } from "../components/ui";
@@ -78,6 +78,32 @@ export function ReadinessBadge({ status }: { status: ReadinessStatus | string | 
 
 const CONSUMPTION_TONE: Record<string, "good" | "warn" | "bad"> = { NORMAL: "good", OVER_CONSUMPTION: "bad", UNDER_CONSUMPTION: "warn" };
 const CONSUMPTION_LABEL: Record<string, string> = { NORMAL: "Normal", OVER_CONSUMPTION: "Over", UNDER_CONSUMPTION: "Under" };
+
+/** PU-R33/R46: turn an MRP run or a short plan into a Draft purchase requisition, then open it in Purchasing. */
+function CreateRequisition({ body, label }: { body: { from_mrp_run: string } | { from_plan: string }; label: string }) {
+  const { bump } = useApp();
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const create = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const pr = await post<{ pr_id: string }>("/api/purchasing/requisitions", body);
+      bump();
+      navigate(`/purchasing?tab=requisitions&pr=${encodeURIComponent(pr.pr_id)}`);
+    } catch (e) {
+      setErr(errorText(e));
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <button aria-label={label} onClick={create} disabled={busy}>{busy ? "Creating…" : "Create requisition"}</button>
+      {err && <span className="error small" role="alert">{err}</span>}
+    </>
+  );
+}
 
 function Empty({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -255,8 +281,17 @@ function PlanCheck({ planId, label }: { planId: string; label: string }) {
     }
   };
   const shown = check && check.plan_id === planId ? check : null;
+  const short = !!shown && ((shown.shortages ?? []).length > 0 || shown.status === "SHORTAGE" || shown.status === "PARTIAL");
   return (
-    <Card title={`Material requirements: ${shown?.plan_number ?? label}`} actions={<button className="primary" onClick={checkNow} disabled={busy}>{busy ? "Checking…" : "Check now"}</button>}>
+    <Card
+      title={`Material requirements: ${shown?.plan_number ?? label}`}
+      actions={
+        <>
+          {short && <CreateRequisition body={{ from_plan: planId }} label={`Create requisition for ${shown?.plan_number ?? label}`} />}
+          <button className="primary" onClick={checkNow} disabled={busy}>{busy ? "Checking…" : "Check now"}</button>
+        </>
+      }
+    >
       <p className="formula"><strong>Available = On Hand − Reserved + Incoming</strong> <span className="muted small">· Shortage = max(Required − Available, 0). Incoming counts only when it arrives on or before the need date.</span></p>
       {err && <div className="notice-box bad" role="alert">{err} <button className="small" onClick={checkNow}>Retry</button></div>}
       {loading && !shown && <p className="muted">Loading the last check…</p>}
@@ -420,7 +455,7 @@ function MrpResults({ run }: { run: MrpRun }) {
     }
   };
   return (
-    <Card title={`Results ${run.run_id}`}>
+    <Card title={`Results ${run.run_id}`} actions={rows.some((r) => r.net_qty > 0) ? <CreateRequisition body={{ from_mrp_run: run.run_id }} label={`Create requisition from ${run.run_id}`} /> : undefined}>
       <div className="fields">
         <div className="field"><span className="muted small">Horizon</span><strong>{run.horizon_start} → {run.horizon_end}</strong></div>
         <div className="field"><span className="muted small">Plans</span><strong>{run.plan_ids?.length ? run.plan_ids.join(", ") : "all in horizon"}</strong></div>
