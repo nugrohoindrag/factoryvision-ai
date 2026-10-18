@@ -1047,6 +1047,191 @@ def replan(sid: str, *, reason: str, forecast_id: str | None = None, demand_chan
     return {**detail(sid, p), "capacity_delta": delta, "compared_with": prev["plan_number"] if prev else "the same demand without the change"}
 
 
+# --- agent draft ----------------------------------------------------------------------------------------------------
+
+AGENT = "production_planning_agent"
+DRAFT_RULES = "Open order lines due in the period, then forecast not yet ordered; firm orders first, earlier delivery first; a line above capacity is planned at what fits."
+
+
+def draft(sid: str, period_start: str | None, period_end: str | None, *, include_forecast: bool = True) -> dict[str, Any]:
+    """The draft plan the planning agent proposes for a period: what a PPIC planner would do by hand, computed, not generated.
+
+    Every open order line due in the period, then forecast not yet ordered (optional). Firm orders get priority over
+    forecast, earlier delivery first. A line above total capacity is planned at what fits and its gap is reported, so
+    the draft never asks for more than the plant can make. Nothing is saved: the result is a proposal.
+    """
+    start, end = capacity.parse_period(period_start, period_end, INVALID_PERIOD)
+    o = effects.overrides(sid)
+    view = order_view(sid, o)
+    lo, hi = start.isoformat(), end.isoformat()
+    demands: list[dict[str, Any]] = []
+    for h in view["orders"]:
+        if h["status"] == "Cancelled":
+            continue
+        for ln in h["lines"]:
+            left = int(ln["ordered_qty"]) - int(ln["planned_qty"])
+            if ln["status"] != "Cancelled" and left > 0 and lo <= ln["requested_delivery_date"] <= hi:
+                demands.append(
+                    {"order_id": ln["order_id"], "order_number": h["order_number"], "sku": ln["sku"], "qty": left, "date": ln["requested_delivery_date"]}
+                )
+    lines: dict[str, dict[str, Any]] = {}
+    for d in demands:
+        ln = lines.setdefault(d["sku"], {"sku": d["sku"], "demand_qty": 0, "forecast_qty": 0, "orders": 0, "required_date": d["date"]})
+        ln["demand_qty"] += d["qty"]
+        ln["orders"] += 1
+        ln["required_date"] = min(ln["required_date"], d["date"])
+    forecast_id: str | None = None
+    if include_forecast:
+        probe = {"forecast_id": None, "period_start": lo, "period_end": hi}
+        for sku in plant.SKUS:
+            try:
+                available, _fq, _ids, snap = unordered_forecast(sid, probe, sku, view)
+            except FVError:
+                break  # no forecast snapshot yet: the draft plans firm orders only
+            forecast_id = snap["forecast_id"]
+            if available:
+                lines.setdefault(sku, {"sku": sku, "demand_qty": 0, "forecast_qty": 0, "orders": 0, "required_date": hi})["forecast_qty"] = available
+    ordered = sorted(lines.values(), key=lambda x: (x["demand_qty"] == 0, x["required_date"], x["sku"]))
+    for k, ln in enumerate(ordered):
+        ln["priority"] = min(k + 1, MAX_PRIORITY)
+        ln["wanted_qty"] = ln["planned_qty"] = ln["demand_qty"] + ln["forecast_qty"]
+    util = capacity.utilization_pct(sid)
+
+    def assess() -> dict[str, dict[str, Any]]:
+        return capacity.sku_capacity({x["sku"]: x["planned_qty"] for x in ordered}, start, end, util, maintenance=o.maintenance, mold_moves=o.mold_moves)
+
+    caps = assess() if ordered else {}
+    for _ in range(5):  # capping one line changes its share of the machine pool, so re-check until everything fits
+        over = [x for x in ordered if caps[x["sku"]]["status"] == capacity.UP]
+        if not over:
+            break
+        for x in over:
+            x["planned_qty"] = min(x["planned_qty"], int(caps[x["sku"]]["total"]))
+        caps = assess()
+    out_lines = [
+        {
+            "sku": x["sku"],
+            "product_name": capacity.product_name(x["sku"]),
+            "priority": x["priority"],
+            "orders": x["orders"],
+            "demand_qty": x["demand_qty"],
+            "forecast_qty": x["forecast_qty"],
+            "planned_qty": x["planned_qty"],
+            "required_date": x["required_date"],
+            "total_capacity": caps[x["sku"]]["total"],
+            "planning_capacity": caps[x["sku"]]["planning"],
+            "capacity_status": caps[x["sku"]]["status"],
+            "short_of_orders": max(0, x["demand_qty"] - x["planned_qty"]),
+            "short_of_forecast": max(0, x["wanted_qty"] - max(x["planned_qty"], x["demand_qty"])),
+        }
+        for x in ordered
+    ]
+    gaps = [
+        {
+            "sku": x["sku"],
+            "wanted_qty": x["wanted_qty"],
+            "planned_qty": x["planned_qty"],
+            "gap_qty": x["wanted_qty"] - x["planned_qty"],
+            "short_of_orders": max(0, x["demand_qty"] - x["planned_qty"]),
+        }
+        for x in ordered
+        if x["planned_qty"] < x["wanted_qty"]
+    ]
+    fc = {x["sku"]: x["forecast_qty"] for x in ordered if x["forecast_qty"]}
+    return {
+        "period_start": lo,
+        "period_end": hi,
+        "include_forecast": include_forecast,
+        "forecast_id": forecast_id,
+        "planning_utilization_pct": util,
+        "lines": out_lines,
+        "gaps": gaps,
+        "summary": {
+            "order_lines": len(demands),
+            "customer_orders": len({d["order_number"] for d in demands}),
+            "order_qty": sum(d["qty"] for d in demands),
+            "forecast_qty": sum(fc.values()),
+            "planned_qty": sum(x["planned_qty"] for x in out_lines),
+            "worst_capacity_status": capacity.worst(x["capacity_status"] for x in out_lines),
+        },
+        "args": {
+            "period_start": lo,
+            "period_end": hi,
+            "forecast_id": forecast_id,
+            "demands": [{"order_id": d["order_id"], "qty": d["qty"]} for d in demands],
+            "forecast": fc,
+            "lines": [{"sku": x["sku"], "planned_qty": x["planned_qty"], "priority": x["priority"]} for x in out_lines],
+        },
+        "rules": DRAFT_RULES,
+        "source": "open customer orders, forecast snapshot, capacity check (fv.fact_production, fv.dim_mold); no number comes from the language model",
+    }
+
+
+def draft_rationale(d: dict[str, Any]) -> str:
+    s = d["summary"]
+    text = f"{s['order_lines']} open order line(s) from {s['customer_orders']} customer order(s) due {d['period_start']} to {d['period_end']} ({s['order_qty']:,} pcs)"
+    if s["forecast_qty"]:
+        text += f", plus {s['forecast_qty']:,} pcs of forecast not yet ordered ({d['forecast_id']})"
+    text += f"; {s['planned_qty']:,} pcs planned."
+    for g in d["gaps"]:
+        text += (
+            f" {g['sku']} is planned at capacity, {g['gap_qty']:,} pcs short"
+            + (f" ({g['short_of_orders']:,} of them firm orders)" if g["short_of_orders"] else "")
+            + "."
+        )
+    return text
+
+
+def materialize_draft(sid: str, args: dict[str, Any], action_id: str | None = None, approved_by: str | None = None) -> dict[str, Any]:
+    """An approved draft becomes a Draft plan the planner continues in the wizard.
+
+    Demand planned elsewhere since the proposal, or forecast that has since been ordered, is taken at what is still
+    open and noted, so approving an old draft never over-plans an order line.
+    """
+    if action_id:
+        prior = next((p for p in _plans(sid) if p.get("source_action_id") == action_id), None)
+        if prior:
+            return {"plan_id": prior["plan_id"], "plan_number": prior["plan_number"], "duplicate": True}
+    created = create_plan(sid, args["period_start"], args["period_end"], user=AGENT, origin="agent")
+    pid = created["plan_id"]
+    p = _doc(sid, pid)
+    p.update(agent_kind="draft", source_action_id=action_id, approved_by=approved_by)
+    if args.get("forecast_id"):
+        p["forecast_id"] = args["forecast_id"]
+    _save(p)
+    notes: list[str] = []
+    view = order_view(sid)
+    open_qty = {ln["order_id"]: int(ln["ordered_qty"]) - int(ln["planned_qty"]) for h in view["orders"] for ln in h["lines"]}
+    for d in args.get("demands", []):
+        q = min(int(d["qty"]), open_qty.get(d["order_id"], 0))
+        if q < int(d["qty"]):
+            notes.append(f"{d['order_id']}: {q:,} of {int(d['qty']):,} pcs were still open at approval.")
+        if q <= 0:
+            continue
+        try:
+            add_demand(sid, pid, d["order_id"], q)
+        except FVError as e:
+            notes.append(f"{d['order_id']} was not added: {e.message}")
+    for sku, q in (args.get("forecast") or {}).items():
+        try:
+            available, *_ = unordered_forecast(sid, _doc(sid, pid), sku)
+            take = min(int(q), available)
+            if take < int(q):
+                notes.append(f"{sku}: forecast not yet ordered is now {available:,} pcs, not {int(q):,}.")
+            if take > 0:
+                set_forecast_demand(sid, pid, sku, take)
+        except FVError as e:
+            notes.append(f"{sku} forecast was not added: {e.message}")
+    for x in args.get("lines", []):
+        ln = _line_of(_doc(sid, pid), x["sku"])
+        if ln is not None:
+            update_line(sid, pid, ln["line_id"], min(int(x["planned_qty"]), requirement(ln)), int(x["priority"]))
+    p = _doc(sid, pid)
+    p["draft_notes"] = notes
+    p = _refresh(sid, p)
+    return {"plan_id": pid, "plan_number": p["plan_number"], "status": p["status"], "notes": notes}
+
+
 # --- events and downstream ------------------------------------------------------------------------------------------
 
 

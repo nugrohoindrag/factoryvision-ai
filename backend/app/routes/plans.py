@@ -3,8 +3,9 @@ from typing import Any
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
-from app import capacity, plans
+from app import actions, capacity, plans
 from app.session import SessionId, user_label
+from app.tools.common import TODAY
 
 router = APIRouter(prefix="/api")
 
@@ -12,6 +13,12 @@ router = APIRouter(prefix="/api")
 class PlanIn(BaseModel):
     period_start: str | None = None
     period_end: str | None = None
+
+
+class DraftIn(BaseModel):
+    period_start: str | None = None
+    period_end: str | None = None
+    include_forecast: bool = True
 
 
 class StepIn(BaseModel):
@@ -62,12 +69,34 @@ class SettingsIn(BaseModel):
 
 @router.get("/plans")
 def list_plans(sid: SessionId, status: str | None = None, period_from: str | None = None, period_to: str | None = None) -> dict[str, Any]:
-    return {"plans": plans.list_plans(sid, status or None, period_from or None, period_to or None)}
+    return {"plans": plans.list_plans(sid, status or None, period_from or None, period_to or None), "as_of": TODAY.isoformat()}
 
 
 @router.post("/plans")
 def create_plan(body: PlanIn, request: Request, sid: SessionId) -> dict[str, Any]:
     return plans.create_plan(sid, body.period_start, body.period_end, user=user_label(request))
+
+
+@router.post("/plans/draft")
+def preview_draft(body: DraftIn, sid: SessionId) -> dict[str, Any]:
+    """The planning agent's draft for a period, computed by its draft tool; nothing is saved."""
+    return plans.draft(sid, body.period_start, body.period_end, include_forecast=body.include_forecast)
+
+
+@router.post("/plans/draft/propose")
+def propose_draft(body: DraftIn, sid: SessionId) -> dict[str, Any]:
+    """Send the agent's draft to the Action Center; after approval it becomes a Draft plan the planner finishes in the wizard."""
+    d = plans.draft(sid, body.period_start, body.period_end, include_forecast=body.include_forecast)
+    a = actions.propose(
+        sid,
+        "production_plan_draft",
+        f"Draft production plan {d['period_start']} to {d['period_end']}: {len(d['lines'])} line(s), {d['summary']['planned_qty']:,} pcs",
+        "planning",
+        plans.draft_rationale(d),
+        d["args"],
+        evidence=[{"source": d["source"], "rules": d["rules"], "lines": d["lines"], "gaps": d["gaps"]}],
+    )
+    return {"action": a, "draft": d}
 
 
 @router.get("/plans/{plan_id}")

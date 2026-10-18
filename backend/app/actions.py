@@ -23,6 +23,7 @@ KINDS = {
     "maintenance": ("mes", "start_maintenance"),
     "mold_move": ("planning", "move_mold"),
     "replan": ("planning", "create_replan"),
+    "production_plan_draft": ("planning", "create_draft_plan"),
     "extra_shift": ("planning", "add_shift"),
     "purchase_order": ("purchasing", "place_po"),
     "expedite_po": ("purchasing", "expedite_po"),

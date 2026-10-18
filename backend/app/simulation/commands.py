@@ -102,11 +102,24 @@ def create_replan(s: State, a: dict[str, Any]) -> dict[str, Any]:
     return {k: p.get(k) for k in keys}
 
 
+def create_draft_plan(s: State, a: dict[str, Any]) -> dict[str, Any]:
+    from app import plans
+    from app.store import store
+
+    aid = a.get("_action_id")
+    done = store().get("actions", str(aid)) if aid else None
+    if done and done.get("status") == "approved" and (done.get("execution") or {}).get("ok"):
+        prior: dict[str, Any] = done["execution"]["result"]
+        return prior
+    args = {k: v for k, v in a.items() if not k.startswith("_")}
+    return plans.materialize_draft(s.session_id, args, str(aid) if aid else None, str(a.get("_decided_by") or "") or None)
+
+
 def logged(_s: State, _a: dict[str, Any]) -> dict[str, Any]:
     return {"logged": True}
 
 
-_NEEDS_APPROVAL_META = {"create_replan"}
+_NEEDS_APPROVAL_META = {"create_replan", "create_draft_plan"}
 
 _COMMANDS = {
     "start_maintenance": start_maintenance,
@@ -115,6 +128,7 @@ _COMMANDS = {
     "place_po": place_po,
     "expedite_po": place_po,
     "create_replan": create_replan,
+    "create_draft_plan": create_draft_plan,
     "add_shift": logged,
     "apply_customer_po": logged,
     "create_customer_order": logged,

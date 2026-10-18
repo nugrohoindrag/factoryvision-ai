@@ -728,7 +728,11 @@ export default function PlanWizard() {
         </div>
       )}
       {plan.origin === "agent" && !readOnly && (
-        <div className="notice-box info">Created by the planning agent from a re-plan proposal approved in the <Link to="/actions">Action Center</Link>. Review it like any other plan before confirming.</div>
+        <div className="notice-box info">
+          {plan.agent_kind === "draft" ? "Drafted by the planning agent for this period" : "Created by the planning agent from a re-plan proposal"}
+          {plan.approved_by ? `, approved by ${plan.approved_by}` : ""} in the <Link to="/actions">Action Center</Link>. Review it like any other plan before confirming.
+          {(plan.draft_notes ?? []).map((n) => <span key={n}> {n}</span>)}
+        </div>
       )}
       <Card>
         <ol className="wizard-steps" aria-label="Plan steps">

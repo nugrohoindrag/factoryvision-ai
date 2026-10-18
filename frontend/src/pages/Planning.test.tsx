@@ -37,6 +37,7 @@ const row = (extra = {}) => ({
   ...extra,
 });
 const PLANS = {
+  as_of: "2027-02-01",
   plans: [
     row(),
     row({ plan_id: "p2", plan_number: "PP-2027-02-002", created_at: "2027-01-30T08:00:00Z", origin: "agent", ageing: false, age_days: 2, capacity_status: "Within Plan", line_count: 1, total_planned: 900 }),
@@ -153,6 +154,37 @@ it("creates a plan for the plant month, rejects an end before the start, and ope
   fireEvent.click(within(dialog).getByRole("button", { name: "Create & open wizard" }));
   expect(await screen.findByText("Wizard opened")).toBeInTheDocument();
   expect(calls.find((c) => c.url === "/api/plans" && c.method === "POST")?.body).toEqual({ period_start: "2027-03-01", period_end: "2027-03-31" });
+});
+
+const DRAFT = {
+  period_start: "2027-02-01",
+  period_end: "2027-02-07",
+  forecast_id: "FC-2027-02-001",
+  lines: [
+    { sku: "FB-ARKA", product_name: "Front bumper ARKA", priority: 1, orders: 3, demand_qty: 6000, forecast_qty: 400, planned_qty: 5500, total_capacity: 5500, capacity_status: "Additional Demand", short_of_orders: 500, short_of_forecast: 400 },
+    { sku: "RB-CITRA", product_name: "Rear bumper CITRA", priority: 2, orders: 1, demand_qty: 900, forecast_qty: 0, planned_qty: 900, total_capacity: 8000, capacity_status: "Within Plan", short_of_orders: 0, short_of_forecast: 0 },
+  ],
+  gaps: [{ sku: "FB-ARKA", wanted_qty: 6400, planned_qty: 5500, gap_qty: 900, short_of_orders: 500 }],
+  summary: { order_lines: 4, customer_orders: 3, order_qty: 6900, forecast_qty: 400, planned_qty: 6400, worst_capacity_status: "Additional Demand" },
+  rules: "Firm orders first.",
+  source: "open customer orders",
+};
+
+it("drafts a plan with the planning agent and sends it for approval", async () => {
+  mockApi((url, method) =>
+    method !== "POST" ? undefined : url === "/api/plans/draft" ? DRAFT : url === "/api/plans/draft/propose" ? { action: { action_id: "a9", status: "pending" }, draft: DRAFT } : undefined,
+  );
+  renderAt("/planning");
+  await waitFor(() => expect(screen.getByLabelText("Draft period start")).toHaveValue("2027-02-01")); // the plant's date from the server
+  expect(screen.getByLabelText("Draft period end")).toHaveValue("2027-02-07");
+  fireEvent.click(screen.getByRole("button", { name: "Prepare draft" }));
+  expect(await screen.findByText("FB-ARKA −900")).toBeInTheDocument();
+  expect(screen.getByText("900 not planned")).toBeInTheDocument();
+  expect(screen.getByText(/FB-ARKA 900 pcs short \(500 of them firm orders\)/)).toBeInTheDocument();
+  expect(calls.find((c) => c.url === "/api/plans/draft")?.body).toEqual({ period_start: "2027-02-01", period_end: "2027-02-07", include_forecast: true });
+  fireEvent.click(screen.getByRole("button", { name: "Send draft for approval" }));
+  expect(await screen.findByText(/Approve it there to open it as a Draft plan/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Send draft for approval" })).not.toBeInTheDocument();
 });
 
 it("shows the server's reason when creating fails", async () => {
