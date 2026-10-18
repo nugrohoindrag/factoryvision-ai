@@ -39,14 +39,20 @@ def vendor_performance(category: str | None = None) -> dict[str, Any]:
     return {"vendors": out, "worst_vendor": out[0]["vendor_name"] if out else None, "source": "fv.fact_purchase_order, fv.dim_vendor"}
 
 
-def recommend_po(material_id: str = "PP-EPDM-T20", need_by: str | None = None, qty: float | None = None) -> dict[str, Any]:
+def recommend_po(
+    material_id: str = "PP-EPDM-T20",
+    need_by: str | None = None,
+    qty: float | None = None,
+    extra_delay: dict[str, float] | None = None,
+) -> dict[str, Any]:
     perf = {v["vendor_id"]: v for v in vendor_performance()["vendors"]}
     need = to_date(need_by) if need_by else None
     qty = qty or 160_000.0
     opts = []
     for vid in plant.MATERIAL_VENDORS.get(material_id, []):
         v = perf.get(vid) or {**plant.VENDOR_BY_ID[vid], "avg_delay_days": 0, "quoted_lead_time_days": plant.VENDOR_BY_ID[vid]["lead_time_days"]}
-        expected = TODAY + timedelta(days=round(v["quoted_lead_time_days"] + max(0, v["avg_delay_days"])))
+        delay = max(0, v["avg_delay_days"]) + (extra_delay or {}).get(vid, 0)
+        expected = TODAY + timedelta(days=round(v["quoted_lead_time_days"] + delay))
         price = plant.VENDOR_BY_ID[vid]["unit_price_idr"]
         opts.append(
             {
@@ -57,6 +63,7 @@ def recommend_po(material_id: str = "PP-EPDM-T20", need_by: str | None = None, q
                 "unit_price_idr": price,
                 "po_value_idr": idr(price * qty),
                 "avg_delay_days": v["avg_delay_days"],
+                "expected_delay_days": round(delay, 1),
             }
         )
     ok = [o for o in opts if o["arrives_before_need"] in (True, None)]

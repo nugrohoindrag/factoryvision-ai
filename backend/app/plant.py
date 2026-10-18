@@ -314,3 +314,8 @@ class PlantSpec:
     machines: list[Machine] = field(default_factory=lambda: MACHINES)
     products: list[Product] = field(default_factory=lambda: PRODUCTS)
     materials: list[Material] = field(default_factory=lambda: MATERIALS)
+
+
+DEFAULT_SEED = 20270201
+FEB_PLAN_PER_DAY = {"FB-ARKA": 995, "RB-ARKA": 800, "FB-BROMO": 520, "RB-BROMO": 500, "FB-CITRA": 600, "RB-CITRA": 590}
+BAD_LOT = "LOT-PPT20-0918"

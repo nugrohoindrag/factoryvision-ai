@@ -39,7 +39,7 @@ on intermediate commits, so a red intermediate commit is fine — but a red tip 
 ```bash
 just lint        # ruff check + ruff format --check
 just typecheck   # mypy over the backend, tsc for the frontend
-just test        # 45 unit, 20 integration
+just test        # 82 unit, 56 integration
 ```
 
 Paste the actual output in the PR. A claim that a gate passes is not evidence that
@@ -76,8 +76,8 @@ somebody is looking for it.
 
 Two tiers, and the tier is part of the contract:
 
-- **`unit`** — pure logic, no I/O, no warehouse, no network. 45 tests.
-- **`integration`** — real DuckDB built through the migrations, no network. 20 tests.
+- **`unit`** — pure logic, no I/O, no warehouse, no network. 82 tests.
+- **`integration`** — real DuckDB built through the migrations, no network. 56 tests.
 
 If you add a test, it is either one or the other. There is no third option, and a
 test without a marker runs in neither tier — which is the same as not running it.

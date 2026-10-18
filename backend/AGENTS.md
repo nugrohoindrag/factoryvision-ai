@@ -6,7 +6,7 @@ Nested from the root `AGENTS.md`. That file wins if anything here contradicts it
 
 ```
 app/        FastAPI service, the pydantic Settings, the SQL guardrail, the plant spec (plant.py)
-simulator/  Seed-data generation; numpy, so S311 is exempt here
+simulator/  Offline tools: seed generation and the photo catalog; S311 is exempt here
 tests/unit/ pure logic, no I/O
 tests/integration/ real DuckDB through the migrations
 tests/e2e/  Playwright, belongs to neither tier
@@ -36,7 +36,21 @@ add one back; if `app` needs something from the generator, move it into `app`.
 - **`S311` (`random`) is exempted for `simulator/` only.** Every alternative was
   evaluated and rejected: replacing the RNGs broke 2 of 7 story tests, and
   regenerating `ground_truth.json` would have changed the numbers that job exists to
-  verify.
+  verify. Code under `app/` gets no such exemption: the twin simulator
+  (`app/simulation/`) uses `numpy.random.Generator`, seeded per tick, which is
+  just as deterministic and is not what S311 is about.
+- **Agent tools take keyword-only arguments and declare `tool_context` only when they
+  use it.** ADK calls tools with keywords and injects `tool_context` by parameter
+  name; it resolves annotations with `typing.get_type_hints`, so `app/agents/tools.py`
+  has no `from __future__ import annotations`. Tool descriptions for Gemini live in
+  `TOOL_DOCS` (data, not docstrings) and are attached at import.
+- **Routes have no `from __future__ import annotations`.** FastAPI reads the
+  `Annotated[..., Depends()]` aliases at runtime; with postponed annotations ruff's
+  TC rules would move those imports under `TYPE_CHECKING` and break the routes.
+- **The run timeline uses per-agent callbacks, not an ADK plugin.** In adk 1.14.1
+  `Runner(plugins=...)` is deprecated and `App` is experimental; both warn, and
+  warnings are errors here. `TRACE_CALLBACKS` in `app/agents/runner.py` is attached to
+  every `LlmAgent`.
 - **The SQL guardrail is an AST check, and its allowlist is the whole policy.**
   It parses with sqlglot and rejects writes, multi-statements, non-allowlisted
   tables and table functions. Two things it deliberately does not do: it validates

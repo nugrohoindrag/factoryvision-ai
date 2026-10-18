@@ -2,8 +2,10 @@
 
 Nested from the root `AGENTS.md`. That file wins if anything here contradicts it.
 
-This directory is small: one component, one formatter, three test files. It is not
-underbuilt by accident — it is the smallest thing that proves the wiring works.
+Pages live in `src/pages/` (Plant Briefing, the seven module pages, Action Center),
+shared pieces in `src/components/`, the API client and app state in `src/lib/`, and
+the React Three Fiber digital twin in `src/twin/`. The twin is lazy-loaded with the
+MES page so three.js stays out of the first bundle.
 
 ```bash
 npm --prefix frontend run typecheck   # tsc -b --noEmit
@@ -20,7 +22,9 @@ CI runs all three, plus `vite build`. Locally they are reachable through
   eslint and no oxlint config in this directory. If you want one, that is its own
   change — do not add a config file as a side effect of something else, and note
   that CI will not run it until the workflow gains a step.
-- **No MSW, no generated API client, no storybook.** The API surface is one endpoint.
+- **No MSW, no generated API client, no storybook.** `src/lib/api.ts` is a small
+  hand-written client; `src/lib/types.ts` mirrors the response shapes by hand, so a
+  backend change to a response shape is not caught by `tsc`.
 - **No `tsconfig` split.** One file, `"include": ["src"]`.
 
 ## The consequence you need to know

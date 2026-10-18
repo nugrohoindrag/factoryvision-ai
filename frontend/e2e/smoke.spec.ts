@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-test("home page loads", async ({ page }) => {
+test("the shell renders without a backend", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Factory Vision AI" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Plant Briefing" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Modules" })).toBeVisible();
 });

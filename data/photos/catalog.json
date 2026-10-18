@@ -1,0 +1,952 @@
+[
+ {
+  "photo_id": "P008",
+  "file": "P008_FB-ARKA_C02.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C02",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P009",
+  "file": "P009_FB-ARKA_C02.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C02",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P010",
+  "file": "P010_RB-ARKA_C02.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C02",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P011",
+  "file": "P011_FB-ARKA_C02.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C02",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P012",
+  "file": "P012_RB-ARKA_C02.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C02",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P013",
+  "file": "P013_FB-ARKA_C04.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C04",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P014",
+  "file": "P014_FB-ARKA_C04.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C04",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P015",
+  "file": "P015_FB-ARKA_C04.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C04",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P016",
+  "file": "P016_FB-ARKA_C04.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C04",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P017",
+  "file": "P017_RB-ARKA_C04.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C04",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P018",
+  "file": "P018_RB-ARKA_C04.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C04",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P019",
+  "file": "P019_FB-ARKA_C07.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C07",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P020",
+  "file": "P020_RB-ARKA_C07.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C07",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P021",
+  "file": "P021_RB-ARKA_C07.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C07",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P022",
+  "file": "P022_FB-ARKA_C07.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C07",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P023",
+  "file": "P023_RB-ARKA_C08.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C08",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P024",
+  "file": "P024_RB-ARKA_C08.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C08",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P025",
+  "file": "P025_FB-ARKA_C08.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C08",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P026",
+  "file": "P026_FB-ARKA_C08.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C08",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P027",
+  "file": "P027_FB-ARKA_C08.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C08",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P028",
+  "file": "P028_RB-ARKA_C08.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C08",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P029",
+  "file": "P029_FB-ARKA_C09.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C09",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P030",
+  "file": "P030_RB-ARKA_C09.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C09",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P031",
+  "file": "P031_FB-ARKA_C09.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C09",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P032",
+  "file": "P032_RB-ARKA_C05.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C05",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P033",
+  "file": "P033_RB-ARKA_C05.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C05",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P034",
+  "file": "P034_RB-ARKA_C09.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C09",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P071",
+  "file": "P071_FB-CITRA_C01.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C01",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P072",
+  "file": "P072_FB-CITRA_C01.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C01",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P073",
+  "file": "P073_FB-CITRA_C01.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C01",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P074",
+  "file": "P074_FB-CITRA_C01.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C01",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P075",
+  "file": "P075_FB-CITRA_C01.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C01",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P076",
+  "file": "P076_FB-CITRA_C01.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C01",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P077",
+  "file": "P077_FB-CITRA_C06.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C06",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P078",
+  "file": "P078_FB-CITRA_C06.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C06",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P079",
+  "file": "P079_RB-CITRA_C17.png",
+  "sku": "RB-CITRA",
+  "model": "CITRA",
+  "position": "Rear",
+  "color": "C17",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P080",
+  "file": "P080_FB-CITRA_C06.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C06",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P081",
+  "file": "P081_RB-CITRA_C06.png",
+  "sku": "RB-CITRA",
+  "model": "CITRA",
+  "position": "Rear",
+  "color": "C06",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P082",
+  "file": "P082_RB-CITRA_C17.png",
+  "sku": "RB-CITRA",
+  "model": "CITRA",
+  "position": "Rear",
+  "color": "C17",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P083",
+  "file": "P083_FB-CITRA_C17.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C17",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P084",
+  "file": "P084_FB-CITRA_C17.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C17",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P085",
+  "file": "P085_FB-CITRA_C17.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C17",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P086",
+  "file": "P086_FB-CITRA_C17.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C17",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P087",
+  "file": "P087_RB-CITRA_C17.png",
+  "sku": "RB-CITRA",
+  "model": "CITRA",
+  "position": "Rear",
+  "color": "C17",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P088",
+  "file": "P088_RB-CITRA_C16.png",
+  "sku": "RB-CITRA",
+  "model": "CITRA",
+  "position": "Rear",
+  "color": "C16",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P089",
+  "file": "P089_FB-CITRA_C16.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C16",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P090",
+  "file": "P090_RB-CITRA_C16.png",
+  "sku": "RB-CITRA",
+  "model": "CITRA",
+  "position": "Rear",
+  "color": "C16",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P091",
+  "file": "P091_FB-CITRA_C16.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C16",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P092",
+  "file": "P092_FB-CITRA_C16.png",
+  "sku": "FB-CITRA",
+  "model": "CITRA",
+  "position": "Front",
+  "color": "C16",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P093",
+  "file": "P093_RB-CITRA_C16.png",
+  "sku": "RB-CITRA",
+  "model": "CITRA",
+  "position": "Rear",
+  "color": "C16",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P129",
+  "file": "P129_FB-BROMO_C01.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C01",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P130",
+  "file": "P130_FB-BROMO_C02.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C02",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P132",
+  "file": "P132_RB-BROMO_C12.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C12",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P133",
+  "file": "P133_FB-BROMO_C01.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C01",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P134",
+  "file": "P134_FB-BROMO_C02.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C02",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P135",
+  "file": "P135_RB-BROMO_C11.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C11",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P136",
+  "file": "P136_FB-BROMO_C04.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C04",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P137",
+  "file": "P137_FB-BROMO_C04.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C04",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P138",
+  "file": "P138_FB-BROMO_C12.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C12",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P139",
+  "file": "P139_RB-BROMO_C06.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C06",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P140",
+  "file": "P140_FB-BROMO_C12.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C12",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P141",
+  "file": "P141_FB-BROMO_C06.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C06",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P142",
+  "file": "P142_FB-BROMO_C06.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C06",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P143",
+  "file": "P143_FB-BROMO_C11.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C11",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P144",
+  "file": "P144_RB-BROMO_C04.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C04",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P145",
+  "file": "P145_FB-BROMO_C08.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C08",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P146",
+  "file": "P146_RB-BROMO_C10.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C10",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P147",
+  "file": "P147_FB-BROMO_C11.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C11",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P148",
+  "file": "P148_FB-BROMO_C08.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C08",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P149",
+  "file": "P149_FB-BROMO_C10.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C10",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P150",
+  "file": "P150_RB-BROMO_C01.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C01",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P151",
+  "file": "P151_FB-BROMO_C10.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C10",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P152",
+  "file": "P152_RB-BROMO_C11.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C11",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P153",
+  "file": "P153_RB-BROMO_C04.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C04",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P154",
+  "file": "P154_RB-BROMO_C10.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C10",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P155",
+  "file": "P155_RB-BROMO_C02.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C02",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P156",
+  "file": "P156_RB-BROMO_C01.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C01",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P157",
+  "file": "P157_RB-BROMO_C06.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C06",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P158",
+  "file": "P158_RB-BROMO_C06.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C06",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P159",
+  "file": "P159_RB-BROMO_C01.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C01",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P160",
+  "file": "P160_RB-BROMO_C02.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C02",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P161",
+  "file": "P161_RB-BROMO_C12.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C12",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P162",
+  "file": "P162_RB-BROMO_C12.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C12",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P163",
+  "file": "P163_RB-BROMO_C10.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C10",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P164",
+  "file": "P164_RB-BROMO_C04.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C04",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P165",
+  "file": "P165_RB-BROMO_C11.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C11",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P166",
+  "file": "P166_RB-BROMO_C08.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C08",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P167",
+  "file": "P167_RB-BROMO_C08.png",
+  "sku": "RB-BROMO",
+  "model": "BROMO",
+  "position": "Rear",
+  "color": "C08",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P168",
+  "file": "P168_FB-ARKA_C07.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C07",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P169",
+  "file": "P169_FB-ARKA_C09.png",
+  "sku": "FB-ARKA",
+  "model": "ARKA",
+  "position": "Front",
+  "color": "C09",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P170",
+  "file": "P170_RB-ARKA_C05.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C05",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P171",
+  "file": "P171_RB-ARKA_C09.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C09",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P172",
+  "file": "P172_RB-ARKA_C07.png",
+  "sku": "RB-ARKA",
+  "model": "ARKA",
+  "position": "Rear",
+  "color": "C07",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P174",
+  "file": "P174_RB-CITRA_C06.png",
+  "sku": "RB-CITRA",
+  "model": "CITRA",
+  "position": "Rear",
+  "color": "C06",
+  "defect_code": null,
+  "reviewed": false
+ },
+ {
+  "photo_id": "P175",
+  "file": "P175_FB-BROMO_C06.png",
+  "sku": "FB-BROMO",
+  "model": "BROMO",
+  "position": "Front",
+  "color": "C06",
+  "defect_code": null,
+  "reviewed": false
+ }
+]

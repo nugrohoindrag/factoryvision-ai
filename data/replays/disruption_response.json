@@ -1,0 +1,746 @@
+{
+ "scenario": "disruption_response",
+ "recorded_with": "scripted playbook (deterministic tools, templated narrative, no Gemini)",
+ "scripted": true,
+ "recorded_at": "2026-10-17T18:52:37+00:00",
+ "prompt": "Disruption: OEM-A sent a revised delivery schedule (customer-po-oem-a.pdf) raising FB-ARKA; the resin vendor for PP-EPDM-T20 emailed about a late delivery (vendor-email-andalas.txt); IMM-04 is slowing down. Trace the impact across all modules and produce one action plan.",
+ "timeline": [
+  {
+   "t_ms": 0,
+   "kind": "agent_start",
+   "agent": "orchestrator"
+  },
+  {
+   "t_ms": 900,
+   "kind": "agent_start",
+   "agent": "demand_forecast_agent"
+  },
+  {
+   "t_ms": 1800,
+   "kind": "tool_call",
+   "agent": "demand_forecast_agent",
+   "tool": "read_customer_po",
+   "args": {
+    "document_name": "customer-po-oem-a.pdf"
+   }
+  },
+  {
+   "t_ms": 2700,
+   "kind": "tool_result",
+   "agent": "demand_forecast_agent",
+   "tool": "read_customer_po",
+   "summary": "FB-ARKA 19,104 -> 26,746 (+40.0%)",
+   "error": false
+  },
+  {
+   "t_ms": 3600,
+   "kind": "tool_call",
+   "agent": "demand_forecast_agent",
+   "tool": "get_forecast",
+   "args": {
+    "sku": "FB-ARKA"
+   }
+  },
+  {
+   "t_ms": 4500,
+   "kind": "tool_result",
+   "agent": "demand_forecast_agent",
+   "tool": "get_forecast",
+   "summary": "sku=FB-ARKA, engine=local trend+weekday (dev), as_of=2027-02-01, horizon_weeks=6, last7_daily_mean=689.6",
+   "error": false
+  },
+  {
+   "t_ms": 5400,
+   "kind": "agent_end",
+   "agent": "demand_forecast_agent"
+  },
+  {
+   "t_ms": 6300,
+   "kind": "agent_start",
+   "agent": "production_planning_agent"
+  },
+  {
+   "t_ms": 7200,
+   "kind": "tool_call",
+   "agent": "production_planning_agent",
+   "tool": "get_capacity",
+   "args": {
+    "apply_customer_po": "True"
+   }
+  },
+  {
+   "t_ms": 8100,
+   "kind": "tool_result",
+   "agent": "production_planning_agent",
+   "tool": "get_capacity",
+   "summary": "month=2027-02-01, working_days=24, plan_qty={'FB-ARKA': 33432, 'RB-ARKA': 19200, 'F…, demand_change_pct={'FB-ARKA': 40}, groups=[{'group': '3500t (IMM-04, IMM-05; only…",
+   "error": false
+  },
+  {
+   "t_ms": 9000,
+   "kind": "tool_call",
+   "agent": "production_planning_agent",
+   "tool": "run_scheduler",
+   "args": {
+    "apply_customer_po": "True",
+    "allow_mold_moves": "True",
+    "maintain_imm04": "True"
+   }
+  },
+  {
+   "t_ms": 9900,
+   "kind": "tool_result",
+   "agent": "production_planning_agent",
+   "tool": "run_scheduler",
+   "summary": "status=OPTIMAL, solve_seconds=0.13, month=2027-02-01, plan_qty={'FB-ARKA': 33432, 'RB-ARKA': 19200, 'F…, unmet_qty={'FB-ARKA': 10000, 'RB-ARKA': 0, 'FB-BR…",
+   "error": false
+  },
+  {
+   "t_ms": 10800,
+   "kind": "tool_call",
+   "agent": "production_planning_agent",
+   "tool": "propose_mold_move",
+   "args": {
+    "sku": "FB-ARKA",
+    "to_machine_id": "IMM-05",
+    "rationale": "With FB-ARKA +40.0% the 3,500 t group needs 18.3% more capacity than it has; IMM"
+   }
+  },
+  {
+   "t_ms": 11700,
+   "kind": "tool_result",
+   "agent": "production_planning_agent",
+   "tool": "propose_mold_move",
+   "summary": "action_id=ACT-82a057f9c6, status=pending (needs human approval), impact={'rupiah_idr': 571358000, 'scrap_kg': 0…, impact_breakdown={'extra_units_contribution_idr': 591758…",
+   "error": false
+  },
+  {
+   "t_ms": 12600,
+   "kind": "agent_end",
+   "agent": "production_planning_agent"
+  },
+  {
+   "t_ms": 13500,
+   "kind": "agent_start",
+   "agent": "material_supply_agent"
+  },
+  {
+   "t_ms": 14400,
+   "kind": "tool_call",
+   "agent": "material_supply_agent",
+   "tool": "get_stock_projection",
+   "args": {
+    "material_id": "PP-EPDM-T20",
+    "apply_customer_po": "True"
+   }
+  },
+  {
+   "t_ms": 15300,
+   "kind": "tool_result",
+   "agent": "material_supply_agent",
+   "tool": "get_stock_projection",
+   "summary": "material_id=PP-EPDM-T20, as_of=2027-02-01, on_hand_qty=138400, unit=kg, actual_rate_per_workday=18065",
+   "error": false
+  },
+  {
+   "t_ms": 16200,
+   "kind": "agent_end",
+   "agent": "material_supply_agent"
+  },
+  {
+   "t_ms": 17100,
+   "kind": "agent_start",
+   "agent": "purchasing_agent"
+  },
+  {
+   "t_ms": 18000,
+   "kind": "tool_call",
+   "agent": "purchasing_agent",
+   "tool": "get_vendor_scorecard",
+   "args": {
+    "category": "Resin"
+   }
+  },
+  {
+   "t_ms": 18900,
+   "kind": "tool_result",
+   "agent": "purchasing_agent",
+   "tool": "get_vendor_scorecard",
+   "summary": "vendors=[{'vendor_id': 'VEN-ANDALAS', 'vendor_n…, worst_vendor=PT Andalas Polimindo",
+   "error": false
+  },
+  {
+   "t_ms": 19800,
+   "kind": "tool_call",
+   "agent": "purchasing_agent",
+   "tool": "read_vendor_email",
+   "args": {
+    "document_name": "vendor-email-andalas.txt"
+   }
+  },
+  {
+   "t_ms": 20700,
+   "kind": "tool_result",
+   "agent": "purchasing_agent",
+   "tool": "read_vendor_email",
+   "summary": "PT Andalas Polimindo: 2027-02-08 -> 2027-02-11 (+3 days)",
+   "error": false
+  },
+  {
+   "t_ms": 21600,
+   "kind": "tool_call",
+   "agent": "purchasing_agent",
+   "tool": "compare_vendors_for_po",
+   "args": {
+    "material_id": "PP-EPDM-T20",
+    "need_by": "2027-02-09",
+    "qty_kg": "160000"
+   }
+  },
+  {
+   "t_ms": 22500,
+   "kind": "tool_result",
+   "agent": "purchasing_agent",
+   "tool": "compare_vendors_for_po",
+   "summary": "material_id=PP-EPDM-T20, qty=160000, need_by=2027-02-09, options=[{'vendor_id': 'VEN-ANDALAS', 'vendor_n…, recommended_vendor=PT Merapi Resin Indonesia",
+   "error": false
+  },
+  {
+   "t_ms": 23400,
+   "kind": "tool_call",
+   "agent": "purchasing_agent",
+   "tool": "draft_po",
+   "args": {
+    "vendor_id": "VEN-MERAPI",
+    "material_id": "PP-EPDM-T20",
+    "qty_kg": "160000",
+    "expected_date": "2027-02-06",
+    "rationale": "PP-EPDM-T20 runs out on 2027-02-09 (8 days). PT Andalas Polimindo is on time 0.0"
+   }
+  },
+  {
+   "t_ms": 24300,
+   "kind": "tool_result",
+   "agent": "purchasing_agent",
+   "tool": "draft_po",
+   "summary": "action_id=ACT-cb1ca1c9e5, status=pending (needs human approval), impact={'rupiah_idr': 2213943000, 'scrap_kg': …, impact_breakdown={'avoided_line_stop_idr': 2517943000, '…",
+   "error": false
+  },
+  {
+   "t_ms": 25200,
+   "kind": "agent_end",
+   "agent": "purchasing_agent"
+  },
+  {
+   "t_ms": 26100,
+   "kind": "agent_start",
+   "agent": "mes_agent"
+  },
+  {
+   "t_ms": 27000,
+   "kind": "tool_call",
+   "agent": "mes_agent",
+   "tool": "get_machine_health",
+   "args": {
+    "machine_id": "IMM-04"
+   }
+  },
+  {
+   "t_ms": 27900,
+   "kind": "tool_result",
+   "agent": "mes_agent",
+   "tool": "get_machine_health",
+   "summary": "machine_id=IMM-04, as_of=2027-01-30, ideal_cycle_s=68.0, current_cycle_s=79.28, cycle_trend_s_per_day=0.336",
+   "error": false
+  },
+  {
+   "t_ms": 28800,
+   "kind": "tool_call",
+   "agent": "mes_agent",
+   "tool": "twin_observations",
+   "args": {}
+  },
+  {
+   "t_ms": 29700,
+   "kind": "tool_result",
+   "agent": "mes_agent",
+   "tool": "twin_observations",
+   "summary": "cameras={}, note=no camera observations yet",
+   "error": false
+  },
+  {
+   "t_ms": 30600,
+   "kind": "tool_call",
+   "agent": "mes_agent",
+   "tool": "propose_maintenance",
+   "args": {
+    "machine_id": "IMM-04",
+    "rationale": "IMM-04 cycle 79.28 s vs ideal 68.0 s, rising 0.336 s/day; alarm in 6.9 days; MTB"
+   }
+  },
+  {
+   "t_ms": 31500,
+   "kind": "tool_result",
+   "agent": "mes_agent",
+   "tool": "propose_maintenance",
+   "summary": "action_id=ACT-91b1cfdc00, status=pending (needs human approval), impact={'rupiah_idr': 937629000, 'scrap_kg': 1…, impact_breakdown={'avoided_breakdown_idr': 114240000, 's…",
+   "error": false
+  },
+  {
+   "t_ms": 32400,
+   "kind": "agent_end",
+   "agent": "mes_agent"
+  },
+  {
+   "t_ms": 33300,
+   "kind": "agent_start",
+   "agent": "quality_control_agent"
+  },
+  {
+   "t_ms": 34200,
+   "kind": "tool_call",
+   "agent": "quality_control_agent",
+   "tool": "get_defect_correlation",
+   "args": {
+    "days": "45"
+   }
+  },
+  {
+   "t_ms": 35100,
+   "kind": "tool_result",
+   "agent": "quality_control_agent",
+   "tool": "get_defect_correlation",
+   "summary": "window_days=45, inspected_qty=191205, defect_rate_pct=3.7, suspect_lot=LOT-PPT20-0918, lot_findings=[{'resin_lot_id': 'LOT-PPT20-0918', 'de…",
+   "error": false
+  },
+  {
+   "t_ms": 36000,
+   "kind": "tool_call",
+   "agent": "quality_control_agent",
+   "tool": "propose_hold",
+   "args": {
+    "resin_lot_id": "LOT-PPT20-0918",
+    "rationale": "Gas mark is 6.2x the plant rate on LOT-PPT20-0918 (0.68% vs 0.11%); 1342 bumpers"
+   }
+  },
+  {
+   "t_ms": 36900,
+   "kind": "tool_result",
+   "agent": "quality_control_agent",
+   "tool": "propose_hold",
+   "summary": "action_id=ACT-6e19fece3e, status=pending (needs human approval), impact={'rupiah_idr': 37911000, 'scrap_kg': 0,…, impact_breakdown={'avoided_customer_claims_idr': 3791100…",
+   "error": false
+  },
+  {
+   "t_ms": 37800,
+   "kind": "agent_end",
+   "agent": "quality_control_agent"
+  },
+  {
+   "t_ms": 38700,
+   "kind": "agent_start",
+   "agent": "delivery_agent"
+  },
+  {
+   "t_ms": 39600,
+   "kind": "tool_call",
+   "agent": "delivery_agent",
+   "tool": "get_orders_at_risk",
+   "args": {}
+  },
+  {
+   "t_ms": 40500,
+   "kind": "tool_result",
+   "agent": "delivery_agent",
+   "tool": "get_orders_at_risk",
+   "summary": "as_of=2027-02-01, orders_at_risk=[{'order_id': 'SO-270204-002', 'custome…, count=3, machines_involved=['IMM-04'], total_penalty_idr=190000000",
+   "error": false
+  },
+  {
+   "t_ms": 41400,
+   "kind": "tool_call",
+   "agent": "delivery_agent",
+   "tool": "propose_ship_date",
+   "args": {
+    "order_id": "SO-270204-002",
+    "new_date": "2027-02-05",
+    "rationale": "456 x FB-ARKA short by 43 on 2027-02-04 because IMM-04 output is down."
+   }
+  },
+  {
+   "t_ms": 42300,
+   "kind": "tool_result",
+   "agent": "delivery_agent",
+   "tool": "propose_ship_date",
+   "summary": "action_id=ACT-ec067df760, status=pending (needs human approval), impact={'rupiah_idr': 2500000, 'scrap_kg': 0, …, impact_breakdown={'penalty_reduction_idr': 2500000}",
+   "error": false
+  },
+  {
+   "t_ms": 43200,
+   "kind": "tool_call",
+   "agent": "delivery_agent",
+   "tool": "propose_ship_date",
+   "args": {
+    "order_id": "SO-270205-002",
+    "new_date": "2027-02-06",
+    "rationale": "359 x FB-ARKA short by 314 on 2027-02-05 because IMM-04 output is down."
+   }
+  },
+  {
+   "t_ms": 44100,
+   "kind": "tool_result",
+   "agent": "delivery_agent",
+   "tool": "propose_ship_date",
+   "summary": "action_id=ACT-0325c6e0d0, status=pending (needs human approval), impact={'rupiah_idr': 7500000, 'scrap_kg': 0, …, impact_breakdown={'penalty_reduction_idr': 7500000}",
+   "error": false
+  },
+  {
+   "t_ms": 45000,
+   "kind": "tool_call",
+   "agent": "delivery_agent",
+   "tool": "propose_ship_date",
+   "args": {
+    "order_id": "SO-270206-001",
+    "new_date": "2027-02-08",
+    "rationale": "870 x FB-ARKA short by 340 on 2027-02-06 because IMM-04 output is down."
+   }
+  },
+  {
+   "t_ms": 45900,
+   "kind": "tool_result",
+   "agent": "delivery_agent",
+   "tool": "propose_ship_date",
+   "summary": "action_id=ACT-d8a3fe21f8, status=pending (needs human approval), impact={'rupiah_idr': 85000000, 'scrap_kg': 0,…, impact_breakdown={'penalty_reduction_idr': 85000000}",
+   "error": false
+  },
+  {
+   "t_ms": 46800,
+   "kind": "tool_call",
+   "agent": "delivery_agent",
+   "tool": "draft_customer_notice",
+   "args": {
+    "order_ids": "['SO-270204-002', 'SO-270205-002', 'SO-270206-001']",
+    "message": "Dear Bengawan Aftermarket team,\n\nOur injection molding machine for FB-ARKA needs"
+   }
+  },
+  {
+   "t_ms": 47700,
+   "kind": "tool_result",
+   "agent": "delivery_agent",
+   "tool": "draft_customer_notice",
+   "summary": "action_id=ACT-848008909a, status=pending (needs human approval), impact={'rupiah_idr': 0, 'scrap_kg': 0, 'kwh':…, impact_breakdown={}",
+   "error": false
+  },
+  {
+   "t_ms": 48600,
+   "kind": "agent_end",
+   "agent": "delivery_agent"
+  },
+  {
+   "t_ms": 49500,
+   "kind": "tool_call",
+   "agent": "orchestrator",
+   "tool": "plan_summary",
+   "args": {}
+  },
+  {
+   "t_ms": 50400,
+   "kind": "tool_result",
+   "agent": "orchestrator",
+   "tool": "plan_summary",
+   "summary": "plan_id=PLAN-21a5962c, proposals=[{'action_id': 'ACT-82a057f9c6', 'kind'…, total={'rupiah_idr': 3855841000, 'scrap_kg': …",
+   "error": false
+  },
+  {
+   "t_ms": 51300,
+   "kind": "agent_end",
+   "agent": "orchestrator"
+  }
+ ],
+ "text": "**Situation**\n- OEM-A raised FB-ARKA by 40.0% for February; the forecast already shows 36.9% more FB-ARKA demand in six weeks (Lebaran ramp).\n- The 3,500 t group (IMM-04/05, the only machines that fit the ARKA molds) is short by 18.3%; IMM-04 is the bottleneck at 159.4% load and its cycle time is 79.28 s vs 68.0 s ideal (breakdown risk high, alarm in 6.9 days).\n- Resin PP-EPDM-T20 runs out on 2027-02-09 (8 days); the usual vendor is late. Lot LOT-PPT20-0918 shows a gas mark and bubble lift. 3 orders are at risk (penalty exposure Rp190,000,000).\n\n**Actions (priority order)**\n1. Preventive maintenance on IMM-04 (2 h stop) — restores the cycle time and removes the breakdown risk.\n2. Move the FB-ARKA mold to IMM-05 (swap with RB-ARKA, 90 min changeover) — CP-SAT fill rate with maintenance and mold moves: 90.5%.\n3. PO 160,000 kg PP-EPDM-T20 from PT Merapi Resin Indonesia (arrives before the stockout).\n4. Quality hold on resin lot LOT-PPT20-0918.\n5. Revise the ship dates of 3 orders and send the drafted customer notice.\n\n**Plan total (impact_calculator):** Rp3,855,841,000 saved or avoided, 1,889 kg scrap avoided, 7,405 kWh and 6,443 kg CO2e saved per month.\n\n**If nothing is done:** IMM-04 is likely to fail within about a week, molding stops for lack of resin around 2027-02-09, and the 3 late orders cost Rp190,000,000 in penalties.\n\nAll actions are pending your approval in the Action Center.",
+ "proposals": [
+  {
+   "kind": "mold_move",
+   "title": "Move FB-ARKA mold to IMM-05",
+   "origin_agent": "planning",
+   "rationale": "With FB-ARKA +40.0% the 3,500 t group needs 18.3% more capacity than it has; IMM-04 is the bottleneck at 159.4% load. Running FB-ARKA on the healthier IMM-05 raises its output.",
+   "evidence": [
+    {
+     "source": "get_forecast: fv.fact_customer_order (Completed/Shipped history, Cancelled excluded)"
+    },
+    {
+     "source": "get_capacity: fv.fact_monthly_plan, fv.fact_production, fv.dim_mold"
+    },
+    {
+     "source": "run_scheduler: fv.fact_monthly_plan, fv.fact_production, fv.product_mold_compatibility"
+    }
+   ],
+   "impact": {
+    "rupiah_idr": 571358000,
+    "scrap_kg": 0,
+    "kwh": 0,
+    "co2e_kg": 0
+   },
+   "args": {
+    "sku": "FB-ARKA",
+    "to_machine_id": "IMM-05"
+   }
+  },
+  {
+   "kind": "purchase_order",
+   "title": "PO PP-EPDM-T20 160,000 kg from PT Merapi Resin Indonesia",
+   "origin_agent": "purchasing",
+   "rationale": "PP-EPDM-T20 runs out on 2027-02-09 (8 days). PT Andalas Polimindo is on time 0.0% with 4.2 days average delay and announced another delay; PT Merapi Resin Indonesia arrives 2027-02-06.",
+   "evidence": [
+    {
+     "source": "get_forecast: fv.fact_customer_order (Completed/Shipped history, Cancelled excluded)"
+    },
+    {
+     "source": "get_capacity: fv.fact_monthly_plan, fv.fact_production, fv.dim_mold"
+    },
+    {
+     "source": "run_scheduler: fv.fact_monthly_plan, fv.fact_production, fv.product_mold_compatibility"
+    },
+    {
+     "source": "get_stock_projection: fv.fact_material_stock, fv.fact_production (actual use), fv.fact_monthly_plan x fv.bom, fv.fact_purchase_order"
+    },
+    {
+     "source": "get_vendor_scorecard: fv.fact_purchase_order, fv.dim_vendor"
+    },
+    {
+     "source": "compare_vendors_for_po: fv.fact_purchase_order, fv.dim_vendor"
+    }
+   ],
+   "impact": {
+    "rupiah_idr": 2213943000,
+    "scrap_kg": 0,
+    "kwh": 0,
+    "co2e_kg": 0
+   },
+   "args": {
+    "vendor_id": "VEN-MERAPI",
+    "material_id": "PP-EPDM-T20",
+    "qty": 160000.0,
+    "expected_date": "2027-02-06"
+   }
+  },
+  {
+   "kind": "maintenance",
+   "title": "Preventive maintenance on IMM-04",
+   "origin_agent": "mes",
+   "rationale": "IMM-04 cycle 79.28 s vs ideal 68.0 s, rising 0.336 s/day; alarm in 6.9 days; MTBF fell from 87.6 h to 21.5 h.",
+   "evidence": [
+    {
+     "source": "run_scheduler: fv.fact_monthly_plan, fv.fact_production, fv.product_mold_compatibility"
+    },
+    {
+     "source": "get_stock_projection: fv.fact_material_stock, fv.fact_production (actual use), fv.fact_monthly_plan x fv.bom, fv.fact_purchase_order"
+    },
+    {
+     "source": "get_vendor_scorecard: fv.fact_purchase_order, fv.dim_vendor"
+    },
+    {
+     "source": "compare_vendors_for_po: fv.fact_purchase_order, fv.dim_vendor"
+    },
+    {
+     "source": "get_machine_health: fv.fact_production, fv.fact_downtime, fv.dim_machine"
+    },
+    {
+     "source": "twin_observations: Twin Vision Analyzer (gemini-3.5-flash-lite)"
+    }
+   ],
+   "impact": {
+    "rupiah_idr": 937629000,
+    "scrap_kg": 1889,
+    "kwh": 7405,
+    "co2e_kg": 6443
+   },
+   "args": {
+    "machine_id": "IMM-04"
+   }
+  },
+  {
+   "kind": "quality_hold",
+   "title": "Quality hold on resin lot LOT-PPT20-0918",
+   "origin_agent": "quality",
+   "rationale": "Gas mark is 6.2x the plant rate on LOT-PPT20-0918 (0.68% vs 0.11%); 1342 bumpers from this lot are in stock.",
+   "evidence": [
+    {
+     "source": "get_stock_projection: fv.fact_material_stock, fv.fact_production (actual use), fv.fact_monthly_plan x fv.bom, fv.fact_purchase_order"
+    },
+    {
+     "source": "get_vendor_scorecard: fv.fact_purchase_order, fv.dim_vendor"
+    },
+    {
+     "source": "compare_vendors_for_po: fv.fact_purchase_order, fv.dim_vendor"
+    },
+    {
+     "source": "get_machine_health: fv.fact_production, fv.fact_downtime, fv.dim_machine"
+    },
+    {
+     "source": "twin_observations: Twin Vision Analyzer (gemini-3.5-flash-lite)"
+    },
+    {
+     "source": "get_defect_correlation: fv.fact_inspection, fv.fact_quality"
+    }
+   ],
+   "impact": {
+    "rupiah_idr": 37911000,
+    "scrap_kg": 0,
+    "kwh": 0,
+    "co2e_kg": 0
+   },
+   "args": {
+    "resin_lot_id": "LOT-PPT20-0918"
+   }
+  },
+  {
+   "kind": "ship_date",
+   "title": "Revise ship date of SO-270204-002 to 2027-02-05",
+   "origin_agent": "delivery",
+   "rationale": "456 x FB-ARKA short by 43 on 2027-02-04 because IMM-04 output is down.",
+   "evidence": [
+    {
+     "source": "get_vendor_scorecard: fv.fact_purchase_order, fv.dim_vendor"
+    },
+    {
+     "source": "compare_vendors_for_po: fv.fact_purchase_order, fv.dim_vendor"
+    },
+    {
+     "source": "get_machine_health: fv.fact_production, fv.fact_downtime, fv.dim_machine"
+    },
+    {
+     "source": "twin_observations: Twin Vision Analyzer (gemini-3.5-flash-lite)"
+    },
+    {
+     "source": "get_defect_correlation: fv.fact_inspection, fv.fact_quality"
+    },
+    {
+     "source": "get_orders_at_risk: fv.fact_customer_order, fv.fact_stock_snapshot, fv.fact_production, fv.dim_mold"
+    }
+   ],
+   "impact": {
+    "rupiah_idr": 2500000,
+    "scrap_kg": 0,
+    "kwh": 0,
+    "co2e_kg": 0
+   },
+   "args": {
+    "order_id": "SO-270204-002",
+    "new_date": "2027-02-05"
+   }
+  },
+  {
+   "kind": "ship_date",
+   "title": "Revise ship date of SO-270205-002 to 2027-02-06",
+   "origin_agent": "delivery",
+   "rationale": "359 x FB-ARKA short by 314 on 2027-02-05 because IMM-04 output is down.",
+   "evidence": [
+    {
+     "source": "get_vendor_scorecard: fv.fact_purchase_order, fv.dim_vendor"
+    },
+    {
+     "source": "compare_vendors_for_po: fv.fact_purchase_order, fv.dim_vendor"
+    },
+    {
+     "source": "get_machine_health: fv.fact_production, fv.fact_downtime, fv.dim_machine"
+    },
+    {
+     "source": "twin_observations: Twin Vision Analyzer (gemini-3.5-flash-lite)"
+    },
+    {
+     "source": "get_defect_correlation: fv.fact_inspection, fv.fact_quality"
+    },
+    {
+     "source": "get_orders_at_risk: fv.fact_customer_order, fv.fact_stock_snapshot, fv.fact_production, fv.dim_mold"
+    }
+   ],
+   "impact": {
+    "rupiah_idr": 7500000,
+    "scrap_kg": 0,
+    "kwh": 0,
+    "co2e_kg": 0
+   },
+   "args": {
+    "order_id": "SO-270205-002",
+    "new_date": "2027-02-06"
+   }
+  },
+  {
+   "kind": "ship_date",
+   "title": "Revise ship date of SO-270206-001 to 2027-02-08",
+   "origin_agent": "delivery",
+   "rationale": "870 x FB-ARKA short by 340 on 2027-02-06 because IMM-04 output is down.",
+   "evidence": [
+    {
+     "source": "get_vendor_scorecard: fv.fact_purchase_order, fv.dim_vendor"
+    },
+    {
+     "source": "compare_vendors_for_po: fv.fact_purchase_order, fv.dim_vendor"
+    },
+    {
+     "source": "get_machine_health: fv.fact_production, fv.fact_downtime, fv.dim_machine"
+    },
+    {
+     "source": "twin_observations: Twin Vision Analyzer (gemini-3.5-flash-lite)"
+    },
+    {
+     "source": "get_defect_correlation: fv.fact_inspection, fv.fact_quality"
+    },
+    {
+     "source": "get_orders_at_risk: fv.fact_customer_order, fv.fact_stock_snapshot, fv.fact_production, fv.dim_mold"
+    }
+   ],
+   "impact": {
+    "rupiah_idr": 85000000,
+    "scrap_kg": 0,
+    "kwh": 0,
+    "co2e_kg": 0
+   },
+   "args": {
+    "order_id": "SO-270206-001",
+    "new_date": "2027-02-08"
+   }
+  },
+  {
+   "kind": "customer_notice",
+   "title": "Customer notice for 3 order(s)",
+   "origin_agent": "delivery",
+   "rationale": "Dear Bengawan Aftermarket team,\n\nOur injection molding machine for FB-ARKA needs preventive maintenance this week. To protect quality we are re-sequencing production, which moves these deliveries:\n- SO-270204-002: 456 x FB-ARKA, requested 2027-02-04, new date 2027-02-05\n- SO-270205-002: 359 x FB-ARKA, requested 2027-02-05, new date 2027-02-06\n- SO-270206-001: 870 x FB-ARKA, requested 2027-02-06, new date 2027-02-08\n\nWe have moved the mold to a second machine and are pulling in resin to recover as fast as possible, and will confirm each call-off 48 hours ahead.\n\nBest regards,\nVidad Delivery Team",
+   "evidence": [
+    {
+     "source": "get_vendor_scorecard: fv.fact_purchase_order, fv.dim_vendor"
+    },
+    {
+     "source": "compare_vendors_for_po: fv.fact_purchase_order, fv.dim_vendor"
+    },
+    {
+     "source": "get_machine_health: fv.fact_production, fv.fact_downtime, fv.dim_machine"
+    },
+    {
+     "source": "twin_observations: Twin Vision Analyzer (gemini-3.5-flash-lite)"
+    },
+    {
+     "source": "get_defect_correlation: fv.fact_inspection, fv.fact_quality"
+    },
+    {
+     "source": "get_orders_at_risk: fv.fact_customer_order, fv.fact_stock_snapshot, fv.fact_production, fv.dim_mold"
+    }
+   ],
+   "impact": {
+    "rupiah_idr": 0,
+    "scrap_kg": 0,
+    "kwh": 0,
+    "co2e_kg": 0
+   },
+   "args": {
+    "order_ids": [
+     "SO-270204-002",
+     "SO-270205-002",
+     "SO-270206-001"
+    ],
+    "message": "Dear Bengawan Aftermarket team,\n\nOur injection molding machine for FB-ARKA needs preventive maintenance this week. To protect quality we are re-sequencing production, which moves these deliveries:\n- SO-270204-002: 456 x FB-ARKA, requested 2027-02-04, new date 2027-02-05\n- SO-270205-002: 359 x FB-ARKA, requested 2027-02-05, new date 2027-02-06\n- SO-270206-001: 870 x FB-ARKA, requested 2027-02-06, new date 2027-02-08\n\nWe have moved the mold to a second machine and are pulling in resin to recover as fast as possible, and will confirm each call-off 48 hours ahead.\n\nBest regards,\nVidad Delivery Team"
+   }
+  }
+ ]
+}

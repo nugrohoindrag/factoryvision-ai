@@ -25,7 +25,7 @@ _SPECS = [
     ),
     ErrorSpec("FV-REQ-003", 404, "Unknown scenario", "A disruption or replay scenario is not defined.", "Use a scenario listed by the simulator."),
     ErrorSpec(
-        "FV-REQ-004", 404, "Resource not found", "The request targets a path that does not exist.", "Check the URL; `/api/health` is the only endpoint today."
+        "FV-REQ-004", 404, "Resource not found", "The request targets a path that does not exist.", "Check the URL against the API routes (`/docs` lists them)."
     ),
     ErrorSpec(
         "FV-AUTH-001", 401, "Not signed in", "Auth is required and the Firebase ID token is missing or invalid.", "Sign in with the demo account and retry."
@@ -37,7 +37,7 @@ _SPECS = [
         "The `X-Session-Id` header is missing or malformed.",
         "The web app creates one per tab; API clients must send a UUID.",
     ),
-    ErrorSpec("FV-RATE-001", 429, "Live run limit reached", "The session used all its live AI runs.", "Switch to Replay or reset the demo session."),
+    ErrorSpec("FV-RATE-001", 429, "Live run limit reached", "The session used all its live AI runs.", "Switch to Replay; a reset does not refill live runs."),
     ErrorSpec("FV-RATE-002", 429, "Agent question limit reached", "The session asked agents more often than allowed.", "Wait or use Replay."),
     ErrorSpec(
         "FV-DATA-001", 404, "Unknown entity", "A SKU, machine, material, vendor, lot or order ID does not exist.", "Check the ID against the master data."
@@ -87,7 +87,9 @@ _SPECS = [
         "The action is marked failed with the reason; approve again after a reset.",
     ),
     ErrorSpec("FV-TWIN-001", 404, "Plant session not found", "No simulator state exists for the session.", "Call POST /api/demo/reset to create it."),
-    ErrorSpec("FV-TWIN-002", 400, "Unknown command", "An agent-commands message names an unknown command.", "Check the command list in simulator/commands.py."),
+    ErrorSpec(
+        "FV-TWIN-002", 400, "Unknown command", "An agent-commands message names an unknown command.", "Check the command list in app/simulation/commands.py."
+    ),
     ErrorSpec(
         "FV-VIS-001",
         429,
