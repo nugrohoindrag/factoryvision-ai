@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Request
@@ -13,6 +14,7 @@ INVALID_PUSH_MESSAGE = "FV-PUB-001"
 PUSH_NOT_AUTHORISED = "FV-PUB-002"
 
 router = APIRouter()
+log = logging.getLogger("fv.pubsub")
 
 
 class Tick(BaseModel):
@@ -66,7 +68,13 @@ async def _message(request: Request) -> dict[str, Any]:
 
 @router.post("/pubsub/commands")
 async def pubsub_commands(request: Request) -> dict[str, Any]:
-    return {"ok": True, "result": twin.on_command(await _message(request))}
+    message = await _message(request)
+    try:
+        return {"ok": True, "result": twin.on_command(message)}
+    except FVError as e:
+        # A rejected command fails the same way on every delivery; answer 2xx so Pub/Sub acks it instead of retrying.
+        log.warning("command %s rejected: %s", message.get("action_id"), e)
+        return {"ok": False, **e.body()}
 
 
 @router.post("/pubsub/push")

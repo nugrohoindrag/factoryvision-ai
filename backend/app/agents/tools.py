@@ -158,7 +158,10 @@ def _propose(
     for a in actions.list_actions(sid, "pending"):
         if a["plan_id"] == plan and a["kind"] == kind and a["command"]["args"] == args:
             return {"action_id": a["action_id"], "status": "pending", "note": "already proposed", "impact": a["impact"]}
-    impact = _impact(kind, impact_args or args)
+    try:
+        impact = _impact(kind, impact_args or args)
+    except FVError as e:
+        return e.tool_result()
     evidence = [{"source": s} for s in tc.state.get("sources", [])][-6:]
     doc = actions.propose(sid, kind, title, origin, rationale, args, evidence, impact, plan)
     return {"action_id": doc["action_id"], "status": "pending (needs human approval)", "impact": doc["impact"], "impact_breakdown": impact["breakdown"]}

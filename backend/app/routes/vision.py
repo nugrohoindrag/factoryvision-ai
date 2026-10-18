@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, File, Form, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, Response
 
 from app import photos, twin
@@ -28,7 +29,7 @@ OptionalUpload = Annotated[UploadFile | None, File()]
 async def vision_frame(camera_id: FormText, state_hash: FormText, frame: Annotated[UploadFile, File()], sid: SessionId) -> dict[str, Any]:
     image = await frame.read()
     state = twin.find(sid)
-    return vision.frame(sid, camera_id, state_hash, image, frame.content_type or "", state.snapshot() if state else None)
+    return await run_in_threadpool(vision.frame, sid, camera_id, state_hash, image, frame.content_type or "", state.snapshot() if state else None)
 
 
 @router.get("/vision/observations")
@@ -56,7 +57,7 @@ async def qc_inspect(
     if not sku or not color:
         raise FVError(INVALID_REQUEST, detail="expected_sku and expected_color are required for an uploaded photo")
     limiter.take(sid, "agent", settings.agent_asks_per_session, AGENT_QUESTION_LIMIT_REACHED)
-    result = extract.inspect_photo(image, mime, sku, color, photo_id)
+    result = await run_in_threadpool(extract.inspect_photo, image, mime, sku, color, photo_id)
     insp_id = f"INS-{datetime.now(UTC).strftime('%H%M%S%f')}"
     store().set(
         "inspections",
@@ -108,7 +109,7 @@ async def document_extract(kind: FormText, sid: SessionId, file: OptionalUpload 
         raise FVError(INVALID_REQUEST, detail="send a file or a demo document name")
     limiter.take(sid, "agent", settings.agent_asks_per_session, AGENT_QUESTION_LIMIT_REACHED)
     if kind == "po":
-        return {"kind": kind, **extract.read_customer_po(data)}
+        return {"kind": kind, **await run_in_threadpool(extract.read_customer_po, data)}
     if kind == "vendor_email":
-        return {"kind": kind, **extract.read_vendor_email(data.decode("utf-8", "replace"))}
+        return {"kind": kind, **await run_in_threadpool(extract.read_vendor_email, data.decode("utf-8", "replace"))}
     raise FVError(INVALID_REQUEST, detail={"kind": kind, "valid": ["po", "vendor_email"]})

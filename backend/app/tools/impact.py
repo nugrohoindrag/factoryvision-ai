@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app import plant
+from app.errors import FVError
 from app.tools import delivery, material, mes, planning
 from app.tools.common import idr
 
@@ -13,6 +14,7 @@ MAINTENANCE_PARTS_IDR = 18_000_000
 MAINTENANCE_HOURS = 2
 IDLE_KW_SHARE = 0.35
 SPOT_BUY_DAYS = 3
+UNKNOWN_ENTITY = "FV-DATA-001"
 
 
 def _result(
@@ -34,12 +36,15 @@ def _result(
 
 
 def maintenance(machine_id: str = "IMM-04") -> dict[str, Any]:
+    sku = planning.current_molds_by_machine().get(machine_id)
     h = mes.machine_health(machine_id)
+    if machine_id not in plant.IMM_IDS or sku is None or "current_cycle_s" not in h:
+        msg = f"maintenance impact is modelled only for an IMM with a mounted mold, not {machine_id}"
+        raise FVError(UNKNOWN_ENTITY, msg, {"valid": plant.IMM_IDS})
     rates = planning.machine_rates()
     normal = sum(rates[m]["cycle_factor"] for m in plant.IMM_IDS if m != machine_id) / (len(plant.IMM_IDS) - 1)
     ideal = h["ideal_cycle_s"]
     cur, new = h["current_cycle_s"], ideal * normal
-    sku = planning.current_molds_by_machine()[machine_id]
     p = plant.PRODUCT_BY_SKU[sku]
     shots_month = HORIZON_WORKDAYS * 3 * 450 * 60 / cur
     gained_units = HORIZON_WORKDAYS * 3 * 450 * 60 * (1 / new - 1 / cur)
@@ -83,13 +88,18 @@ def mold_move(sku: str = "FB-ARKA", to_machine_id: str = "IMM-05") -> dict[str, 
     )
 
 
+def _days(proj: dict[str, Any], horizon: int) -> int:
+    d = proj["days_to_stockout"]
+    return horizon if d is None else d
+
+
 def purchase_order(
     vendor_id: str, qty: float, expected_date: str, material_id: str = "PP-EPDM-T20", demand_change_pct: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     proj = material.stock_projection(material_id, demand_change_pct=demand_change_pct)
     after = material.stock_projection(material_id, demand_change_pct=demand_change_pct, extra_receipts=[{"expected_date": expected_date, "qty": qty}])
     horizon = 21
-    lost_days = max(0, horizon - (proj["days_to_stockout"] or horizon)) - max(0, horizon - (after["days_to_stockout"] or horizon))
+    lost_days = max(0, horizon - _days(proj, horizon)) - max(0, horizon - _days(after, horizon))
     lost_days = min(lost_days, SPOT_BUY_DAYS)
     avoided = lost_days * 6 / 7 * 24 * 6 * plant.DOWNTIME_IDR_PER_HOUR_IMM
     cheapest = min(v["unit_price_idr"] for v in plant.VENDORS if v["vendor_id"] in plant.MATERIAL_VENDORS[material_id])

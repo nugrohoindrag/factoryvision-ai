@@ -80,7 +80,8 @@ export default function ShopFloor() {
         if (!ai || cam === "CAM-Inspection") continue;
         const hash = s.camera_hashes?.[cam] ?? "";
         const changed = frameDiff(lastSig.current[cam] ?? null, signature(thumb)) > DIFF_THRESHOLD;
-        if (hash !== lastHash.current[cam] && changed) {
+        const due = Date.now() - (lastCall.current[cam] ?? 0) >= DEBOUNCE_MS;
+        if (hash !== lastHash.current[cam] && changed && due) {
           lastHash.current[cam] = hash;
           analyze(cam, false);
         }

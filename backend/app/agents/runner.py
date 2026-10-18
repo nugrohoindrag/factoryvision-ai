@@ -114,11 +114,13 @@ async def run(agent: BaseAgent, prompt: str, session_id: str, plan_id: str | Non
 
     try:
         await asyncio.wait_for(consume(), timeout=timeout_s)
-    except TimeoutError as e:
-        raise FVError(AGENT_TIMEOUT, detail={"run_id": run_id, "timeout_s": timeout_s}) from e
-    except FVError:
-        raise
-    except Exception as e:
+    except BaseException as e:
+        _timelines.pop(run_id, None)
+        _t0.pop(run_id, None)
+        if isinstance(e, TimeoutError):
+            raise FVError(AGENT_TIMEOUT, detail={"run_id": run_id, "timeout_s": timeout_s}) from e
+        if isinstance(e, (FVError, asyncio.CancelledError)) or not isinstance(e, Exception):
+            raise
         raise FVError(MODEL_UNAVAILABLE, detail={"run_id": run_id, "error": _brief(e, 300)}) from e
     record: Item = {
         "run_id": run_id,
@@ -155,4 +157,6 @@ async def stream(agent: BaseAgent, prompt: str, session_id: str, plan_id: str | 
         except FVError as e:
             yield {"kind": "error", "run_id": run_id, **e.body()}
     finally:
+        if not task.done():
+            task.cancel()
         _queues.pop(run_id, None)

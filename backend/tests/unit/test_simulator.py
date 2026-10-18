@@ -105,9 +105,12 @@ def test_hold_turns_racks_orange_and_stops_shipping() -> None:
 
 
 def test_po_arrives_as_new_lot() -> None:
-    s = run("baseline", 40, commands={1: {"name": "place_po", "args": {"qty": 160000, "lead_minutes": 20}}})
+    po = {"name": "place_po", "args": {"qty": 160000, "lead_minutes": 20}}
+    s = run("baseline", 40, commands={1: po})
     assert s.resin_kg > RESIN_START_KG
-    assert s.active_lot == "LOT-PPT20-0919"
+    assert s.active_lot == "LOT-PPT20-0918"  # the old lot still has stock and is not held, so it keeps running
+    held = run("baseline", 40, commands={1: po, 2: {"name": "hold_lot", "args": {"resin_lot_id": "LOT-PPT20-0918"}}})
+    assert held.active_lot == "LOT-PPT20-0919"
 
 
 def test_unknown_command() -> None:
