@@ -35,6 +35,8 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-AI-001` | 503 | Model unavailable | Vertex AI returned an error or the model is not served in this location. | Retry later; check FV_MODEL_LOCATION. |
 | `FV-AI-002` | 502 | Invalid model output | Gemini output did not match the expected JSON schema. | Retry once; the request is logged with the raw output. |
 | `FV-AI-003` | 504 | Agent timeout | An agent run exceeded its time budget. | Retry or use Replay. |
+| `FV-AGT-001` | 503 | Forecast feature unavailable | An agent asked for forecast vs actual or forecast accuracy and this build has no such function. | Answer from the forecast snapshot instead; the feature ships with the Forecast module. |
+| `FV-AGT-002` | 409 | Re-plan not needed | An agent proposed a re-plan but the current plan already uses the latest forecast snapshot and customer PO demand. | No action; propose a re-plan only when check_replan_trigger reports a reason. |
 | `FV-PUB-001` | 400 | Invalid push message | A Pub/Sub push request is malformed. | Pub/Sub retries; check the publisher. |
 | `FV-PUB-002` | 403 | Push not authorised | The push request's OIDC token is missing or invalid. | Check the subscription's service account. |
 | `FV-SYS-001` | 500 | Internal error | Unexpected server error. | Report the `request_id` from the response headers. |

@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from app import plans
 from app.agents import replay
 from app.main import app
 from fastapi.testclient import TestClient
@@ -32,7 +33,14 @@ def test_scripted_playbook_covers_the_chain(ground_truth: dict[str, Any]) -> Non
     rec = replay.load("disruption_response")
     assert {e["agent"] for e in rec["timeline"]} >= CHAIN
     kinds = {p["kind"] for p in rec["proposals"]}
-    assert {"maintenance", "mold_move", "purchase_order", "quality_hold", "ship_date", "customer_notice"} <= kinds
+    assert {"maintenance", "mold_move", "replan", "purchase_order", "quality_hold", "ship_date", "customer_notice"} <= kinds
+    replan = next(p for p in rec["proposals"] if p["kind"] == "replan")
+    assert replan["args"]["forecast_id"].startswith("FC-")
+    assert replan["args"]["demand_change_pct"] == {"FB-ARKA": 40}
+    assert any("capacity_delta" in e for e in replan["evidence"])
+    tools = {e["tool"] for e in rec["timeline"] if e["kind"] == "tool_call"}
+    assert {"get_latest_forecast_snapshot", "check_replan_trigger", "propose_replan"} <= tools
+    assert replan["args"]["forecast_id"] in rec["text"]
     ship = sorted(p["args"]["order_id"] for p in rec["proposals"] if p["kind"] == "ship_date")
     assert ship == sorted(ground_truth["stories"]["delivery"]["order_ids"])
     hold = next(p for p in rec["proposals"] if p["kind"] == "quality_hold")
@@ -76,6 +84,10 @@ def test_play_then_approve_plan_updates_modules_and_twin() -> None:
     assert snap["holds"] == ["LOT-PPT20-0918"]
     assert snap["resin"]["incoming"]
     assert client.get("/api/modules/quality/summary", headers=h(s)).json()["holds"][0]["status"] == "OPEN"
+    new_plans = plans.list_plans(s)
+    assert len(new_plans) == 1
+    assert new_plans[0]["status"] == "Draft"
+    assert new_plans[0]["origin"] == "agent"
 
 
 def test_mode_reports_replays() -> None:

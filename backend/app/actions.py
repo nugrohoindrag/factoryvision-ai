@@ -22,6 +22,7 @@ KINDS = {
     "order_cancel": ("orders", "cancel_customer_order"),
     "maintenance": ("mes", "start_maintenance"),
     "mold_move": ("planning", "move_mold"),
+    "replan": ("planning", "create_replan"),
     "extra_shift": ("planning", "add_shift"),
     "purchase_order": ("purchasing", "place_po"),
     "expedite_po": ("purchasing", "expedite_po"),
@@ -97,7 +98,8 @@ def decide(session_id: str, action_id: str, *, approve: bool, user: str, note: s
         store().update(COLLECTION, action_id, fields)
         return {**doc, **fields}
     try:
-        result = pubsub.publish(pubsub.AGENT_COMMANDS, {"session_id": session_id, "action_id": action_id, "command": doc["command"]})
+        command = {**doc["command"], "action_id": action_id, "decided_by": user}
+        result = pubsub.publish(pubsub.AGENT_COMMANDS, {"session_id": session_id, "action_id": action_id, "command": command})
         fields.update(status="approved", execution={"ok": True, "result": result, "executed_at": _now()})
     except FVError as e:
         fields.update(status="failed", execution={"ok": False, "error": e.body()["error"], "executed_at": _now()})
