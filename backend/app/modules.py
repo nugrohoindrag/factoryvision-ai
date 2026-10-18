@@ -110,7 +110,14 @@ def _mes(o: Overrides) -> dict[str, Any]:
             "note": "Maintenance approved: heater band and check ring replaced; cycle time back to normal.",
         }
         fleet = [{**f, "breakdown_risk": "low"} if f["machine_id"] == "IMM-04" else f for f in fleet]
-    return {"oee_yesterday": mes.get_oee(), "oee_7d": mes.get_oee(days=7), "pareto": mes.downtime_pareto(), "health": health, "fleet": fleet}
+    return {
+        "oee_yesterday": mes.get_oee(),
+        "oee_7d": mes.get_oee(days=7),
+        "trend": mes.oee_trend(),
+        "pareto": mes.downtime_pareto(),
+        "health": health,
+        "fleet": fleet,
+    }
 
 
 def _material(o: Overrides) -> dict[str, Any]:

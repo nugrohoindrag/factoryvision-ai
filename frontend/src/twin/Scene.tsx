@@ -1,8 +1,8 @@
 /** Low-poly Vidad plant (TW-1..TW-3): 16 machines with andon lights and ID boards, WIP racks, warehouse, INS-01 conveyor.
 
-Built from primitives and canvas-texture labels, plus one product image for the injection molding machines
-(the dryer, hopper, IMM and robot cell line), and laid out so the virtual cameras see large andons, readable
-IDs and countable racks.
+Built from primitives and canvas-texture labels. The six injection machines stand in a molding hall, three a side
+facing a central transfer conveyor, with the dryer and raw material at the back (MoldingHall). Laid out so the
+virtual cameras see large andons, readable IDs and countable racks.
 */
 
 import { useFrame } from "@react-three/fiber";
@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { ConveyorItem, Machine, Snapshot } from "../lib/types";
 import { LINE_TOP, LineAsset } from "./LineAsset";
+import MoldingHall, { DRYER_POS, HALL, MOLDING_CELLS, hopperTop } from "./MoldingHall";
 
 export const ANDON_HEX: Record<string, string> = { green: "#22c55e", yellow: "#facc15", red: "#ef4444", blue: "#3b82f6", grey: "#9ca3af" };
 const COLOR_HEX: Record<string, string> = {
@@ -19,14 +20,18 @@ const COLOR_HEX: Record<string, string> = {
 export const SKUS = ["FB-ARKA", "RB-ARKA", "FB-BROMO", "RB-BROMO", "FB-CITRA", "RB-CITRA"];
 
 type Pos = [number, number, number];
+function cell(id: string): Pos {
+  const c = MOLDING_CELLS[id];
+  return [c.x, 0, c.z];
+}
 export const LAYOUT: Record<string, { pos: Pos; size: Pos }> = {
-  "DRY-01": { pos: [-39, 0, -8], size: [2.4, 3, 2.4] },
-  "IMM-01": { pos: [-34, 0, -8], size: [3.6, 2.2, 2.2] },
-  "IMM-02": { pos: [-29, 0, -8], size: [3.6, 2.2, 2.2] },
-  "IMM-03": { pos: [-24, 0, -8], size: [3.8, 2.4, 2.3] },
-  "IMM-04": { pos: [-19, 0, -8], size: [4.0, 2.6, 2.4] },
-  "IMM-05": { pos: [-14, 0, -8], size: [4.0, 2.6, 2.4] },
-  "IMM-06": { pos: [-9, 0, -8], size: [3.8, 2.4, 2.3] },
+  "DRY-01": { pos: DRYER_POS, size: [2.4, 3, 2.4] },
+  "IMM-01": { pos: cell("IMM-01"), size: [4.2, 2.4, 2.3] },
+  "IMM-02": { pos: cell("IMM-02"), size: [4.2, 2.4, 2.3] },
+  "IMM-03": { pos: cell("IMM-03"), size: [4.4, 2.5, 2.3] },
+  "IMM-04": { pos: cell("IMM-04"), size: [4.6, 2.6, 2.4] },
+  "IMM-05": { pos: cell("IMM-05"), size: [4.6, 2.6, 2.4] },
+  "IMM-06": { pos: cell("IMM-06"), size: [4.4, 2.5, 2.3] },
   "TRM-01": { pos: [-3, 0, -8], size: [2.4, 1.8, 2] },
   "PWS-01": { pos: [1, 0, -8], size: [3, 2.2, 2.2] },
   "PNT-01": { pos: [6, 0, -8], size: [3.4, 3, 3] },
@@ -69,8 +74,9 @@ function useLabel(lines: string[], w = 256, h = 128, bg = "#0b1220", fg = "#ffff
   return tex;
 }
 
-function Board({ lines, position, width = 2.6, height = 1.1 }: { lines: string[]; position: Pos; width?: number; height?: number }) {
-  const tex = useLabel(lines);
+function Board({ lines, position, width = 2.6, height = 1.1, px = 256 }: { lines: string[]; position: Pos; width?: number; height?: number; px?: number }) {
+  // Canvas keeps the board's aspect so long titles are not cut at the canvas edge.
+  const tex = useLabel(lines, px, Math.round((px * height) / width));
   return (
     <mesh position={position}>
       <planeGeometry args={[width, height]} />
@@ -89,25 +95,38 @@ function MachineMesh({ m }: { m: Machine }) {
   const modelled = imm || m.machine_id === "DRY-01";
   const andon = ANDON_HEX[m.andon];
   const perf = m.performance_pct != null ? `${Math.round(m.performance_pct)}%` : m.status.toUpperCase();
+  // Right-hand row of the hall faces the conveyor the other way; the andon stays on the conveyor side.
+  const flip = MOLDING_CELLS[m.machine_id]?.side === 1;
+  const andonX = (flip ? -1 : 1) * (w / 2 - 0.3);
+  // In the hall the ID board floats over the machine, tilted up towards the overhead camera.
+  const inHall = !!MOLDING_CELLS[m.machine_id];
   return (
     <group position={[x, 0, z]}>
-      {modelled ? (
-        <LineAsset kind={imm ? "imm" : "dryer"} w={w} h={h} d={d} />
-      ) : (
-        <mesh position={[0, h / 2, 0]} castShadow>
-          <boxGeometry args={[w, h, d]} />
-          <meshStandardMaterial color="#7b8794" metalness={0.2} roughness={0.7} />
-        </mesh>
-      )}
-      <mesh position={[w / 2 - 0.3, top + 0.6, 0]}>
+      <group rotation={[0, flip ? Math.PI : 0, 0]}>
+        {modelled ? (
+          <LineAsset kind={imm ? "imm" : "dryer"} w={w} h={h} d={d} />
+        ) : (
+          <mesh position={[0, h / 2, 0]} castShadow>
+            <boxGeometry args={[w, h, d]} />
+            <meshStandardMaterial color="#7b8794" metalness={0.2} roughness={0.7} />
+          </mesh>
+        )}
+      </group>
+      <mesh position={[andonX, top + 0.6, 0]}>
         <cylinderGeometry args={[0.06, 0.06, 1.2]} />
         <meshStandardMaterial color="#333" />
       </mesh>
-      <mesh position={[w / 2 - 0.3, top + 1.35, 0]}>
+      <mesh position={[andonX, top + 1.35, 0]}>
         <sphereGeometry args={[imm ? 0.5 : 0.38, 20, 16]} />
         <meshStandardMaterial color={andon} emissive={andon} emissiveIntensity={1.6} toneMapped={false} />
       </mesh>
-      <Board lines={imm ? [m.machine_id, perf] : [m.machine_id]} position={[-0.2, top + 0.75, d / 2 + 0.02]} width={imm ? 2.6 : 2} height={imm ? 1.2 : 0.8} />
+      {inHall ? (
+        <group position={[-andonX * 0.35, top + 1.15, 0.2]} rotation={[-0.6, 0, 0]}>
+          <Board lines={[m.machine_id, perf]} position={[0, 0, 0]} width={2.6} height={1.2} />
+        </group>
+      ) : (
+        <Board lines={imm ? [m.machine_id, perf] : [m.machine_id]} position={[-0.2, top + 0.75, d / 2 + 0.02]} width={imm ? 2.6 : 2} height={imm ? 1.2 : 0.8} />
+      )}
     </group>
   );
 }
@@ -205,15 +224,16 @@ export default function PlantScene({ snap, photos }: { snap: Snapshot; photos: R
         <meshStandardMaterial color="#b8c2cc" />
       </mesh>
       {[
-        ["MOLDING", -22, "#d6dee6"],
         ["PAINTING", 11, "#e3dccf"],
         ["ASSEMBLY", 27, "#d9e3d6"],
       ].map(([label, x, c]) => (
         <mesh key={label as string} rotation={[-Math.PI / 2, 0, 0]} position={[x as number, 0, -8]}>
-          <planeGeometry args={[label === "MOLDING" ? 38 : 14, 6]} />
+          <planeGeometry args={[14, 6]} />
           <meshStandardMaterial color={c as string} />
         </mesh>
       ))}
+      <MoldingHall hoppers={Object.keys(MOLDING_CELLS).map((id) => hopperTop(id, LAYOUT[id].size[0], LAYOUT[id].size[1]))} />
+      <Board lines={["MOLDING HALL", "6 injection machines, 3 + 3"]} position={[HALL.x - 7.5, 2.9, HALL.z0 + 0.2]} width={7.5} height={1.9} px={900} />
       {machines.map((m) => <MachineMesh key={m.machine_id} m={m} />)}
       {SKUS.map((sku, k) => (
         <Rack key={sku} x={WIP_RACK_X[k]} z={0} label={`WIP ${sku}`} count={snap.wip[sku] ?? 0} color="#1f2937" />

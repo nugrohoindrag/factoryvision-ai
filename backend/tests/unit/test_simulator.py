@@ -126,3 +126,19 @@ def test_conveyor_is_deterministic_and_flags_wrong_colour() -> None:
     seen = [i for k in range(0, 40, 2) for i in run("baseline", k).snapshot(photos)["conveyor"]]
     assert any(i["color"] != i["expected_color"] for i in seen)
     assert run("baseline", 30).snapshot(photos)["conveyor"][0]["seq"] == 15
+
+
+def test_shift_oee_counts_the_current_shift_and_resets_at_the_change() -> None:
+    s = run(minutes=240)
+    imm = {m["machine_id"]: m["shift"] for m in s.snapshot()["machines"] if m["machine_id"].startswith("IMM")}
+    assert all(v["planned_min"] == 240 and 0 < v["good"] <= v["shots"] for v in imm.values())
+    assert min(imm, key=lambda k: imm[k]["performance_pct"]) == "IMM-04"  # the worn machine is the slow one
+    for _ in range(240 + 5):
+        s.step()
+    assert machine(s, "IMM-01")["shift"]["planned_min"] == 5  # shift B started at minute 480
+
+
+def test_shift_oee_of_a_machine_without_a_cycle_is_its_availability() -> None:
+    shift = machine(run(minutes=60), "DRY-01")["shift"]
+    assert shift["performance_pct"] is None
+    assert shift["oee_pct"] == shift["availability_pct"]

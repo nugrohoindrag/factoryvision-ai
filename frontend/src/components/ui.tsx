@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { Sparkline } from "./charts";
+import { Icon } from "./icons";
 import { formatIdr, formatIdrCompact } from "../lib/format";
 import type { Impact } from "../lib/types";
 
@@ -22,6 +24,30 @@ export function Kpi({ label, value, sub, tone }: { label: string; value: ReactNo
       <div className="kpi-label">{label}</div>
       <div className="kpi-value">{value}</div>
       {sub && <div className="kpi-sub">{sub}</div>}
+    </div>
+  );
+}
+
+export type Tone = "good" | "warn" | "bad" | "info" | "accent";
+
+/** Executive KPI card: value, change against the day before, status and a sparkline of the real daily series. */
+export function MetricCard({ label, icon, value, tone, delta, sub, spark }: { label: string; icon: string; value: ReactNode; tone: Tone; delta?: { text: string; good: boolean | null }; sub?: ReactNode; spark?: number[] }) {
+  return (
+    <div className={`metric ${tone}`}>
+      <div className="metric-head">
+        <span className="metric-label">{label}</span>
+        <span className="metric-icon"><Icon name={icon} size={14} /></span>
+      </div>
+      <div className="metric-body">
+        <div>
+          <div className="metric-value">{value}</div>
+          <div className="metric-meta">
+            {delta && <span className={delta.good == null ? "flat" : delta.good ? "up" : "down"}>{delta.text}</span>}
+            {sub && <span>{sub}</span>}
+          </div>
+        </div>
+        {spark && <Sparkline values={spark} label={`${label}, last ${spark.length} production days`} />}
+      </div>
     </div>
   );
 }
