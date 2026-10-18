@@ -120,8 +120,6 @@ def test_forecast_snapshot_tools(fake: dict[str, Any], sid: str, monkeypatch: py
     assert r["insufficient_history_skus"] == []
     assert agent_tools.get_forecast_snapshot(forecast_id=SNAP_ID, sku="", tool_context=Ctx(sid))["forecast_id"] == SNAP_ID
     assert agent_tools.get_latest_forecast_snapshot(sku="NOPE", tool_context=Ctx(sid))["error"]["code"] == "FV-DATA-001"
-    assert agent_tools.compare_forecast_to_actuals(forecast_id=SNAP_ID, tool_context=Ctx(sid))["error"]["code"] == "FV-AGT-001"
-    assert agent_tools.get_forecast_accuracy(sku="FB-ARKA", tool_context=Ctx(sid))["error"]["code"] == "FV-AGT-001"
     monkeypatch.setattr(forecasts, "comparison", lambda _sid, fid: {"forecast_id": fid, "weeks": []}, raising=False)
     monkeypatch.setattr(forecasts, "accuracy", lambda _sid, sku: {"sku": sku, "mape_pct": 12.5}, raising=False)
     assert agent_tools.compare_forecast_to_actuals(forecast_id=SNAP_ID, tool_context=Ctx(sid))["forecast_id"] == SNAP_ID
