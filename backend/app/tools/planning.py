@@ -5,9 +5,8 @@ from datetime import date, timedelta
 from typing import Any
 
 from ortools.sat.python import cp_model
-from simulator import plant
 
-from app import warehouse
+from app import plant, warehouse
 from app.errors import FVError
 from app.tools.common import AVAILABLE_FACTOR, MINUTES_PER_WORKDAY, TODAY, pct, to_date, working_days_in_month
 

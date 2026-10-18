@@ -3,9 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
-from simulator import plant
-
-from app import warehouse
+from app import plant, warehouse
 from app.tools.common import TODAY, idr, pct, to_date
 
 PO_SQL = "SELECT po_id, vendor_id, material_id, order_qty, order_date, promised_date, received_date, po_status FROM fv.fact_purchase_order"

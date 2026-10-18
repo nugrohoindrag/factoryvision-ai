@@ -4,7 +4,8 @@ from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
 import numpy as np
-from simulator import plant
+
+from app import plant
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

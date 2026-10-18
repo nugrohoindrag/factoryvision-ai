@@ -33,8 +33,9 @@ The API has exactly one endpoint: `GET /api/health`.
 | `backend/app/db/` | `models.py` is the SQLAlchemy definition of the `fv` dataset, `engine.py` picks DuckDB or BigQuery, `build_local.py` runs Alembic and loads the seed. |
 | `backend/app/tools/` | Deterministic, tested domain functions — forecast, planning (CP-SAT), MES/OEE, material, purchasing, quality, delivery. Plain Python, no LLM. They read only through `app/warehouse.py`. |
 | `backend/app/warehouse.py` | The SQL guardrail: one `SELECT`, `fv.`-prefixed allowlisted tables, mandatory `LIMIT`. |
+| `backend/app/plant.py` | The Vidad plant spec: machines, products, molds, materials, customers, vendors, defect and downtime taxonomies, cost constants. |
 | `backend/migrations/` | Alembic. One revision, `0001_initial_fv_schema.py`. |
-| `backend/simulator/` | The Vidad plant spec (`plant.py`) and a deterministic seed generator producing 90 days of data. |
+| `backend/simulator/` | A deterministic seed generator producing 90 days of data. It imports the plant spec from `app`; `app` never imports `simulator`. |
 | `backend/tests/` | `unit/`, `integration/`, `e2e/`. Layer markers are assigned from the directory. |
 | `frontend/` | React 19 + Vite + TypeScript shell that fetches `/api/health`. Vitest and Playwright tests. |
 | `data/` | Generated. Git-ignored. `data/seed/` holds 25 table CSVs plus the seed manifest, `data/local/` holds `fv.duckdb`. |

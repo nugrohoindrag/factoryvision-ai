@@ -11,7 +11,8 @@ from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
-from simulator import plant
+from app import plant
+
 from simulator.seed.schema import TABLES
 
 ROOT = Path(__file__).resolve().parents[3]

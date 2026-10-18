@@ -25,7 +25,7 @@ def test_scheduler_is_feasible_fast_and_respects_molds() -> None:
     r = planning.run_scheduler(demand_change_pct={"FB-ARKA": 40})
     assert r["status"] in ("OPTIMAL", "FEASIBLE")
     assert r["solve_seconds"] < 10
-    from simulator import plant
+    from app import plant
 
     for row in r["schedule"]:
         assert row["machine_id"] in plant.MOLD_COMPAT[row["sku"]]

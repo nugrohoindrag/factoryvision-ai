@@ -3,9 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
-from simulator import plant
-
-from app import warehouse
+from app import plant, warehouse
 from app.tools.common import TODAY, pct
 
 INSP_SQL = "SELECT resin_lot_id, humidity_pct, SUM(inspected_qty) AS n FROM fv.fact_inspection WHERE inspection_date >= :d0 GROUP BY resin_lot_id, humidity_pct"
