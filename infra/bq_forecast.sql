@@ -31,3 +31,15 @@ demand AS (
 SELECT TIMESTAMP(days.d) AS d, skus.sku, COALESCE(demand.qty, 0) AS qty
 FROM days CROSS JOIN skus
 LEFT JOIN demand ON demand.d = days.d AND demand.sku = skus.sku;
+
+-- DF-R53 (optional, cloud only): a backtest twin of the model, trained up to 2027-01-03, so ML.EVALUATE can score
+-- the 4 weeks 2027-01-04..2027-01-31 against what was ordered. The app's accuracy view (GET /api/forecasts/accuracy)
+-- runs the same 4-week backtest with the local model, so it works without this model; this is the BQML counterpart.
+-- CREATE OR REPLACE MODEL `fv.demand_arima_backtest`
+-- OPTIONS (model_type = 'ARIMA_PLUS', time_series_timestamp_col = 'd', time_series_data_col = 'qty',
+--          time_series_id_col = 'sku', data_frequency = 'DAILY', holiday_region = 'ID', auto_arima = TRUE) AS
+-- <same SELECT as above, with GENERATE_DATE_ARRAY(DATE '2026-11-03', DATE '2027-01-03')>;
+-- SELECT * FROM ML.EVALUATE(MODEL `fv.demand_arima_backtest`, (<same SELECT for 2027-01-04..2027-01-31>), STRUCT(TRUE AS perform_aggregation, 28 AS horizon));
+--
+-- Snapshots (DF-R20..R27) are not stored in BigQuery: the warehouse is read-only, so each generate copies the
+-- ML.FORECAST weekly totals into the session store (Firestore forecast_snapshots), where they never change.

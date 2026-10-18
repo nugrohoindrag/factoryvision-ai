@@ -71,6 +71,31 @@ _SPECS = [
         "The BQML model fv.demand_arima is not trained.",
         "Run infra/bq_forecast.sql; the tool falls back to the local model meanwhile.",
     ),
+    ErrorSpec(
+        "FV-FC-001",
+        400,
+        "Invalid forecast parameters",
+        "Generate was sent a window, horizon, SKU filter or per-customer flag outside the allowed values.",
+        "Fix the fields listed in `detail.fields`: window 30/60/90 days, horizon 4/6/8 weeks, a non-empty SKU list or none.",
+    ),
+    ErrorSpec("FV-FC-002", 404, "Forecast snapshot not found", "The forecast ID does not exist in this session.", "Pick a snapshot from GET /api/forecasts."),
+    ErrorSpec(
+        "FV-FC-003",
+        400,
+        "Invalid snapshot status filter",
+        "`GET /api/forecasts?status=` names a status other than Generated or Superseded.",
+        "Use Generated, Superseded, or leave the filter out.",
+    ),
+    ErrorSpec(
+        "FV-FC-004",
+        409,
+        "Forecast snapshot is read-only",
+        "A request tried to change or delete a stored forecast snapshot.",
+        "Generate a new snapshot; the old one is superseded and keeps its numbers.",
+    ),
+    ErrorSpec(
+        "FV-FC-005", 404, "SKU not in snapshot", "The snapshot was generated for a SKU filter that leaves this SKU out.", "Pick a SKU the snapshot covers."
+    ),
     ErrorSpec("FV-ACT-001", 404, "Action not found", "The proposal ID does not exist in this session.", "Refresh the Action Center."),
     ErrorSpec(
         "FV-ACT-002",
