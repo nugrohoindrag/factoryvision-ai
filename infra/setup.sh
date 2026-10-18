@@ -12,7 +12,8 @@ gcloud config set project "$PROJECT"
 gcloud config set run/region "$REGION"
 
 echo "== APIs"
-gcloud services enable aiplatform.googleapis.com run.googleapis.com cloudbuild.googleapis.com \
+# compute: no VM is created, but Cloud Build in new projects builds as the Compute Engine default service account.
+gcloud services enable compute.googleapis.com aiplatform.googleapis.com run.googleapis.com cloudbuild.googleapis.com \
   artifactregistry.googleapis.com bigquery.googleapis.com firestore.googleapis.com pubsub.googleapis.com \
   storage.googleapis.com secretmanager.googleapis.com logging.googleapis.com cloudtrace.googleapis.com
 
