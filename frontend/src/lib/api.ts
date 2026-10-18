@@ -62,6 +62,10 @@ export async function patch<T>(path: string, body: unknown): Promise<T> {
   return parse<T>(await fetch(path, { method: "PATCH", headers: headers({ "Content-Type": "application/json" }), body: JSON.stringify(body) }));
 }
 
+export async function put<T>(path: string, body: unknown): Promise<T> {
+  return parse<T>(await fetch(path, { method: "PUT", headers: headers({ "Content-Type": "application/json" }), body: JSON.stringify(body) }));
+}
+
 export async function del<T>(path: string): Promise<T> {
   return parse<T>(await fetch(path, { method: "DELETE", headers: headers() }));
 }

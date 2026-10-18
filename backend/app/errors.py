@@ -289,6 +289,13 @@ _SPECS = [
         "Send a percentage in (0, 100].",
     ),
     ErrorSpec(
+        "FV-CAP-004",
+        400,
+        "Invalid capacity assessment",
+        "The SKU is not a product in the plant, or the quantity is not a whole number of at least 0.",
+        "Send a SKU from the product list and a quantity of 0 or more.",
+    ),
+    ErrorSpec(
         "FV-FCST-001",
         503,
         "Forecast model missing",
