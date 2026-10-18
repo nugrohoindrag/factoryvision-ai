@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import Any, Protocol
 
-from app import actions, effects, forecasts, photos, plans, plant, purchasing_docs, readiness
+from app import actions, effects, forecasts, outbox, photos, plans, plant, purchasing_docs, readiness
 from app.agents import facts
 from app.agents import material as material_facts
 from app.agents import purchasing as purchasing_facts
@@ -261,10 +261,15 @@ def get_vendor_scorecard(*, category: str) -> ToolResult:
     return purchasing.vendor_performance(category or None)
 
 
-def read_vendor_email(*, document_name: str) -> ToolResult:
+def read_vendor_email(*, document_name: str, tool_context: ToolContext) -> ToolResult:
     if document_name not in DOCUMENTS:
         return _unknown(f"unknown document {document_name}", {"valid": list(DOCUMENTS)})
-    return _guard(extract.read_vendor_email, DOCUMENTS[document_name][1]().decode())
+    out = _guard(extract.read_vendor_email, DOCUMENTS[document_name][1]().decode())
+    if isinstance(out, dict) and "error" not in out:
+        draft = outbox.vendor_reply_draft(_sid(tool_context), out)
+        if draft:
+            out = {**out, "reply_draft": {"email_id": draft["email_id"], "status": "draft in the Outbox, a person sends it"}}
+    return out
 
 
 def compare_vendors_for_po(*, material_id: str, need_by: str, qty_kg: float, tool_context: ToolContext) -> ToolResult:
@@ -314,6 +319,14 @@ def propose_purchase_order(*, material_id: str, qty: float, need_by: str, vendor
         sid = _sid(tool_context)
         doc, created = purchasing_facts.propose_po(sid, material_id, float(qty), need_by or None, vendor_id or None, plan_id=tool_context.state.get("plan_id"))
         return _proposal(doc, created=created, note="a PO for this material is already waiting for approval")
+
+    return _guard(run)
+
+
+def propose_pos_for_plan_shortage(*, plan_id: str, tool_context: ToolContext) -> ToolResult:
+    def run() -> ToolResult:
+        sid = _sid(tool_context)
+        return purchasing_facts.propose_for_plan_shortage(sid, readiness.check_plan(sid, plan_id))
 
     return _guard(run)
 
@@ -642,6 +655,14 @@ TOOL_DOCS: dict[str, str] = {
         "    need_by: need date YYYY-MM-DD, or empty.\n"
         "    vendor_id: e.g. VEN-MERAPI, or empty for the recommended vendor."
     ),
+    "propose_pos_for_plan_shortage": (
+        "Check a production plan's material readiness and propose one purchase order per short material: quantity is the "
+        "shortage rounded up, need date from the plan, vendor the one recommended to arrive in time. The POs are grouped as "
+        "RDY-<plan number> for one approval; on approval each PO is issued and emailed to its vendor. Pending proposals only.\n"
+        "\n"
+        "Args:\n"
+        "    plan_id: production plan id, from get_material_readiness or list_production_plans."
+    ),
     "propose_expedite": (
         "Propose to expedite an open session PO to an earlier promised date. Creates a pending proposal only.\n"
         "\n"
@@ -762,6 +783,8 @@ MODULE_TOOLS: dict[str, list[Tool]] = {
         list_requisitions,
         propose_requisition_from_mrp,
         propose_purchase_order,
+        get_material_readiness,
+        propose_pos_for_plan_shortage,
         propose_expedite,
     ],
     "quality": [get_defect_correlation, inspect_conveyor_photo, propose_hold],

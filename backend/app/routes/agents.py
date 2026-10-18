@@ -7,10 +7,11 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app import actions, twin
+from app import actions, outbox, twin
 from app.agents import replay
 from app.ai import genai
 from app.config import settings
+from app.documents import VENDOR_EMAIL_FACTS
 from app.errors import FVError
 from app.modules import MODULES
 from app.session import SessionId, limiter
@@ -88,7 +89,10 @@ def get_replay(scenario: str) -> dict[str, Any]:
 
 @router.post("/replay/{scenario}")
 def play_replay(scenario: str, sid: SessionId) -> dict[str, Any]:
-    return replay.play(sid, scenario)
+    out = replay.play(sid, scenario)
+    if scenario == "disruption_response":
+        outbox.vendor_reply_draft(sid, VENDOR_EMAIL_FACTS)
+    return out
 
 
 @router.get("/runs/{run_id}")

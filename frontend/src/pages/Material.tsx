@@ -251,8 +251,53 @@ function WorkOrderCheck({ planId }: { planId: string }) {
   );
 }
 
+/** What the purchasing agent did after Check now found a shortage: one draft PO per short material, approved together. */
+function AgentPurchasing({ check }: { check: MaterialCheck }) {
+  const { bump } = useApp();
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const pu = check.purchasing;
+  if (!pu) return null;
+  const approveAll = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await post<{ decided: unknown[]; failed: unknown[] }>(`/api/plans/${encodeURIComponent(pu.group)}/approve`);
+      setDone(`${r.decided.length} PO(s) issued and emailed to the vendors${r.failed.length ? `, ${r.failed.length} failed` : ""}.`);
+      bump();
+    } catch (e) {
+      setErr(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="notice-box info" role="status">
+      <p>
+        <Badge tone="info">Purchasing agent</Badge> drafted <strong>{pu.proposals.length} purchase order(s)</strong> for this shortage (group {pu.group}): quantity = shortage,
+        vendor = the one that arrives before the need date.{pu.skipped.length > 0 && ` ${pu.skipped.length} material(s) skipped: ${pu.skipped.map((x) => x.material_id).join(", ")}.`}
+        {check.email && <> PPIC and Purchasing were alerted by email ({check.email.status.replace("_", " ")}).</>}
+      </p>
+      <details>
+        <summary>Draft POs</summary>
+        <ul className="small">{pu.proposals.map((p) => <li key={p.action_id}><strong>{p.title}</strong> · {p.rationale}</li>)}</ul>
+      </details>
+      <div className="row">
+        {!done && pu.proposals.some((p) => p.status === "pending") && (
+          <button className="primary" disabled={busy} onClick={approveAll}>{busy ? "Issuing…" : `Approve all ${pu.proposals.length} POs`}</button>
+        )}
+        <Link to="/actions">Review in the Action Center</Link>
+        <Link to="/outbox">Outbox</Link>
+      </div>
+      {done && <p className="small">{done}</p>}
+      {err && <p className="error small" role="alert">{err}</p>}
+    </div>
+  );
+}
+
 function PlanCheck({ planId, label }: { planId: string; label: string }) {
-  const { version } = useApp();
+  const { version, bump } = useApp();
   const [check, setCheck] = useState<MaterialCheck | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -262,7 +307,8 @@ function PlanCheck({ planId, label }: { planId: string; label: string }) {
     let alive = true;
     setLoading(true);
     get<MaterialCheck>(path)
-      .then((c) => alive && (setCheck(c), setErr(null)))
+      // keep what the purchasing agent drafted after Check now; the saved check does not carry it
+      .then((c) => alive && (setCheck((prev) => (prev?.purchasing && prev.plan_id === c.plan_id ? { ...c, purchasing: prev.purchasing, email: prev.email } : c)), setErr(null)))
       .catch((e) => alive && setErr(errorText(e)))
       .finally(() => alive && setLoading(false));
     return () => {
@@ -273,7 +319,9 @@ function PlanCheck({ planId, label }: { planId: string; label: string }) {
     setBusy(true);
     setErr(null);
     try {
-      setCheck(await post<MaterialCheck>(path));
+      const c = await post<MaterialCheck>(path);
+      setCheck(c);
+      if (c.purchasing) bump();
     } catch (e) {
       setErr(errorText(e));
     } finally {
@@ -298,6 +346,7 @@ function PlanCheck({ planId, label }: { planId: string; label: string }) {
       {shown && (
         <>
           <CheckHeader check={shown} />
+          <AgentPurchasing check={shown} />
           {shown.status === "NOT_CHECKED" ? (
             <Empty title="Not checked yet">Press Check now to explode the plan's BOM and compare it with stock.</Empty>
           ) : (

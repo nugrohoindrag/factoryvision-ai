@@ -30,15 +30,26 @@ class Settings(BaseSettings):
     push_audience: str = ""
     push_service_account: str = ""
     model_orchestrator: str = "gemini-4-argon"
-    model_module: str = "gemini-3.8-flash"
+    model_module: str = "gemini-3.7-flash"
     model_vision: str = "gemini-3.5-flash-lite"
     model_live: str = "gemini-3.8-flash-live"
     vision_calls_per_session: int = Field(default=20, ge=1, le=1000, validation_alias="FV_VISION_CAP")
     vision_debounce_s: int = Field(default=30, ge=0, validation_alias="FV_VISION_DEBOUNCE_S")
     live_runs_per_session: int = Field(default=5, ge=1, validation_alias="FV_LIVE_RUN_CAP")
     agent_asks_per_session: int = Field(default=30, ge=1, validation_alias="FV_AGENT_ASK_CAP")
+    ai_daily_cap: int = Field(default=400, ge=1, validation_alias="FV_AI_DAILY_CAP")
     qc_live_seconds: int = Field(default=60, ge=1)
     require_auth: bool = False
+    # Outbox: approved actions become emails. Sent through Gmail only when the OAuth JSON (Secret Manager
+    # fv-gmail-oauth, mounted as FV_GMAIL_OAUTH) and a base address are set, and only to plus-addresses of that base.
+    mail_base: str = ""
+    gmail_oauth: str = ""
+    mail_sends_per_session: int = Field(default=60, ge=0, validation_alias="FV_MAIL_CAP")
+    # Sign in with Google (Firebase Auth web config; public values, served to the browser at runtime) and the
+    # comma-separated admin accounts that approve registrations.
+    firebase_api_key: str = ""
+    firebase_app_id: str = ""
+    admin_emails: str = ""
 
     @field_validator("model_orchestrator", "model_module", "model_vision", "model_live")
     @classmethod

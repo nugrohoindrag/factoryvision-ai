@@ -19,12 +19,16 @@ import FactoryOverviewPage from "./pages/FactoryOverview";
 import LiveBoardPage from "./pages/LiveBoard";
 import LossDetailPage from "./pages/LossDetail";
 import WorkOrdersPage from "./pages/WorkOrders";
+import OutboxPage from "./pages/Outbox";
+import AccountPage from "./pages/Account";
+import AdminRegistrationsPage from "./pages/AdminRegistrations";
+import { AuthProvider, useAuth } from "./lib/auth";
 
 // The 3D twin (three.js) loads only when the MES page opens.
 const MesPage = lazy(() => import("./pages/Mes"));
 
 const NAV: { group: string; links: [string, string][] }[] = [
-  { group: "Overview", links: [["/", "Plant Briefing"], ["/actions", "Action Center"], ["/factory-overview", "Factory Overview"]] },
+  { group: "Overview", links: [["/", "Plant Briefing"], ["/actions", "Action Center"], ["/outbox", "Outbox"], ["/factory-overview", "Factory Overview"]] },
   { group: "Plan", links: [["/orders", "Customer Orders"], ["/forecast", "Demand Forecast"], ["/planning", "Production Planning"], ["/capacity", "Capacity Plan"]] },
   { group: "Make", links: [["/mes", "MES / Shop Floor"], ["/live-board", "Live Board"], ["/production-board", "Production Board"], ["/work-orders", "Work Orders"], ["/material", "Material Supply"], ["/purchasing", "Purchasing"], ["/quality", "Quality Control"]] },
   { group: "Deliver", links: [["/delivery", "Delivery"]] },
@@ -105,6 +109,18 @@ function SideNav({ open, onNavigate }: { open: boolean; onNavigate: () => void }
   );
 }
 
+function AccountChip() {
+  const { enabled, user, account } = useAuth();
+  if (!enabled) return null;
+  if (!user) return <NavLink to="/account" className="ghost">Sign in</NavLink>;
+  return (
+    <span className="row">
+      {account?.is_admin && <NavLink to="/admin/registrations">Registrations</NavLink>}
+      <NavLink to="/account" title={user.email}>{account?.status === "approved" ? account.factory_name : user.name}{account && account.status !== "approved" && ` (${account.status})`}</NavLink>
+    </span>
+  );
+}
+
 function TopBar({ onMenu }: { onMenu: () => void }) {
   const { live, setLive, mode, reset, pending, run, setPanelOpen } = useApp();
   return (
@@ -120,6 +136,7 @@ function TopBar({ onMenu }: { onMenu: () => void }) {
         {run.status !== "idle" && <button className="ghost" onClick={() => setPanelOpen(true)}>Agent timeline</button>}
         <button className="ghost" onClick={reset} title="New plant day for this tab">Reset</button>
       </div>
+      <AccountChip />
       <NavLink to="/actions" className="ac-link">
         Action Center {pending > 0 && <span className="count">{pending}</span>}
       </NavLink>
@@ -153,6 +170,9 @@ export function Shell() {
           <Route path="/quality" element={<QualityPage />} />
           <Route path="/delivery" element={<DeliveryPage />} />
           <Route path="/actions" element={<ActionCenter />} />
+          <Route path="/outbox" element={<OutboxPage />} />
+          <Route path="/account" element={<AccountPage />} />
+          <Route path="/admin/registrations" element={<AdminRegistrationsPage />} />
           <Route path="/master" element={<Navigate to="/master/customers" replace />} />
           <Route path="/master/:entity" element={<MasterDataPage />} />
         </Routes>
@@ -165,9 +185,11 @@ export function Shell() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AppProvider>
-        <Shell />
-      </AppProvider>
+      <AuthProvider>
+        <AppProvider>
+          <Shell />
+        </AppProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

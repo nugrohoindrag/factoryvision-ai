@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from app import pubsub
+from app import outbox, pubsub
 from app.errors import FVError
 from app.store import Doc, store
 
@@ -109,7 +109,12 @@ def decide(session_id: str, action_id: str, *, approve: bool, user: str, note: s
     out = {**doc, **fields}
     if out["status"] == "failed":
         raise FVError(ACTION_EXECUTION_FAILED, detail={"action_id": action_id, "reason": fields["execution"]["error"]})
-    return out
+    mail = outbox.on_approved(session_id, out)
+    return {**out, "email": _email_view(mail)}
+
+
+def _email_view(mail: Doc | None) -> Doc | None:
+    return {k: mail.get(k) for k in ("email_id", "status", "reason", "to", "subject")} if mail else None
 
 
 def decide_plan(session_id: str, plan_id: str, *, approve: bool, user: str) -> Doc:
@@ -124,7 +129,9 @@ def decide_plan(session_id: str, plan_id: str, *, approve: bool, user: str) -> D
             failed.append({"action_id": doc["action_id"], "error": e.body()["error"]})
     if not results and not failed:
         raise FVError(ACTION_NOT_FOUND, detail={"plan_id": plan_id})
-    return {"plan_id": plan_id, "decided": results, "failed": failed}
+    approved = [r for r in results if r["status"] == "approved"]
+    mail = outbox.on_plan_approved(session_id, plan_id, approved, user) if approve else None
+    return {"plan_id": plan_id, "decided": results, "failed": failed, "email": _email_view(mail)}
 
 
 def approved_commands(session_id: str) -> list[Doc]:

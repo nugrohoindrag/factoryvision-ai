@@ -3,7 +3,8 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 
-from app import mrp, readiness
+from app import mrp, outbox, readiness
+from app.agents import purchasing as purchasing_agent
 from app.session import SessionId, user_label
 
 router = APIRouter(prefix="/api")
@@ -37,8 +38,14 @@ def latest_plan_check(plan_id: str, sid: SessionId) -> dict[str, Any]:
 
 
 @router.post("/materials/readiness/plans/{plan_id}")
-def check_plan(plan_id: str, sid: SessionId) -> dict[str, Any]:
-    return readiness.check_plan(sid, plan_id)
+def check_plan(plan_id: str, request: Request, sid: SessionId) -> dict[str, Any]:
+    """Check a plan's materials; when something is short, the purchasing agent drafts the POs for approval."""
+    check = readiness.check_plan(sid, plan_id)
+    if check.get("shortages"):
+        check["purchasing"] = purchasing_agent.propose_for_plan_shortage(sid, check)
+        mail = outbox.shortage_alert(sid, check, check["purchasing"], actor=user_label(request))
+        check["email"] = {k: mail.get(k) for k in ("email_id", "status", "reason", "to", "subject")} if mail else None
+    return check
 
 
 @router.post("/materials/readiness/plans/{plan_id}/work-orders/{wo_id}")

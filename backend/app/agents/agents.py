@@ -80,6 +80,9 @@ MODULES = {
         "Read open and overdue purchase orders with list_purchase_orders, list_overdue_purchase_orders and get_purchase_order, and "
         "requisitions with list_requisitions. Compare vendors for any material with recommend_vendor. To act, propose only: "
         "propose_requisition_from_mrp for an MRP run, propose_purchase_order for one material, propose_expedite for a late open PO. "
+        "When a production plan is short of material (get_material_readiness or the plan id you are given), call "
+        "propose_pos_for_plan_shortage with its plan id: it drafts every PO for the shortage at once; on approval the POs are issued "
+        "and emailed to the vendors. "
         "For every PO you propose, name the vendor, its expected arrival against the need date, the PO value and the premium vs the "
         "cheapest option. Cite the tool numbers (MRP run id, PO and PR numbers); never make numbers up. "
         "Always end with: pending approval in the Action Center.",

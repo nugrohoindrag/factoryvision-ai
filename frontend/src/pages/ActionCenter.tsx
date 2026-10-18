@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { moduleLabel } from "../components/agents";
 import { Badge, Card, ImpactRow, Status } from "../components/ui";
 import { errorText, post } from "../lib/api";
@@ -74,7 +75,7 @@ export default function ActionCenter() {
   return (
     <>
       <h1>Action Center</h1>
-      <p className="muted">Every agent action is a proposal. Nothing reaches the plant, the twin or a customer until a person approves it.</p>
+      <p className="muted">Every agent action is a proposal. Nothing reaches the plant, the twin or a customer until a person approves it. Approved actions are emailed to the people they concern (see the <Link to="/outbox">Outbox</Link>).</p>
       <Status loading={loading} error={error} />
       {err && <p className="error" role="alert">{err}</p>}
       {data && !data.actions.length && <Card><p className="muted">No proposals yet. Run the Disruption Response from the Plant Briefing.</p></Card>}
@@ -83,7 +84,7 @@ export default function ActionCenter() {
         return (
           <Card
             key={plan}
-            title={plan.startsWith("PLAN") ? `Cross-module plan ${plan}` : plan.startsWith("ASK") ? `Agent question ${plan}` : "Proposals"}
+            title={plan.startsWith("PLAN") ? `Cross-module plan ${plan}` : plan.startsWith("ASK") ? `Agent question ${plan}` : plan.startsWith("RDY-") ? `Purchasing agent: POs for the material shortage of ${plan.slice(4)}` : "Proposals"}
             actions={
               pending > 0 && plan !== "single" ? (
                 <div className="row">

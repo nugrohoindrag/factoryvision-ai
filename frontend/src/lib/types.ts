@@ -245,6 +245,13 @@ export type MaterialCheck = {
   checked_at: string | null;
   materials: MaterialCheckRow[];
   shortages: MaterialCheckRow[];
+  purchasing?: {
+    group: string;
+    proposals: { action_id: string; title: string; rationale: string; status: string; new: boolean }[];
+    skipped: { material_id: string; reason: string }[];
+    note: string;
+  };
+  email?: { email_id: string; status: string; reason: string | null; to: string[]; subject: string } | null;
 };
 
 export type ReadinessPlanRow = {

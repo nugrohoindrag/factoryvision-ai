@@ -30,6 +30,15 @@ _SPECS = [
     ErrorSpec(
         "FV-AUTH-001", 401, "Not signed in", "Auth is required and the Firebase ID token is missing or invalid.", "Sign in with the demo account and retry."
     ),
+    ErrorSpec("FV-AUTH-002", 403, "Admin only", "Approving registrations needs an admin account.", "Sign in with an account listed in FV_ADMIN_EMAILS."),
+    ErrorSpec("FV-ACC-001", 404, "Not registered", "The signed-in Google account has no registration yet.", "Complete the registration form first."),
+    ErrorSpec(
+        "FV-ACC-002",
+        409,
+        "Not approved yet",
+        "The registration waits for an admin's approval or was rejected.",
+        "Wait for the approval email, or contact the admin.",
+    ),
     ErrorSpec(
         "FV-SES-001",
         400,

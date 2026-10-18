@@ -38,19 +38,44 @@ def session_id(
 ) -> str:
     if not x_session_id or not _UUID.match(x_session_id):
         raise FVError(MISSING_SESSION)
+    bearer = authorization.split(" ", 1)[1] if authorization and authorization.lower().startswith("bearer ") else None
     if settings.require_auth:
-        if not authorization or not authorization.lower().startswith("bearer "):
+        if not bearer:
             raise FVError(NOT_SIGNED_IN)
-        request.state.user = _verify_firebase(authorization.split(" ", 1)[1])
+        request.state.user = _verify_firebase(bearer)
+    elif bearer:
+        # guests use the app without signing in; a signed-in user is still recognised (decisions carry their email)
+        try:
+            request.state.user = _verify_firebase(bearer)
+        except FVError:
+            request.state.user = None
     return x_session_id.lower()
 
 
 SessionId = Annotated[str, Depends(session_id)]
 
 
+def signed_in(request: Request, authorization: Annotated[str | None, Header()] = None) -> dict[str, Any]:
+    """A verified Google account (Firebase ID token), required for registration and admin routes."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise FVError(NOT_SIGNED_IN)
+    claims = _verify_firebase(authorization.split(" ", 1)[1])
+    if not claims.get("email") or not claims.get("email_verified", False):
+        raise FVError(NOT_SIGNED_IN, detail="the Google account has no verified email")
+    request.state.user = claims
+    return claims
+
+
+SignedIn = Annotated[dict[str, Any], Depends(signed_in)]
+
+
 def user_label(request: Request) -> str:
     user: dict[str, Any] = getattr(request.state, "user", None) or {}
     return str(user.get("email") or "demo-manager")
+
+
+# Gemini calls per use of a bucket: a Disruption Response runs the Orchestrator and about 14 module-agent calls.
+AI_WEIGHTS = {"live_run": 15, "agent": 1, "vision": 1}
 
 
 class Limiter:
@@ -64,6 +89,14 @@ class Limiter:
             key = (sid, bucket)
             if self._counts[key] >= cap:
                 raise FVError(code, detail={"cap": cap})
+            # Session ids come from the browser, so a new tab is a fresh per-session budget. Every Gemini entry point
+            # also draws from one budget per instance per UTC day; with max-instances 3 that bounds the daily spend.
+            weight = AI_WEIGHTS.get(bucket, 0)
+            if weight:
+                day = (f"*{time.strftime('%Y-%m-%d', time.gmtime())}", "ai")
+                if self._counts[day] + weight > settings.ai_daily_cap:
+                    raise FVError(code, "The daily AI budget of this demo is used up; Replay still works.", {"daily_cap": settings.ai_daily_cap})
+                self._counts[day] += weight
             self._counts[key] += 1
             return cap - self._counts[key]
 

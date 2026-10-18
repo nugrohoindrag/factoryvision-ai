@@ -667,3 +667,5 @@ a.const-source:hover { text-decoration: underline; }
 .cell-bar-fill { position: absolute; inset: 0 auto 0 0; background: var(--bad-bg); }
 .cell-bar > span:last-child { position: relative; }
 @media (max-width: 900px) { .loss-grid { grid-template-columns: 1fr; } .loss-hero-figure { text-align: left; } .loss-share { align-items: flex-start; } }
+.onboarding-steps { display: flex; flex-direction: column; gap: 0.6rem; padding-left: 1.2rem; }
+.onboarding-steps li .row { margin-left: 0.5rem; display: inline-flex; gap: 0.5rem; }

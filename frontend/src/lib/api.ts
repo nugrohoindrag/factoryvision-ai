@@ -28,8 +28,15 @@ export class ApiError extends Error {
   }
 }
 
+let authToken: string | null = null;
+
+/** The signed-in user's Firebase ID token (kept fresh by the auth listener); guests have none. */
+export function setAuthToken(token: string | null): void {
+  authToken = token;
+}
+
 function headers(extra?: Record<string, string>): Record<string, string> {
-  return { "X-Session-Id": sessionId(), ...extra };
+  return { "X-Session-Id": sessionId(), ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}), ...extra };
 }
 
 async function parse<T>(r: Response): Promise<T> {

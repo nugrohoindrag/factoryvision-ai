@@ -26,9 +26,12 @@ export default function BriefingPage() {
           <h1>Plant Briefing</h1>
           <p className="muted">Vidad bumper plant · Monday {data?.as_of ?? "…"} 07:00 WIB · numbers for {data?.yesterday ?? "yesterday"}</p>
         </div>
-        <button className="primary big" onClick={startDisruption} disabled={run.status === "running"}>
-          {run.status === "running" ? "Agents working…" : `Run Disruption Response (${live ? "Live" : "Replay"})`}
-        </button>
+        <div className="row">
+          <Link to="/outbox">Email this briefing</Link>
+          <button className="primary big" onClick={startDisruption} disabled={run.status === "running"}>
+            {run.status === "running" ? "Agents working…" : `Run Disruption Response (${live ? "Live" : "Replay"})`}
+          </button>
+        </div>
       </div>
       <Status loading={loading} error={error} />
       {data && (

@@ -12,6 +12,9 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-REQ-003` | 404 | Unknown scenario | A disruption or replay scenario is not defined. | Use a scenario listed by the simulator. |
 | `FV-REQ-004` | 404 | Resource not found | The request targets a path that does not exist. | Check the URL against the API routes (`/docs` lists them). |
 | `FV-AUTH-001` | 401 | Not signed in | Auth is required and the Firebase ID token is missing or invalid. | Sign in with the demo account and retry. |
+| `FV-AUTH-002` | 403 | Admin only | Approving registrations needs an admin account. | Sign in with an account listed in FV_ADMIN_EMAILS. |
+| `FV-ACC-001` | 404 | Not registered | The signed-in Google account has no registration yet. | Complete the registration form first. |
+| `FV-ACC-002` | 409 | Not approved yet | The registration waits for an admin's approval or was rejected. | Wait for the approval email, or contact the admin. |
 | `FV-SES-001` | 400 | Missing session | The `X-Session-Id` header is missing or malformed. | The web app creates one per tab; API clients must send a UUID. |
 | `FV-RATE-001` | 429 | Live run limit reached | The session used all its live AI runs. | Switch to Replay; a reset does not refill live runs. |
 | `FV-RATE-002` | 429 | Agent question limit reached | The session asked agents more often than allowed. | Wait or use Replay. |

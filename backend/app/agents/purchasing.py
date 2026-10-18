@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from app import actions, materials, mrp, purchasing_docs
@@ -163,6 +164,38 @@ def propose_po(sid: str, material_id: str, qty: float, need_by: str | None, vend
     title = f"PO {material_id} {_n(qty)} {unit} from {option['vendor_name']}"
     impact = material_facts.po_impact(args, sid)
     return actions.propose(sid, "purchase_order", title, "purchasing", rationale, args, evidence, impact, plan_id), True
+
+
+def shortage_group(plan_number: str) -> str:
+    return f"RDY-{plan_number}"
+
+
+def propose_for_plan_shortage(sid: str, check: Doc) -> Doc:
+    """Turn a readiness check's shortages into PO proposals, one per short material, grouped under RDY-<plan>
+    so a manager approves them together. Quantity is the shortage rounded up; vendor is the one recommended to
+    arrive before the need date."""
+    group = shortage_group(str(check.get("plan_number") or check.get("plan_id")))
+    proposals: list[Doc] = []
+    skipped: list[Doc] = []
+    for row in check.get("shortages", []):
+        mid, qty = row["material_id"], float(math.ceil(float(row.get("shortage_qty") or 0)))
+        if qty <= 0:
+            continue
+        try:
+            doc, created = propose_po(sid, mid, qty, row.get("required_date"), None, plan_id=group)
+        except FVError as e:
+            skipped.append({"material_id": mid, "reason": e.message, "code": e.code})
+            continue
+        proposals.append({**{k: doc[k] for k in ("action_id", "title", "rationale", "status", "plan_id")}, "new": created, "impact": doc["impact"]})
+    return {
+        "group": group,
+        "plan_id": check.get("plan_id"),
+        "plan_number": check.get("plan_number"),
+        "proposals": proposals,
+        "skipped": skipped,
+        "agent": "purchasing_agent",
+        "note": "Draft POs wait for approval in the Action Center; on approval each PO is issued and emailed to its vendor.",
+    }
 
 
 def propose_expedite(sid: str, po_id: str, new_promised_date: str, reason: str, *, plan_id: str | None = None) -> tuple[Doc, bool]:
