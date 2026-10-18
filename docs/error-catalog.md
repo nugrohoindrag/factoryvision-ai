@@ -53,6 +53,18 @@ Agent tools return the same object instead of raising, so the agent can explain 
 | `FV-CAP-002` | 404 | Capacity snapshot not found | The CAP snapshot to recalculate does not exist in this session. | List snapshots with GET /api/capacity/snapshots. |
 | `FV-CAP-003` | 400 | Invalid planning utilization | The planning utilization is not above 0 and at most 100 percent. | Send a percentage in (0, 100]. |
 | `FV-CAP-004` | 400 | Invalid capacity assessment | The SKU is not a product in the plant, or the quantity is not a whole number of at least 0. | Send a SKU from the product list and a quantity of 0 or more. |
+| `FV-MR-001` | 404 | Plan not found for material readiness | The production plan does not exist in this session, or an OEM-YYYY-MM id names a month with no OEM monthly plan. | Pick a plan from GET /api/materials/readiness. |
+| `FV-MR-002` | 404 | Work order not found | The work order is not part of the production plan, or does not exist in this session. | Generate work orders in the plan wizard, then use an id from the plan detail. |
+| `FV-MR-003` | 400 | Invalid readiness range | `from` or `to` is not an ISO date, or `to` is before `from`. | Send ISO dates with `to` on or after `from`, or leave them out for today to +30 days. |
+| `FV-MR-004` | 409 | Plan is cancelled | A material check or reservation was asked for a cancelled production plan. | Cancelled plans have no material requirement; check another plan. |
+| `FV-MR-005` | 422 | BOM uses an unknown material | An active BOM item points at a material that is not in the material master, so readiness cannot be computed. | Fix the BOM or the material master; readiness is never counted as zero silently. |
+| `FV-MR-006` | 404 | Reservation not found | The reservation id does not exist in this session. | List reservations with GET /api/materials/reservations. |
+| `FV-MR-007` | 400 | Invalid reservation status filter | `GET /api/materials/reservations?status=` names a status other than Active or Released. | Use Active, Released, or leave the filter out. |
+| `FV-MRP-001` | 400 | Invalid MRP horizon | The end of the MRP horizon is before its start. | Send horizon_end on or after horizon_start, or leave both out for today to +30 days. |
+| `FV-MRP-002` | 400 | Invalid MRP date | horizon_start or horizon_end is not an ISO date. | Send dates as YYYY-MM-DD. |
+| `FV-MRP-003` | 404 | MRP plan not found | A plan id in plan_ids does not exist in this session. | Use plan ids from GET /api/plans or OEM-YYYY-MM for the OEM monthly plan. |
+| `FV-MRP-004` | 409 | MRP plan is cancelled | A plan id in plan_ids belongs to a cancelled plan. | Leave cancelled plans out of the run. |
+| `FV-MRP-005` | 404 | MRP run not found | The MRP run id does not exist in this session. | List runs with GET /api/mrp/runs. |
 | `FV-FCST-001` | 503 | Forecast model missing | The BQML model fv.demand_arima is not trained. | Run infra/bq_forecast.sql; the tool falls back to the local model meanwhile. |
 | `FV-FC-001` | 400 | Invalid forecast parameters | Generate was sent a window, horizon, SKU filter or per-customer flag outside the allowed values. | Fix the fields listed in `detail.fields`: window 30/60/90 days, horizon 4/6/8 weeks, a non-empty SKU list or none. |
 | `FV-FC-002` | 404 | Forecast snapshot not found | The forecast ID does not exist in this session. | Pick a snapshot from GET /api/forecasts. |
