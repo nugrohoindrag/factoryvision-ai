@@ -14,7 +14,7 @@ from fastapi import APIRouter, File, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from app import actions, effects, modules
+from app import actions, effects, modules, plans
 from app.errors import FVError
 from app.session import SessionId, user_label
 from app.store import store
@@ -72,8 +72,13 @@ def _documents(sid: str, order_number: str) -> list[dict[str, Any]]:
 
 
 def _detail(sid: str, o: effects.Overrides, order_number: str) -> dict[str, Any]:
-    h = orders.find_order(modules.order_view(o), order_number)
-    return {**h, "traceability": orders.traceability(h, o.demand_change_pct or None), "documents": _documents(sid, order_number)}
+    h = orders.find_order(plans.order_view(sid, o), order_number)
+    return {
+        **h,
+        "traceability": orders.traceability(h, o.demand_change_pct or None),
+        "documents": _documents(sid, order_number),
+        "production_plans": plans.plans_for_order(sid, order_number),
+    }
 
 
 def _checked(body: OrderIn, o: effects.Overrides) -> tuple[dict[str, Any], list[str]]:
@@ -93,7 +98,7 @@ def list_orders(
     delivery_from: str | None = None,
     delivery_to: str | None = None,
 ) -> dict[str, Any]:
-    view = modules.order_view(effects.overrides(sid))
+    view = plans.order_view(sid)
     rows = orders.filter_orders(view, status, customer_id, sku, delivery_from, delivery_to)
     return {
         **{k: v for k, v in view.items() if k != "orders"},
@@ -115,7 +120,7 @@ def validate(body: OrderIn, sid: SessionId) -> dict[str, Any]:
     if not errors:
         draft = orders.new_order(data, "preview", _now())
         trial = effects.Overrides(**{**o.as_dict(), "new_orders": [*o.new_orders, draft]})
-        h = orders.find_order(modules.order_view(trial), draft["order_number"])
+        h = orders.find_order(plans.order_view(sid, trial), draft["order_number"])
         preview = {k: h[k] for k in ("status", "at_risk", "estimated_completion", "days_late", "penalty_idr")}
         if h["at_risk"]:
             warnings.append(f"At current capacity this order completes on {h['estimated_completion']}, {h['days_late']} day(s) after the requested delivery.")
@@ -151,7 +156,7 @@ def get_order(order_number: str, sid: SessionId) -> dict[str, Any]:
 @router.post("/{order_number}/cancel")
 def cancel_order(order_number: str, body: CancelIn, request: Request, sid: SessionId) -> dict[str, Any]:
     o = effects.overrides(sid)
-    h = orders.find_order(modules.order_view(o), order_number)
+    h = orders.find_order(plans.order_view(sid, o), order_number)
     reason = body.reason.strip()
     if len(reason) < 3:
         raise FVError(
