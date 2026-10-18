@@ -48,6 +48,7 @@ just test        # 45 unit + 20 integration
 | integration tier | a 404 that reported `Unknown module` for every path |
 | catalog drift | `docs/error-catalog.md` is generated; it silently went stale |
 | `.env.example` drift | three env vars had been renamed by an `env_prefix` change |
+| `justfile` ↔ `ci.yml` drift | CI ran pytest from the wrong directory, so `-m unit` selected nothing while the job stayed green |
 
 A gate that has never been seen to reject is not known to work. Several of these
 passed while the defect they targeted was live, because nothing had tried to trip
@@ -96,6 +97,21 @@ The bypass guard in `.opencode/plugins/` blocks `--no-verify`, force push,
 security boundary** — it raises the cost of a reflexive bypass, and its table is
 tested but its runtime enforcement is not. `CODEOWNERS` plus required status checks
 is the real boundary.
+
+## Two command surfaces
+
+`justfile` and `.github/workflows/ci.yml` both describe how to run the backend, and
+they were written in different commits — so they drifted, and the drift was not
+caught by anything until a review happened to compare them. `test_ci_surface.py` now
+does that comparison. It asserts that every `ruff`, `mypy` and `pytest` command CI
+runs is also reachable from a recipe, that pytest in CI runs with `backend/` as the
+working directory, and that CI exports `UV_PROJECT_ENVIRONMENT` as an absolute path.
+
+That last one is not a formality: uv resolves a relative `UV_PROJECT_ENVIRONMENT`
+against the *project* directory, so `.venv` builds a second, stale `backend/.venv`.
+
+**If you add a check to one surface, add it to the other.** The gate tells you when
+you forget, but it will not tell you why you should have.
 
 ## Traps
 
